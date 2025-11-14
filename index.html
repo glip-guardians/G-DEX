@@ -22,7 +22,7 @@
   }
 </script>
 
-<!-- PWA: 설치 안내 스크립트 -->
+<!-- PWA: 설치 안내 스크립트 (기존) -->
 <script defer src="pwa-install.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -125,6 +125,17 @@ img{max-width:100%;display:block}
 }
 .nav a:is(:hover,:focus){background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.08))}
 .nav .note{margin-top:8px;font-size:12px;line-height:1.35;color:#eaf7f0;opacity:.95}
+
+/* 설치 CTA 버튼 공통 */
+.install-cta{
+  display:none;                /* beforeinstallprompt 발생 전까지 숨김 */
+  min-width:auto;
+  width:100%;
+  margin-top:10px;
+  padding:10px 12px;
+  font-size:13px;
+  justify-content:center;
+}
 
 /* RIGHT CONTENT */
 .main{
@@ -302,6 +313,11 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
       <a href="#analytics">Analytics</a>
       <a href="#stake">Stake</a>
       <div class="note">Smart-order routing via 0x API. DYOR — not financial advice.</div>
+
+      <!-- 설치 버튼 #1 : 사이드바 -->
+      <button class="btn install-cta" id="installSide" type="button">
+        Install G-DEX App
+      </button>
     </aside>
 
     <!-- RIGHT CONTENT -->
@@ -389,6 +405,11 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
           <p class="wrap" style="margin:.2rem 0">• Router: 0x API Exchange Proxy (auto-selected in quotes).</p>
           <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals requested only when needed.</p>
         </div>
+
+        <!-- 설치 버튼 #2 : Notes 카드 안 -->
+        <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">
+          Install G-DEX App
+        </button>
       </section>
 
       <!-- Analytics -->
@@ -876,6 +897,43 @@ const toTop = document.getElementById('toTop');
 function toggleTop(){ if (window.scrollY > 200) toTop.classList.add('show'); else toTop.classList.remove('show'); }
 toggleTop(); window.addEventListener('scroll', toggleTop);
 toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior:'smooth'}));
+
+/* ===== PWA 설치 버튼 로직 ===== */
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // 기본 브라우저 배너 막고, 우리가 직접 띄우도록 저장
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // 설치 버튼 보여주기
+  document.querySelectorAll('.install-cta').forEach(btn => {
+    btn.style.display = 'inline-flex';
+  });
+});
+
+function handleInstallClick(){
+  if (!deferredPrompt) {
+    alert('On your browser, use "Add to Home screen" from the menu to install G-DEX.');
+    return;
+  }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then((choice) => {
+    if (choice.outcome === 'accepted') {
+      console.log('G-DEX installed');
+    }
+    deferredPrompt = null;
+    document.querySelectorAll('.install-cta').forEach(btn => {
+      btn.style.display = 'none';
+    });
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.install-cta').forEach(btn => {
+    btn.addEventListener('click', handleInstallClick);
+  });
+});
 </script>
 </body>
 </html>
