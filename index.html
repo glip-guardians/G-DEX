@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>G-DEX — GLIP</title>
+<meta name="description" content="G-DEX is a lightweight, eco-friendly decentralized exchange built on the GLIP ecosystem with fee-rebate analytics, ESG contribution metrics, and PWA-ready UX.">
+
+<!-- PWA: manifest & icons -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="G_DEX_icon.png">
+<link rel="apple-touch-icon" href="G_DEX_icon.png">
+<meta name="theme-color" content="#11c48c" />
+
+<!-- PWA: Service Worker registration (same folder as index.html) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(console.error);
+    });
+  }
+</script>
+
+<!-- PWA: install helper (floating button 등) -->
+<script defer src="pwa-install.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  /* 라이트 / 에코톤 팔레트 */
+  --bg-1:#f5fbf8;
+  --bg-2:#ecf7f3;
+  --bg-3:#e4f2ee;
+
+  --panel:rgba(255,255,255,.96);
+  --panel-2:rgba(255,255,255,.98);
+
+  --text:#062019;
+  --muted:#6b8a7d;
+
+  --accent:#20d891;
+  --accent-2:#11b980;
+  --accent-soft:rgba(23,186,121,.15);
+
+  --border:rgba(9,120,85,.18);
+  --border-soft:rgba(0,0,0,.06);
+  --inner:rgba(255,255,255,.70);
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;
+  color:var(--text);
+  font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
+  background:
+    radial-gradient(1200px 800px at 0% -10%, rgba(111,233,189,.28), transparent 60%),
+    radial-gradient(900px 700px at 110% 110%, rgba(111,189,255,.25), transparent 60%),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2) 45%, var(--bg-3));
+  background-attachment:fixed;
+}
+img{max-width:100%;display:block}
+
+/* ===== HERO ===== */
+.hero{
+  position:relative;
+  height:min(34vh,420px);
+  overflow:hidden;
+  backdrop-filter:blur(6px) saturate(120%);
+  -webkit-backdrop-filter:blur(6px) saturate(120%);
+  border-bottom:1px solid rgba(0,0,0,.06);
+  box-shadow:0 16px 40px rgba(12,70,50,.16);
+}
+.hero::after{
+  content:"";
+  position:absolute;
+  inset:-10px;
+  background:url("https://cdn.imweb.me/thumbnail/20251106/7d3ef3588c2b0.png") center/cover no-repeat;
+  opacity:.9;
+  filter:contrast(1.18) brightness(1.12) saturate(1.1);
+  transform:scale(1.03);
+  animation:heroFloat 18s ease-in-out infinite alternate;
+}
+@keyframes heroFloat{
+  0%{transform:scale(1.02) translateY(0);}
+  100%{transform:scale(1.07) translateY(-6px);}
+}
+.hero::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0,0,0,.35),
+      rgba(0,0,0,.18) 40%,
+      rgba(0,0,0,.04) 80%,
+      rgba(0,0,0,0)
+    );
+  z-index:1;
+}
+.heroText{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  z-index:2;
+  text-align:center;
+  padding:0 16px;
+}
+.heroText h2{
+  margin:0 0 8px;
+  font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif;
+  color:#ffffff;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  text-shadow:
+    0 0 10px rgba(0,0,0,.75),
+    0 6px 18px rgba(0,0,0,.85);
+}
+.heroText p{
+  margin:0;
+  color:#fdfdfd;
+  opacity:.98;
+  font-weight:600;
+  text-shadow:0 3px 12px rgba(0,0,0,.7);
+}
+
+/* ===== LAYOUT ===== */
+.wrapper{width:100%;max-width:1280px;margin:0 auto;padding:0 16px}
+.grid{display:grid;gap:24px;grid-template-columns:260px 1fr;align-items:start}
+
+/* ===== LEFT NAV ===== */
+.nav{
+  position:relative;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(154,242,204,.18), transparent 65%),
+    radial-gradient(circle at 100% 100%, rgba(156,214,255,.15), transparent 60%),
+    linear-gradient(145deg, #ffffff, #f5faf8);
+  border-radius:20px;
+  padding:18px 16px 16px;
+  border:1px solid rgba(9,120,85,.12);
+  box-shadow:
+    0 16px 32px rgba(12,70,50,.16),
+    0 0 0 1px rgba(255,255,255,.7);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+  overflow:hidden;
+}
+.nav::before{
+  content:"";
+  position:absolute;
+  inset:-40%;
+  background:conic-gradient(from 140deg, rgba(255,255,255,.45), transparent 30%, transparent 70%, rgba(255,255,255,.7));
+  opacity:.16;
+  mix-blend-mode:screen;
+  pointer-events:none;
+}
+.brand{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:14px;position:relative;z-index:1;
+}
+.brand img{
+  width:36px;height:36px;border-radius:50%;object-fit:cover;aspect-ratio:1/1;
+  box-shadow:0 0 12px rgba(41,189,129,.7);
+}
+.brand h1{
+  margin:0;
+  font:800 22px/1 "Sora",sans-serif;
+  color:#063524;
+  letter-spacing:.16em;
+}
+.nav a{
+  position:relative;
+  display:block;
+  padding:11px 13px;
+  border-radius:12px;
+  margin-bottom:8px;
+  text-decoration:none;
+  color:#063524;
+  font-weight:600;
+  background:linear-gradient(145deg, rgba(255,255,255,.92), rgba(243,252,248,.9));
+  border:1px solid rgba(9,120,85,.10);
+  box-shadow:0 7px 14px rgba(12,70,50,.10);
+  transition:background .16s ease, transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.nav a::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(120deg, rgba(27,190,125,.25), rgba(111,189,255,.20));
+  opacity:0;
+  mix-blend-mode:screen;
+  transition:opacity .16s ease;
+}
+.nav a:is(:hover,:focus){
+  background:linear-gradient(145deg, #ffffff, #f5fffb);
+  transform:translateY(-1px);
+  border-color:rgba(9,120,85,.24);
+  box-shadow:0 9px 20px rgba(12,70,50,.16);
+}
+.nav a:is(:hover,:focus)::after{opacity:.18;}
+.nav .note{
+  margin-top:10px;
+  font-size:12px;
+  line-height:1.4;
+  color:var(--muted);
+  opacity:.95;
+  position:relative;
+  z-index:1;
+}
+
+/* ===== RIGHT CONTENT ===== */
+.main{
+  display:grid;gap:24px;
+  grid-template-areas:
+    "metrics metrics"
+    "pool    pool"
+    "swap    recent"
+    "notes   notes"
+    "analytics analytics"
+    "stake   stake";
+  grid-template-columns:1fr 1fr;
+}
+
+/* 공통 카드 스타일 */
+.card{
+  position:relative;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(154,242,204,.16), transparent 65%),
+    radial-gradient(circle at 100% 100%, rgba(156,214,255,.16), transparent 60%),
+    linear-gradient(145deg, #ffffff, #f6faf8);
+  border-radius:20px;
+  padding:16px 16px 18px;
+  color:var(--text);
+  border:1px solid rgba(9,120,85,.12);
+  box-shadow:
+    0 16px 32px rgba(12,70,50,.12),
+    0 0 0 1px rgba(255,255,255,.7);
+  backdrop-filter:blur(14px) saturate(150%);
+  -webkit-backdrop-filter:blur(14px) saturate(150%);
+  overflow:hidden;
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  left:-18%;right:-18%;top:-40%;
+  height:52%;
+  background:radial-gradient(circle at 50% 100%, rgba(255,255,255,.85), transparent 65%);
+  opacity:.4;
+  pointer-events:none;
+}
+.card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 18px 38px rgba(12,70,50,.18);
+  border-color:rgba(9,120,85,.24);
+}
+h3{
+  margin:0 0 12px;
+  font:800 22px/1.25 "Sora",sans-serif;
+  color:#063524;
+}
+
+/* ===== Metrics ===== */
+.metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
+.metric h4{
+  margin:0 0 6px;
+  font-weight:700;
+  color:#08412c;
+}
+.metric .v{
+  font-weight:800;
+  font-size:26px;
+  color:#0b5b3d;
+}
+
+/* 영역별 위치 */
+.pool{grid-area:pool}
+.swap{grid-area:swap}
+.recent{grid-area:recent}
+.notes{grid-area:notes}
+.analytics{grid-area:analytics}
+.stake{grid-area:stake}
+
+/* ===== INPUTS / BUTTONS ===== */
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.input{
+  flex:1;display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(9,120,85,.14);
+  border-radius:16px;padding:10px 12px;margin:10px 0;min-height:52px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1), 0 8px 18px rgba(12,70,50,.06);
+}
+.input input{
+  flex:1;background:transparent;border:0;outline:0;
+  color:#063524;font-size:20px;font-weight:700;min-width:0;
+}
+.tokenBtn{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 12px;border-radius:12px;cursor:pointer;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(154,242,204,.3), transparent 70%),
+    #f2fffb;
+  border:1px solid rgba(9,120,85,.2);
+  color:#063524;white-space:nowrap;
+  box-shadow:0 8px 18px rgba(12,70,50,.10);
+  font-weight:600;
+  transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease, background .14s ease;
+}
+.tokenBtn img{
+  width:22px;height:22px;border-radius:50%;object-fit:cover;aspect-ratio:1/1;
+  box-shadow:0 0 8px rgba(25,180,120,.6);
+}
+.tokenBtn:hover{
+  transform:translateY(-1px);
+  border-color:rgba(9,120,85,.35);
+  box-shadow:0 11px 22px rgba(12,70,50,.16);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(154,242,204,.4), transparent 70%),
+    #ffffff;
+}
+.flip{
+  width:40px;height:40px;border-radius:50%;
+  display:grid;place-items:center;
+  border:1px solid rgba(9,120,85,.26);
+  color:#0d5c3f;cursor:pointer;
+  background:
+    radial-gradient(circle at 30% 0%, rgba(154,242,204,.4), transparent 70%),
+    #f4fffb;
+  box-shadow:0 8px 18px rgba(12,70,50,.12);
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
+}
+.flip:hover{
+  transform:translateY(-1px) rotate(180deg);
+  box-shadow:0 11px 24px rgba(12,70,50,.18);
+  border-color:rgba(9,120,85,.4);
+  background:
+    radial-gradient(circle at 30% 0%, rgba(154,242,204,.6), transparent 70%),
+    #ffffff;
+}
+.helper{
+  display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;
+  color:var(--muted);
+  font-size:13px;
+}
+.helper input{
+  width:78px;border:1px solid rgba(9,120,85,.22);
+  background:#ffffff;
+  color:#063524;border-radius:10px;padding:7px 8px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1);
+}
+
+/* 버튼 */
+.btn{
+  display:inline-block;min-width:140px;text-align:center;
+  padding:14px 18px;border-radius:14px;border:0;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  color:#012218;font-weight:900;font-family:"Sora",sans-serif;
+  letter-spacing:.04em;
+  box-shadow:
+    0 10px 22px rgba(23,166,114,.35),
+    0 0 0 1px rgba(0,0,0,.02);
+  transition:transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+.btn:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    0 13px 26px rgba(23,166,114,.45),
+    0 0 0 1px rgba(0,0,0,.04);
+  filter:brightness(1.04);
+}
+.btn.ghost{
+  background:#ffffff;
+  color:#06422c;
+  border:1px solid rgba(9,120,85,.24);
+  box-shadow:0 8px 18px rgba(12,70,50,.1);
+}
+.btn.ghost:hover{
+  box-shadow:0 11px 22px rgba(12,70,50,.16);
+  border-color:rgba(9,120,85,.32);
+}
+
+/* Notes 긴 문자열 */
+.wrap{word-break:break-word;overflow-wrap:anywhere}
+
+/* ====== Stake: MAX ====== */
+.input--stake{ position:relative; }
+.input--stake input{ padding-right:92px; }
+.input--stake .max{
+  position:absolute; top:50%; right:8px; transform:translateY(-50%);
+  height:40px; padding:0 16px; border:0; border-radius:12px;
+  font-weight:800; font-family:"Sora",sans-serif; color:#012218;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:0 10px 22px rgba(23,166,114,.45);
+  cursor:pointer; transition:transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+.input--stake .max:hover{
+  transform:translateY(-50%) translateY(-1px);
+  box-shadow:0 13px 26px rgba(23,166,114,.55);
+  filter:brightness(1.04);
+}
+
+/* STAKE layout */
+.stake .statGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px}
+.stake .stat{
+  border:1px solid rgba(9,120,85,.14);
+  border-radius:16px;padding:14px;
+  background:linear-gradient(145deg, #ffffff, #f3fbf7);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1);
+}
+.stake .tabs{display:flex;gap:12px;margin:8px 0 10px}
+.stake .amountBox{
+  border:1px solid rgba(9,120,85,.14);
+  border-radius:18px;padding:14px;
+  background:linear-gradient(145deg, #ffffff, #f4faf7);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1);
+}
+.stake .stake-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.stake .stake-actions .btn{min-width:auto;width:100%}
+.stake .claimRow{display:flex;justify-content:flex-end;margin-top:12px}
+@media (max-width:560px){
+  .stake .statGrid{grid-template-columns:1fr}
+  .stake .stake-actions{grid-template-columns:1fr}
+}
+
+/* ===== ANALYTICS ===== */
+.kpiGrid{display:grid;gap:12px;grid-template-columns:repeat(6,1fr)}
+.kpi{
+  border:1px solid rgba(9,120,85,.14);
+  border-radius:16px;padding:12px;min-height:84px;
+  background:linear-gradient(145deg,#ffffff,#f4fbf8);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1);
+}
+.kpi .label{opacity:.9;font-weight:700;margin-bottom:6px;color:#08412c}
+.kpi .val{
+  font-weight:800;font-size:22px;
+  color:#0a5a3d;
+}
+.kpi .sub{opacity:.8;font-size:12px;margin-top:2px;color:var(--muted)}
+@media (max-width:1000px){.kpiGrid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:700px){.kpiGrid{grid-template-columns:1fr}}
+
+.anaGrid{display:grid;gap:16px;grid-template-columns:2fr 1fr 1fr}
+@media (max-width:1000px){.anaGrid{grid-template-columns:1fr}}
+.vizCard{
+  border:1px solid rgba(9,120,85,.14);
+  border-radius:16px;padding:14px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(154,242,204,.2), transparent 65%),
+    #ffffff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1);
+}
+.vizHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.vizHead .title{font-weight:800;color:#08412c}
+.vizHead .hint{opacity:.85;font-size:12px;color:var(--muted)}
+
+.sparkWrap{
+  height:180px;border-radius:12px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg, #f7fffb, #edf7f2);
+}
+.sparkWrap canvas{width:100%;height:100%}
+
+.donutWrap, .gaugeWrap{height:220px;display:grid;place-items:center}
+.centerStat{position:absolute;text-align:center}
+.centerStat .big{font:800 26px/1 "Sora",sans-serif;color:#063524}
+.centerStat .cap{opacity:.85;font-size:12px;margin-top:4px;color:var(--muted)}
+.ring{position:relative;width:200px;height:200px}
+.ring canvas{width:100%;height:100%}
+
+.gauge{position:relative;width:220px;height:120px}
+.gauge canvas{width:100%;height:100%}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.legend .dot{width:10px;height:10px;border-radius:50%}
+.legend .item{display:flex;align-items:center;gap:6px;opacity:.9;color:#08412c}
+
+/* ESG ribbon */
+.ribbon{
+  margin-top:12px;border:1px dashed rgba(9,120,85,.32);border-radius:16px;padding:12px;
+  background:linear-gradient(145deg, rgba(154,242,204,.35), rgba(244,252,248,.9));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1);
+}
+
+/* 모바일 중앙 고정 */
+@media (max-width:768px){
+  .wrapper{padding:0;}
+  .grid{
+    display:flex; flex-direction:column; gap:24px;
+    width:min(92vw,640px);
+    position:relative; left:50%; transform:translateX(-50%);
+  }
+  .nav,.main{width:100%;max-width:min(92vw,640px);margin:0 auto}
+  .main{display:flex;flex-direction:column;align-items:center;gap:24px}
+  .metrics{display:flex;flex-direction:column;gap:16px;width:100%}
+  .metrics .card,.main > section,.card{width:100%;margin-left:auto;margin-right:auto}
+  .notes .inner{width:100%;margin:0 auto}
+}
+
+/* === TOP 버튼 === */
+#toTop{
+  position:fixed; right:14px; bottom:18px; z-index:9999;
+  width:42px; height:42px; border-radius:50%;
+  display:grid; place-items:center;
+  background:#ffffff;
+  border:1px solid rgba(9,120,85,.24);
+  backdrop-filter: blur(10px);
+  cursor:pointer; opacity:0; pointer-events:none;
+  transition:opacity .25s ease, transform .25s ease, box-shadow .25s ease;
+  box-shadow:0 10px 22px rgba(12,70,50,.18);
+}
+#toTop svg{width:20px;height:20px;fill:#0b5b3d;opacity:.95}
+#toTop.show{opacity:.96; pointer-events:auto}
+#toTop:hover{
+  opacity:1; transform:translateY(-2px);
+  box-shadow:0 14px 30px rgba(12,70,50,.26);
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="heroText">
+    <div>
+      <h2>NEW DEX INNOVATION</h2>
+      <p>Where transparency meets performance</p>
+    </div>
+  </div>
+</section>
+
+<div class="wrapper" style="padding-top:16px">
+  <div class="grid">
+    <!-- LEFT NAV -->
+    <aside class="nav">
+      <div class="brand">
+        <img src="https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png" alt="GLIP logo">
+        <h1>G-DEX</h1>
+      </div>
+      <a href="#swap">Swap</a>
+      <a href="#pool">Pool</a>
+      <a href="#analytics">Analytics</a>
+      <a href="#stake">Stake</a>
+      <div class="note">Smart-order routing via 0x API. DYOR — not financial advice.</div>
+    </aside>
+
+    <!-- RIGHT CONTENT -->
+    <main class="main">
+      <!-- Metrics -->
+      <section class="metrics">
+        <div class="card metric"><h4>Recently Created Pools</h4><div class="v">—</div></div>
+        <div class="card metric"><h4>24h Volume</h4><div class="v">$ —</div></div>
+        <div class="card metric"><h4>GLIP Price</h4><div class="v">$ —</div></div>
+      </section>
+
+      <!-- Pool -->
+      <section class="card pool" id="pool">
+        <h3>Pool</h3>
+        <div class="row" style="gap:8px;margin-bottom:6px">
+          <button class="btn" style="min-width:auto;padding:10px 14px">Add</button>
+          <button class="btn ghost" style="min-width:auto;padding:10px 14px">Remove</button>
+          <button class="btn ghost" style="min-width:auto;padding:10px 14px">My Positions</button>
+        </div>
+
+        <div class="input">
+          <button class="tokenBtn" id="pT0Btn"><img id="pT0Img" src="" alt=""><span id="pT0Sym">ETH</span></button>
+          <input id="pAmt0" placeholder="0.0" type="number" min="0" step="any">
+        </div>
+
+        <div class="row" style="justify-content:center"><div class="flip" id="pFlip">⇅</div></div>
+
+        <div class="input">
+          <button class="tokenBtn" id="pT1Btn"><img id="pT1Img" src="" alt=""><span id="pT1Sym">GLIP</span></button>
+          <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any">
+        </div>
+
+        <div class="card" style="background:#f7fffb;border:1px dashed rgba(9,120,85,.15);margin-top:6px">
+          <div class="row" style="justify-content:space-between"><div>Price (T1 per T0)</div><div id="pPrice">—</div></div>
+          <div class="row" style="justify-content:space-between"><div>Share preview</div><div id="pShare">—</div></div>
+        </div>
+
+        <div class="helper">
+          <div>Slippage <input id="pSlip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn" id="poolConnect">Connect Wallet</button>
+            <button class="btn" id="poolSupply">Supply</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Swap -->
+      <section class="card swap" id="swap">
+        <h3>Swap</h3>
+
+        <div class="input">
+          <input id="sell" placeholder="0.0" type="number" min="0" step="any">
+          <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS">ETH</span></button>
+        </div>
+
+        <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
+
+        <div class="input">
+          <input id="buy" placeholder="0.0" type="number" disabled>
+          <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS">GLIP</span></button>
+        </div>
+
+        <div class="helper">
+          <div>Slippage <input id="slip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
+          <button class="btn">Connect Wallet</button>
+        </div>
+        <div style="height:10px"></div>
+        <button class="btn" style="width:100%">Swap</button>
+      </section>
+
+      <!-- Recent -->
+      <section class="card recent">
+        <h3>Recent Transactions</h3>
+        <div style="opacity:.9">No recent swaps</div>
+        <div style="opacity:.85;color:var(--muted)">Only locally stored history.</div>
+      </section>
+
+      <!-- Notes -->
+      <section class="card notes">
+        <h3>Notes</h3>
+        <div class="card inner" style="background:#f7fffb;border:1px dashed rgba(9,120,85,.2)">
+          <p class="wrap" style="margin:.2rem 0">• GLIP contract:
+            0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e
+          </p>
+          <p class="wrap" style="margin:.2rem 0">• Router: 0x API Exchange Proxy (auto-selected in quotes).</p>
+          <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals requested only when needed.</p>
+        </div>
+      </section>
+
+      <!-- Analytics -->
+      <section class="card analytics" id="analytics">
+        <h3>Analytics — “Blockchain that gives back”</h3>
+
+        <!-- GLIP Ideology KPIs -->
+        <div class="kpiGrid">
+          <div class="kpi">
+            <div class="label">Rebate Rate (R%)</div>
+            <div class="val" id="kRebate">—</div>
+            <div class="sub">Governance-set quarterly</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Returned to Users (QTD)</div>
+            <div class="val" id="kReturned">—</div>
+            <div class="sub">Cumulative fee-rebates</div>
+          </div>
+          <div class="kpi">
+            <div class="label">ESG Vault Accrual (QTD)</div>
+            <div class="val" id="kESG">—</div>
+            <div class="sub">Green funds & impact</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Transparency Index</div>
+            <div class="val" id="kTransparency">—</div>
+            <div class="sub">On-chain proof & disclosures</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Gov. Turnout (last vote)</div>
+            <div class="val" id="kTurnout">—</div>
+            <div class="sub">Community participation</div>
+          </div>
+          <div class="kpi">
+            <div class="label">GLIP Green Score</div>
+            <div class="val" id="kGreen">—</div>
+            <div class="sub">Fee impact × ESG allocation</div>
+          </div>
+        </div>
+
+        <!-- Visuals -->
+        <div class="anaGrid" style="margin-top:12px">
+          <!-- Returned Value sparkline -->
+          <div class="vizCard">
+            <div class="vizHead">
+              <div class="title">Returned Value to Users — Cumulative</div>
+              <div class="hint" id="rvHint">—</div>
+            </div>
+            <div class="sparkWrap">
+              <canvas id="spark"></canvas>
+            </div>
+            <div class="legend">
+              <div class="item"><span class="dot" style="background:#20d891"></span> Users</div>
+              <div class="item" style="opacity:.8">Projection assumes constant R%</div>
+            </div>
+          </div>
+
+          <!-- Rebate Split Donut -->
+          <div class="vizCard">
+            <div class="vizHead">
+              <div class="title">Quarterly Rebate Split</div>
+              <div class="hint">Users / ESG / Treasury</div>
+            </div>
+            <div class="donutWrap">
+              <div class="ring">
+                <canvas id="donut"></canvas>
+                <div class="centerStat" style="inset:0;display:grid;place-items:center">
+                  <div>
+                    <div class="big" id="donutCenter">—</div>
+                    <div class="cap">of Net Fees</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="legend" id="donutLegend"></div>
+          </div>
+
+          <!-- Green Impact Gauge -->
+          <div class="vizCard">
+            <div class="vizHead">
+              <div class="title">Green Impact — Carbon Offset (est.)</div>
+              <div class="hint" id="giHint">—</div>
+            </div>
+            <div class="gaugeWrap">
+              <div class="gauge"><canvas id="gauge"></canvas></div>
+            </div>
+            <div class="legend">
+              <div class="item"><span class="dot" style="background:#20d891"></span> ESG-funded offsets</div>
+              <div class="item"><span class="dot" style="background:#11b980"></span> target</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ESG ribbon note -->
+        <div class="ribbon" id="esgRibbon">
+          <strong>ESG Contribution:</strong>
+          <span id="esgNote">—</span>
+        </div>
+      </section>
+
+      <!-- Stake -->
+      <section class="card stake" id="stake">
+        <h3>Stake</h3>
+
+        <div class="statGrid">
+          <div class="stat">
+            <div style="opacity:.9;font-weight:700">APR</div>
+            <div id="apr" style="font-weight:800;font-size:22px;margin-top:4px">—</div>
+          </div>
+          <div class="stat">
+            <div style="opacity:.9;font-weight:700">My Staked</div>
+            <div id="myStaked" style="font-weight:800;font-size:22px;margin-top:4px">—</div>
+          </div>
+          <div class="stat">
+            <div style="opacity:.9;font-weight:700">Earned</div>
+            <div id="earned" style="font-weight:800;font-size:22px;margin-top:4px">—</div>
+          </div>
+          <div class="stat">
+            <div style="opacity:.9;font-weight:700">Lock</div>
+            <div style="font-weight:800;font-size:22px;margin-top:4px">Flexible</div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="btn" id="tabStake">Stake</button>
+          <button class="btn ghost" id="tabUnstake">Unstake</button>
+        </div>
+
+        <div class="amountBox">
+          <div class="input input--stake" style="margin:0;">
+            <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any">
+            <button class="max" type="button">MAX</button>
+          </div>
+
+          <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
+
+          <div class="stake-actions">
+            <button class="btn" id="btnConn">Connect Wallet</button>
+            <button class="btn" id="btnStake">Stake GLIP</button>
+          </div>
+
+          <div style="margin-top:10px">Est. Rewards (30d): <span id="est30">—</span></div>
+        </div>
+
+        <div class="claimRow">
+          <button class="btn ghost" id="btnClaim">Claim Rewards</button>
+        </div>
+
+        <div style="margin-top:12px;opacity:.9;color:var(--muted)">
+          Note: Rewards stream per block. Claim triggers transfer from RewardsVault. (Demo data)
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- TOP button -->
+<button id="toTop" aria-label="Back to top" title="Top">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 7-1.4 1.4L13 9.8V20h-2V9.8L6.4 13.4 5 12z"/></svg>
+</button>
+
+<!-- Token Selector Modal -->
+<dialog id="tokModal">
+  <header>Select a token</header>
+  <div class="content">
+    <div id="tokList"></div>
+  </div>
+</dialog>
+
+<script>
+/* ===== Token List ===== */
+const tokenList = [
+  {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png", priority:100},
+  {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18,
+   logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png", priority:99},
+
+  {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6,
+   logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png", priority:95},
+  {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6,
+   logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png", priority:94},
+  {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18,
+   logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png", priority:93},
+  {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193", priority:92},
+
+  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8,
+   logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png", priority:90},
+  {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png", priority:89},
+  {symbol:"BNB", name:"BNB", address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png", priority:88},
+  {symbol:"XRP", name:"XRP", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6,
+   logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png", priority:87},
+  {symbol:"LINK", name:"Chainlink", address:"0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/877/standard/chainlink-new-logo.png", priority:86},
+  {symbol:"UNI", name:"Uniswap", address:"0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals:18,
+   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984/logo.png", priority:85},
+  {symbol:"AAVE", name:"Aave", address:"0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/12645/standard/AAVE.png", priority:84},
+  {symbol:"LDO", name:"Lido DAO", address:"0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/13573/standard/Lido_DAO.png", priority:83},
+  {symbol:"SNX", name:"Synthetix", address:"0xC011A72400E58ecD99Ee497CF89E3775d4bd732F", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/3406/standard/SNX.png", priority:82},
+  {symbol:"CRV", name:"Curve DAO", address:"0xD533a949740bb3306d119CC777fa900bA034cd52", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/12124/standard/Curve.png", priority:81},
+  {symbol:"COMP", name:"Compound", address:"0xc00e94Cb662C3520282E6f5717214004A7f26888", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/10775/standard/COMP.png", priority:80},
+  {symbol:"MKR", name:"Maker", address:"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/1364/standard/Mark_Maker.png", priority:79},
+  {symbol:"YFI", name:"yearn.finance", address:"0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/11849/large/yearn.jpg", priority:78},
+  {symbol:"SUSHI", name:"Sushi", address:"0x6B3595068778DD592e39A122f4f5a5CF09C90fE2", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/12271/large/512x512_Logo_no_chop.png", priority:77},
+  {symbol:"BAL", name:"Balancer", address:"0xba100000625a3754423978a60c9317c58a424e3D", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/11683/standard/Balancer.png", priority:76},
+  {symbol:"1INCH", name:"1inch", address:"0x111111111117dC0aa78b770fA6A738034120C302", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/13469/standard/1inch-token.png", priority:75},
+  {symbol:"ENS", name:"Ethereum Name Service", address:"0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/19785/large/ENS.jpg", priority:74},
+  {symbol:"OP", name:"Optimism", address:"0x4200000000000000000000000000000000000042", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png", priority:73},
+  {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg", priority:72},
+  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18,
+   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
+  {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg", priority:70},
+  {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/11939/standard/shiba.png", priority:69},
+  {symbol:"DOGE", name:"Dogecoin (ERC20)", address:"0x4206931337dc273a630d328da6441786bfad668f", decimals:8,
+   logo:"https://assets.coingecko.com/coins/images/5/standard/dogecoin.png", priority:68},
+  {symbol:"BAT", name:"Basic Attention", address:"0x0D8775F648430679A709E98d2b0Cb6250d2887EF", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/677/standard/basic-attention-token.png", priority:67},
+  {symbol:"MANA", name:"Decentraland", address:"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/878/large/decentraland-mana.png", priority:66},
+  {symbol:"SAND", name:"The Sandbox", address:"0x3845badAde8e6dFF049820680d1F14bD3903a5d0", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/12129/large/sandbox_logo.jpg", priority:65},
+  {symbol:"AXS", name:"Axie Infinity", address:"0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/13029/standard/axie_infinity_logo.png", priority:64},
+  {symbol:"GRT", name:"The Graph", address:"0xc944E90C64B2c07662A292be6244BDf05Cda44a7", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/13397/standard/Graph_Token.png", priority:63},
+  {symbol:"FTM", name:"Fantom", address:"0x4e15361FD6b4BB609Fa63C81A2be19d873717870", decimals:18,
+   logo:"https://coin-images.coingecko.com/coins/images/16036/large/Fantom.png", priority:62},
+  {symbol:"NEAR", name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24,
+   logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg", priority:61},
+  {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18,
+   logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png", priority:60}
+];
+
+/* 기본 아이콘/심볼/주소 세팅 */
+(function initDefaults(){
+  const ETH = tokenList.find(t=>t.symbol==="ETH");
+  const GLIP= tokenList.find(t=>t.symbol==="GLIP");
+  // Swap
+  sellI.src=ETH.logo; sellS.textContent="ETH"; sellS.dataset.address="ETH";
+  buyI.src=GLIP.logo; buyS.textContent="GLIP"; buyS.dataset.address=GLIP.address;
+  // Pool
+  pT0Img.src=ETH.logo; pT0Sym.textContent="ETH"; pT0Sym.dataset.address="ETH";
+  pT1Img.src=GLIP.logo; pT1Sym.textContent="GLIP"; pT1Sym.dataset.address=GLIP.address;
+})();
+
+/* 토큰 선택 모달 */
+const dlg = document.getElementById('tokModal');
+const list = document.getElementById('tokList');
+let target = null;
+function logo(t){return t.logo || "https://via.placeholder.com/64";}
+function openFor(imgEl, symEl){
+  target = {imgEl, symEl};
+  list.innerHTML = tokenList.map(t=>(
+    `<div class="item" data-sym="${t.symbol}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
+       <img src="${logo(t)}" alt="" style="width:22px;height:22px;border-radius:50%"/>
+       <strong>${t.symbol}</strong>
+       <span style="margin-left:6px;opacity:.85">${t.name}</span>
+       <span style="margin-left:auto;opacity:.7">${t.address==="ETH"?"ETH":t.address.slice(0,6)+"…"+t.address.slice(-4)}</span>
+     </div>`
+  )).join('');
+  dlg.showModal();
+}
+list.onclick = (e)=>{
+  const row = e.target.closest('.item'); if(!row||!target) return;
+  const t = tokenList.find(x=>x.symbol===row.dataset.sym);
+  target.imgEl.src = logo(t);
+  target.symEl.textContent = t.symbol;
+  target.symEl.dataset.address = t.address;
+  dlg.close();
+};
+dlg.addEventListener('click',e=>{ if(e.target===dlg) dlg.close(); });
+
+/* 버튼 연결 */
+sellBtn.onclick = ()=>openFor(sellI, sellS);
+buyBtn.onclick  = ()=>openFor(buyI,  buyS);
+pT0Btn.onclick  = ()=>openFor(pT0Img,pT0Sym);
+pT1Btn.onclick  = ()=>openFor(pT1Img,pT1Sym);
+
+/* Flip 공통 */
+function flipTokenMeta(imgA, symA, imgB, symB){
+  const tmpSrc=imgA.src; imgA.src=imgB.src; imgB.src=tmpSrc;
+  const tmpSym=symA.textContent; symA.textContent=symB.textContent; symB.textContent=tmpSym;
+  const aAddr=symA.dataset.address, bAddr=symB.dataset.address;
+  symA.dataset.address=bAddr??""; symB.dataset.address=aAddr??"";
+}
+flip.onclick = ()=>flipTokenMeta(sellI, sellS, buyI, buyS);
+pFlip.onclick = ()=>flipTokenMeta(pT0Img, pT0Sym, pT1Img, pT1Sym);
+
+/* Pool preview (demo) */
+(function(){
+  const a0=pAmt0, a1=pAmt1, p=pPrice, sh=pShare;
+  function preview(){
+    const v0=parseFloat(a0.value||0), v1=parseFloat(a1.value||0);
+    p.textContent = (v0>0 && v1>0)? (v1/v0).toFixed(6) : "—";
+    sh.textContent = (v0+v1>0)? (Math.min(100, Math.log10(v0+v1+1)*20).toFixed(2)+" %") : "—";
+  }
+  a0.addEventListener('input',preview); a1.addEventListener('input',preview);
+})();
+
+/* Analytics Demo Data */
+const demoAnalytics = {
+  rebateRate: 12,
+  feeNet: 420_000,
+  split: { users: 0.70, esg: 0.20, treasury: 0.10 },
+  returnedSeries: [1200,3400,5600,8300,12000,16200,21000,27900,35000,43600,52000,61500,72000,84500,98000,112000,127800,145200,163500,182400],
+  turnout: 38,
+  transparency: 92,
+  co2: { current: 152, target: 220 }
+};
+
+/* KPI 채우기 */
+(function fillKpis(d){
+  const {rebateRate, feeNet, split, turnout, transparency} = d;
+  const returned = feeNet * (rebateRate/100) * split.users;
+  const esgAccrual= feeNet * (rebateRate/100) * split.esg;
+
+  kRebate.textContent = rebateRate.toFixed(0) + "%";
+  kReturned.textContent = "$ " + Math.round(returned).toLocaleString();
+  kESG.textContent = "$ " + Math.round(esgAccrual).toLocaleString();
+  kTransparency.textContent = transparency.toFixed(0) + "%";
+  kTurnout.textContent = turnout.toFixed(0) + "%";
+
+  const greenScore = Math.round( (transparency/100) * (split.esg*rebateRate) * 10 );
+  kGreen.textContent = greenScore;
+
+  rvHint.textContent = "Net Fees $" + feeNet.toLocaleString() + " · R% " + rebateRate + "%";
+  esgNote.textContent = `Current quarter alloc: Users ${(split.users*100).toFixed(0)}% · ESG ${(split.esg*100).toFixed(0)}% · Treasury ${(split.treasury*100).toFixed(0)}%.`;
+  giHint.textContent = `tCO₂e offset est. ${d.co2.current}/${d.co2.target}`;
+})(demoAnalytics);
+
+/* Returned Value Sparkline */
+(function sparkline(d){
+  const el = document.getElementById('spark');
+  const ctx = el.getContext('2d');
+  const DPR = window.devicePixelRatio||1;
+  const w = el.clientWidth * DPR, h = el.clientHeight * DPR;
+  el.width = w; el.height = h;
+
+  const data = d.returnedSeries;
+  const min = Math.min(...data), max = Math.max(...data);
+  const padX = 20 * DPR, padY = 16 * DPR;
+
+  function x(i){ return padX + (i/(data.length-1)) * (w - padX*2); }
+  function y(v){ const t=(v-min)/(max-min || 1); return h - padY - t*(h - padY*2); }
+
+  const grad = ctx.createLinearGradient(0, y(max), 0, h-padY);
+  grad.addColorStop(0, "rgba(32,216,145,.7)");
+  grad.addColorStop(1, "rgba(32,216,145,.08)");
+
+  ctx.beginPath();
+  ctx.moveTo(x(0), y(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
+  ctx.lineTo(x(data.length-1), h-padY);
+  ctx.lineTo(x(0), h-padY);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(x(0), y(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
+  ctx.lineWidth = 2.5 * DPR;
+  ctx.strokeStyle = "#20d891";
+  ctx.stroke();
+
+  const last = data[data.length-1];
+  ctx.fillStyle="#063524";
+  ctx.font = `${12*DPR}px Sora, sans-serif`;
+  ctx.fillText("$ " + last.toLocaleString(), x(data.length-1)-40*DPR, y(last)-8*DPR);
+})(demoAnalytics);
+
+/* Donut Chart */
+(function donut(d){
+  const canvas = document.getElementById('donut');
+  const ctx = canvas.getContext('2d');
+  const DPR = window.devicePixelRatio||1;
+  const size = canvas.parentElement.clientWidth;
+  const dim = Math.min(200, size);
+  canvas.width = dim * DPR; canvas.height = dim * DPR;
+
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const rOuter = (dim*DPR)/2 - 6*DPR;
+  const rInner = rOuter * 0.62;
+
+  const parts = [
+    {key:"Users",    val:d.split.users,    color:"#20d891"},
+    {key:"ESG",      val:d.split.esg,      color:"#11b980"},
+    {key:"Treasury", val:d.split.treasury, color:"rgba(6,53,36,.4)"}
+  ];
+
+  let start = -Math.PI/2;
+  parts.forEach(p=>{
+    const arc = p.val * Math.PI*2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rOuter, start, start+arc);
+    ctx.arc(cx, cy, rInner, start+arc, start, true);
+    ctx.closePath();
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    start += arc;
+  });
+
+  const totalRebatePct = demoAnalytics.rebateRate;
+  document.getElementById('donutCenter').textContent = totalRebatePct + "%";
+
+  const leg = document.getElementById('donutLegend');
+  leg.innerHTML = parts.map(p=>(
+    `<div class="item"><span class="dot" style="background:${p.color}"></span>${p.key} ${(p.val*100).toFixed(0)}%</div>`
+  )).join("");
+})(demoAnalytics);
+
+/* Gauge */
+(function gauge(d){
+  const canvas = document.getElementById('gauge');
+  const ctx = canvas.getContext('2d');
+  const DPR = window.devicePixelRatio||1;
+  const w = canvas.parentElement.clientWidth, h = 120;
+  canvas.width = w*DPR; canvas.height = h*DPR;
+
+  const cx = canvas.width/2, cy = canvas.height*0.95;
+  const r = Math.min(w*DPR*0.42, h*DPR*0.9);
+
+  ctx.lineWidth = 16*DPR;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
+  ctx.strokeStyle = "rgba(6,53,36,.16)";
+  ctx.stroke();
+
+  const pct = Math.max(0, Math.min(1, d.co2.current / d.co2.target));
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI);
+  ctx.strokeStyle = "#20d891";
+  ctx.stroke();
+
+  ctx.lineWidth = 2*DPR;
+  ctx.strokeStyle = "rgba(6,53,36,.3)";
+  for(let i=0;i<=4;i++){
+    const a = Math.PI + i*(Math.PI/4);
+    const x1 = cx + Math.cos(a)*r*0.86, y1 = cy + Math.sin(a)*r*0.86;
+    const x2 = cx + Math.cos(a)*r*0.98, y2 = cy + Math.sin(a)*r*0.98;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+
+  ctx.fillStyle="#063524";
+  ctx.font = `${12*DPR}px Sora, sans-serif`;
+  ctx.textAlign="center";
+  ctx.fillText(`${d.co2.current.toFixed(0)} / ${d.co2.target.toFixed(0)} tCO₂e`, cx, cy - r*0.35);
+})(demoAnalytics);
+
+/* ESG Ribbon 업데이트 */
+(function updateRibbon(d){
+  const pctESG = (d.split.esg*100).toFixed(0);
+  const pctUsers= (d.split.users*100).toFixed(0);
+  const pctTreas= (d.split.treasury*100).toFixed(0);
+  esgNote.textContent =
+    `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
+})(demoAnalytics);
+
+/* STAKE Demo */
+(function(){
+  apr.textContent = "12.5%";
+  myStaked.textContent = "1,250 GLIP";
+  earned.textContent = "42.4 GLIP";
+  est30.textContent = "≈ 12.8 GLIP";
+})();
+
+/* TOP 버튼 */
+const toTop = document.getElementById('toTop');
+function toggleTop(){ if (window.scrollY > 200) toTop.classList.add('show'); else toTop.classList.remove('show'); }
+toggleTop(); window.addEventListener('scroll', toggleTop);
+toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior:'smooth'}));
+</script>
+</body>
+</html>
