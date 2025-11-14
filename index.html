@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -21,9 +21,6 @@
     });
   }
 </script>
-
-<!-- PWA: 설치 안내 스크립트 (기존) -->
-<script defer src="pwa-install.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -128,7 +125,7 @@ img{max-width:100%;display:block}
 
 /* 설치 CTA 버튼 공통 */
 .install-cta{
-  display:none;                /* beforeinstallprompt 발생 전까지 숨김 */
+  display:none;                /* 해당 OS에서 설치 가능/안내 필요 시 보여줌 */
   min-width:auto;
   width:100%;
   margin-top:10px;
@@ -898,45 +895,91 @@ function toggleTop(){ if (window.scrollY > 200) toTop.classList.add('show'); els
 toggleTop(); window.addEventListener('scroll', toggleTop);
 toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior:'smooth'}));
 
-/* ===== PWA 설치 버튼 로직 ===== */
+/* ===== PWA 설치 버튼 로직 (Android + iOS 모두 대응) ===== */
 let deferredPrompt = null;
+const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+function isStandaloneMode(){
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // 기본 브라우저 배너 막고, 우리가 직접 띄우도록 저장
+  // 기본 브라우저 배너 막고, 우리가 직접 컨트롤
   e.preventDefault();
   deferredPrompt = e;
 
-  // 설치 버튼 보여주기
+  // 안드로이드(또는 지원 브라우저)에서 설치 가능 상태이므로 버튼 표시
   document.querySelectorAll('.install-cta').forEach(btn => {
     btn.style.display = 'inline-flex';
   });
 });
 
+window.addEventListener('appinstalled', () => {
+  // 설치 완료되면 버튼 숨김
+  document.querySelectorAll('.install-cta').forEach(btn => {
+    btn.style.display = 'none';
+  });
+  console.log('G-DEX installed');
+});
+
 function handleInstallClick(){
-  if (!deferredPrompt) {
-    alert('On your browser, use "Add to Home screen" from the menu to install G-DEX.');
+  // 이미 앱 모드(홈 화면)로 실행 중이면
+  if (isStandaloneMode()) {
+    alert('G-DEX is already installed on your device.');
     return;
   }
-  deferredPrompt.prompt();
-  deferredPrompt.userChoice.then((choice) => {
-    if (choice.outcome === 'accepted') {
-      console.log('G-DEX installed');
-    }
-    deferredPrompt = null;
-    document.querySelectorAll('.install-cta').forEach(btn => {
-      btn.style.display = 'none';
+
+  // 안드로이드/데스크탑: beforeinstallprompt 지원 환경
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choice) => {
+      if (choice.outcome === 'accepted') {
+        console.log('User accepted A2HS prompt');
+      } else {
+        console.log('User dismissed A2HS prompt');
+      }
+      deferredPrompt = null;
+      // 한 번 사용 후에는 버튼 숨김 (원한다면 주석 처리 가능)
+      document.querySelectorAll('.install-cta').forEach(btn => {
+        btn.style.display = 'none';
+      });
     });
-  });
+    return;
+  }
+
+  // iOS: beforeinstallprompt 미지원 → 수동 설치 안내
+  if (isIos) {
+    alert([
+      'iOS에서는 Safari에서 수동으로 홈 화면에 추가해야 합니다:',
+      '',
+      '1) Safari로 이 페이지를 열고',
+      '2) 아래 가운데 공유 아이콘(□↑)을 누른 뒤',
+      '3) "홈 화면에 추가"를 선택하면 G-DEX 아이콘이 생성됩니다.'
+    ].join('\n'));
+    return;
+  }
+
+  // 그 외: 일반 안내 (인앱 브라우저/지원X 브라우저 등)
+  alert([
+    'To install G-DEX, use your browser menu and choose "Add to Home screen".',
+    '',
+    'Tip: On Android, Chrome browser works best.'
+  ].join('\n'));
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.install-cta').forEach(btn => {
+  const installBtns = document.querySelectorAll('.install-cta');
+  installBtns.forEach(btn => {
     btn.addEventListener('click', handleInstallClick);
   });
+
+  // iOS의 경우 beforeinstallprompt가 없으므로, Safari + 비설치 상태일 때 버튼 항상 표시
+  if (isIos && !isStandaloneMode()) {
+    installBtns.forEach(btn => {
+      btn.style.display = 'inline-flex';
+    });
+  }
 });
 </script>
 </body>
 </html>
-<br>  <br>  
-
-
