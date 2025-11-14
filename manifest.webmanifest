@@ -1,22 +1,33 @@
 {
   "name": "G-DEX — GLIP",
   "short_name": "G-DEX",
-  "description": "GLIP eco-friendly DEX — Swap, Pool, Stake, ESG transparency and quarterly fee rebates.",
-  "start_url": "/index.html",
-  "scope": "/",
+  "description": "GLIP eco-friendly DEX – Swap, Pool, Stake, ESG transparency and quarterly fee rebates.",
+  "id": "/G-DEX/",
+  "start_url": "/G-DEX/index.html",
+  "scope": "/G-DEX/",
   "display": "standalone",
   "background_color": "#0a1814",
   "theme_color": "#11c48c",
+
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" }
+    {
+      "src": "/G-DEX/G_DEX_icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/G-DEX/G_DEX_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ],
+
   "shortcuts": [
-    { "name": "Swap", "short_name": "Swap", "url": "/index.html#swap" },
-    { "name": "Pool", "short_name": "Pool", "url": "/index.html#pool" },
-    { "name": "Stake", "short_name": "Stake", "url": "/index.html#stake" },
-    { "name": "Analytics", "short_name": "Analytics", "url": "/index.html#analytics" }
+    { "name": "Swap",     "short_name": "Swap",     "url": "/G-DEX/index.html#swap" },
+    { "name": "Pool",     "short_name": "Pool",     "url": "/G-DEX/index.html#pool" },
+    { "name": "Stake",    "short_name": "Stake",    "url": "/G-DEX/index.html#stake" },
+    { "name": "Analytics","short_name": "Analytics","url": "/G-DEX/index.html#analytics" }
   ],
+
   "prefer_related_applications": false
 }
