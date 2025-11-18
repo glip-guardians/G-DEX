@@ -576,11 +576,11 @@ function openMetaMaskDeepLink() {
 
 /* ===== 토큰리스트 ===== */
 const tokenList = [
-  {symbol:"ETH",  name:"Ethereum",            address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
-  {symbol:"GLIP", name:"GLIP Token",          address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
-  {symbol:"USDT", name:"Tether USD",          address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6,  logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png"},
-  {symbol:"USDC", name:"USD Coin",            address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6,  logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
-  {symbol:"DAI",  name:"Dai",                 address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"}
+  {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
+  {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
+  {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6, logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png"},
+  {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6, logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
+  {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"},
   {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193"},
   {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8, logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png"},
   {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18, logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png"},
@@ -613,7 +613,6 @@ const tokenList = [
   {symbol:"NEAR", name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24, logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg"},
   {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
 ];
-
 /* 기본 아이콘/심볼 적용 */
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
@@ -946,5 +945,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
 
