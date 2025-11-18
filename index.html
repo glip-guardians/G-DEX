@@ -653,12 +653,7 @@ async function connectWallet(){
     if (typeof window.ethereum === 'undefined') {
 
       if (isMobile) {
-        alert(
-          "Mobile wallet not detected in this browser.\n\n" +
-          "We will open this page in the MetaMask app browser.\n" +
-          "If MetaMask does not open automatically, please open the MetaMask app " +
-          "and paste this URL:\n\nhttps://" + DAPP_HOST
-        );
+        //
         openMetaMaskDeepLink();
         return;
       }
@@ -920,3 +915,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
