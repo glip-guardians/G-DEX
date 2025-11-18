@@ -174,6 +174,11 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 #tokClose:hover{opacity:1;background:rgba(255,255,255,.08)}
 #tokList .item:hover{background:rgba(255,255,255,.06)}
 
+/* Web3Modal overlay (예전 잔여 스타일 – 혹시 모를 라이브러리용) */
+.web3modal-modal-lightbox{z-index:99999 !important}
+.web3modal-modal-card{max-width:420px !important}
+.web3modal-provider-container{max-height:60vh !important;overflow:auto}
+
 /* TOP 버튼 */
 #toTop{position:fixed;right:14px;bottom:18px;z-index:9999;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(6px);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease}
@@ -404,48 +409,48 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
   <div class="content" style="padding:16px"><div id="tokList"></div></div>
 </dialog>
 
-<!-- Ethers -->
+<!-- Ethers (Web3Modal은 제거) -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
 <script>
 /* ===== 토큰리스트 ===== */
 const tokenList = [
-  {symbol:"ETH",  name:"Ethereum",  address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
+  {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
   {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
   {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6, logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png"},
   {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6, logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
-  {symbol:"DAI",  name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"},
+  {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"},
   {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193"},
-  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8,  logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png"},
-  {symbol:"MATIC",name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18, logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png"},
-  {symbol:"BNB",  name:"BNB", address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18, logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png"},
-  {symbol:"XRP",  name:"XRP (ERC20-wrap)", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6, logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png"},
+  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8, logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png"},
+  {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18, logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png"},
+  {symbol:"BNB", name:"BNB", address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18, logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png"},
+  {symbol:"XRP", name:"XRP (ERC20-wrap)", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6, logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png"},
   {symbol:"LINK", name:"Chainlink", address:"0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals:18, logo:"https://assets.coingecko.com/coins/images/877/standard/chainlink-new-logo.png"},
   {symbol:"UNI",  name:"Uniswap", address:"0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984/logo.png"},
   {symbol:"AAVE", name:"Aave", address:"0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", decimals:18, logo:"https://assets.coingecko.com/coins/images/12645/standard/AAVE.png"},
-  {symbol:"LDO",  name:"Lido DAO", address:"0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", decimals:18, logo:"https://assets.coingecko.com/coins/images/13573/standard/Lido_DAO.png"},
-  {symbol:"SNX",  name:"Synthetix", address:"0xC011A72400E58ecD99Ee497CF89E3775d4bd732F", decimals:18, logo:"https://assets.coingecko.com/coins/images/3406/standard/SNX.png"},
-  {symbol:"CRV",  name:"Curve DAO", address:"0xD533a949740bb3306d119CC777fa900bA034cd52", decimals:18, logo:"https://assets.coingecko.com/coins/images/12124/standard/Curve.png"},
-  {symbol:"COMP",name:"Compound", address:"0xc00e94Cb662C3520282E6f5717214004A7f26888", decimals:18, logo:"https://assets.coingecko.com/coins/images/10775/standard/COMP.png"},
+  {symbol:"LDO", name:"Lido DAO", address:"0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", decimals:18, logo:"https://assets.coingecko.com/coins/images/13573/standard/Lido_DAO.png"},
+  {symbol:"SNX", name:"Synthetix", address:"0xC011A72400E58ecD99Ee497CF89E3775d4bd732F", decimals:18, logo:"https://assets.coingecko.com/coins/images/3406/standard/SNX.png"},
+  {symbol:"CRV", name:"Curve DAO", address:"0xD533a949740bb3306d119CC777fa900bA034cd52", decimals:18, logo:"https://assets.coingecko.com/coins/images/12124/standard/Curve.png"},
+  {symbol:"COMP", name:"Compound", address:"0xc00e94Cb662C3520282E6f5717214004A7f26888", decimals:18, logo:"https://assets.coingecko.com/coins/images/10775/standard/COMP.png"},
   {symbol:"MKR", name:"Maker", address:"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", decimals:18, logo:"https://assets.coingecko.com/coins/images/1364/standard/Mark_Maker.png"},
   {symbol:"YFI", name:"yearn.finance", address:"0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/11849/large/yearn.jpg"},
-  {symbol:"SUSHI",name:"Sushi", address:"0x6B3595068778DD592e39A122f4f5a5CF09C90fE2", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12271/large/512x512_Logo_no_chop.png"},
+  {symbol:"SUSHI", name:"Sushi", address:"0x6B3595068778DD592e39A122f4f5a5CF09C90fE2", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12271/large/512x512_Logo_no_chop.png"},
   {symbol:"BAL", name:"Balancer", address:"0xba100000625a3754423978a60c9317c58a424e3D", decimals:18, logo:"https://assets.coingecko.com/coins/images/11683/standard/Balancer.png"},
-  {symbol:"1INCH",name:"1inch", address:"0x111111111117dC0aa78b770fA6A738034120C302", decimals:18, logo:"https://assets.coingecko.com/coins/images/13469/standard/1inch-token.png"},
+  {symbol:"1INCH", name:"1inch", address:"0x111111111117dC0aa78b770fA6A738034120C302", decimals:18, logo:"https://assets.coingecko.com/coins/images/13469/standard/1inch-token.png"},
   {symbol:"ENS", name:"Ethereum Name Service", address:"0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/19785/large/ENS.jpg"},
-  {symbol:"OP",  name:"Optimism", address:"0x4200000000000000000000000000000000000042", decimals:18, logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png"},
+  {symbol:"OP", name:"Optimism", address:"0x4200000000000000000000000000000000000042", decimals:18, logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png"},
   {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg"},
-  {symbol:"PEPE",name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18, logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg"},
-  {symbol:"SHIB",name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18, logo:"https://assets.coingecko.com/coins/images/11939/standard/shiba.png"},
-  {symbol:"DOGE",name:"Dogecoin (ERC20 wrap)", address:"0x4206931337dc273a630d328da6441786bfad668f", decimals:8,  logo:"https://assets.coingecko.com/coins/images/5/standard/dogecoin.png"},
+  {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18, logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg"},
+  {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18, logo:"https://assets.coingecko.com/coins/images/11939/standard/shiba.png"},
+  {symbol:"DOGE", name:"Dogecoin (ERC20 wrap)", address:"0x4206931337dc273a630d328da6441786bfad668f", decimals:8, logo:"https://assets.coingecko.com/coins/images/5/standard/dogecoin.png"},
   {symbol:"BAT", name:"Basic Attention", address:"0x0D8775F648430679A709E98d2b0Cb6250d2887EF", decimals:18, logo:"https://assets.coingecko.com/coins/images/677/standard/basic-attention-token.png"},
-  {symbol:"MANA",name:"Decentraland", address:"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/878/large/decentraland-mana.png"},
-  {symbol:"SAND",name:"The Sandbox", address:"0x3845badAde8e6dFF049820680d1F14bD3903a5d0", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12129/large/sandbox_logo.jpg"},
+  {symbol:"MANA", name:"Decentraland", address:"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/878/large/decentraland-mana.png"},
+  {symbol:"SAND", name:"The Sandbox", address:"0x3845badAde8e6dFF049820680d1F14bD3903a5d0", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12129/large/sandbox_logo.jpg"},
   {symbol:"AXS", name:"Axie Infinity", address:"0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b", decimals:18, logo:"https://assets.coingecko.com/coins/images/13029/standard/axie_infinity_logo.png"},
   {symbol:"GRT", name:"The Graph", address:"0xc944E90C64B2c07662A292be6244BDf05Cda44a7", decimals:18, logo:"https://assets.coingecko.com/coins/images/13397/standard/Graph_Token.png"},
   {symbol:"FTM", name:"Fantom", address:"0x4e15361FD6b4BB609Fa63C81A2be19d873717870", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16036/large/Fantom.png"},
-  {symbol:"NEAR",name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24, logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg"},
-  {symbol:"ANKR",name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
+  {symbol:"NEAR", name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24, logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg"},
+  {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
 ];
 
 const $ = s=>document.querySelector(s);
@@ -509,48 +514,71 @@ function bindFlip(){
   $('#pFlip').onclick = ()=>flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
 }
 
-/* ===== Wallet Connect (MetaMask 직접 연결) ===== */
+/* ===== Wallet Connect (MetaMask 직접) ===== */
 let ethProvider, signer, userAddress;
 
+function isMobile(){
+  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
 async function connectWallet(){
-  if (typeof window.ethereum === 'undefined') {
+  const hasEth = typeof window.ethereum !== 'undefined';
+
+  // 모바일 & 지갑 미탑재 → MetaMask 브라우저로 이동
+  if (!hasEth && isMobile()){
+    const targetUrl = 'https://metamask.app.link/dapp/gdex-app.com/';
+    window.location.href = targetUrl;
+    return;
+  }
+
+  if (!hasEth){
     alert(
       'No Ethereum wallet detected.\n\n' +
       '• 모바일: MetaMask 앱을 열고, MetaMask 브라우저에서 gdex-app.com 을 열어 주세요.\n' +
-      '• 데스크탑: MetaMask 확장을 설치/활성화한 뒤 페이지를 새로고침하세요.'
+      '• 데스크탑: MetaMask 확장을 설치/활성화한 뒤 페이지를 새로 고침하세요.'
     );
     return;
   }
 
   try{
-    ethProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-    // 계정 요청
-    await ethProvider.send('eth_requestAccounts', []);
-    signer = ethProvider.getSigner();
-    userAddress = await signer.getAddress();
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || !accounts.length) {
+      throw new Error('No accounts returned from MetaMask');
+    }
+    userAddress = accounts[0];
 
-    $('#wAddr').textContent = short(userAddress);
+    ethProvider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = ethProvider.getSigner();
+
+    document.getElementById('wAddr').textContent = short(userAddress);
     ['poolConnect','btnConn','swapConnect'].forEach(id=>{
       const el=document.getElementById(id);
       if(el){ el.textContent='Connected'; el.classList.add('ghost'); }
     });
 
-    // 계정/체인 변경 이벤트
-    window.ethereum.on('accountsChanged', acc=>{
-      userAddress = acc && acc.length ? acc[0] : null;
-      $('#wAddr').textContent = short(userAddress);
-    });
-    window.ethereum.on('chainChanged', _=>{
-      // 필요 시 네트워크 변경 처리
-    });
+    // 이벤트 리스너
+    if (window.ethereum && window.ethereum.on){
+      window.ethereum.on('accountsChanged', acc=>{
+        userAddress = acc && acc.length ? acc[0] : null;
+        document.getElementById('wAddr').textContent = short(userAddress);
+      });
+      window.ethereum.on('chainChanged', _=>{
+        // 네트워크 변경시 새로고침 (선호에 따라)
+        window.location.reload();
+      });
+    }
 
   }catch(err){
     console.error('[connectWallet]', err);
-    if (err && err.code === 4001) {
-      alert('Wallet connection was cancelled.\n\nPlease approve the connection request in MetaMask.');
-    } else {
-      alert('Wallet connection failed.\n\nPlease check MetaMask and try again.');
+    let msg = 'Wallet connection failed.\n\n';
+    if (err && err.code === 4001){
+      msg += 'You cancelled the connection request in MetaMask.';
+    }else if (err && err.message){
+      msg += err.message;
+    }else{
+      msg += 'Please check MetaMask and try again.';
     }
+    alert(msg);
   }
 }
 
@@ -571,7 +599,7 @@ function bindTop(){
   toTop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
 }
 
-/* PWA install */
+/* ===== PWA install ===== */
 let deferredPrompt=null; const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
 function isStandaloneMode(){return matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true}
 window.addEventListener('beforeinstallprompt', e=>{
@@ -581,22 +609,12 @@ window.addEventListener('beforeinstallprompt', e=>{
 window.addEventListener('appinstalled', ()=>{ document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); });
 function handleInstallClick(){
   if(isStandaloneMode()) return alert('G-DEX is already installed.');
-  if(deferredPrompt){
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.finally(()=>{
-      deferredPrompt=null;
-      document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none');
-    });
-    return;
-  }
-  if(isIos){
-    alert('Safari에서 공유 아이콘(□↑) → "홈 화면에 추가"를 선택하세요.');
-    return;
-  }
+  if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); }); return; }
+  if(isIos){ alert('iOS: Safari에서 공유 아이콘(□↑) → "홈 화면에 추가"를 선택하세요.'); return; }
   alert('Use your browser menu → "Add to Home screen".');
 }
 
-/* Analytics Demo */
+/* ===== Analytics Demo ===== */
 const demoAnalytics = {
   rebateRate: 12,
   feeNet: 420000,
@@ -716,11 +734,10 @@ function updateRibbon(d){
   const pctESG = (d.split.esg*100).toFixed(0);
   const pctUsers= (d.split.users*100).toFixed(0);
   const pctTreas= (d.split.treasury*100).toFixed(0);
-  document.getElementById('esgNote').textContent =
-    `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
+  document.getElementById('esgNote').textContent = `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
 }
 
-/* Boot */
+/* ===== Boot ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
   try{
     initDefaults();
@@ -737,26 +754,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('earned').textContent="42.4 GLIP";
     document.getElementById('est30').textContent="≈ 12.8 GLIP";
 
-    // Analytics demo
+    // Analytics demo render
     fillKpis(demoAnalytics);
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
     drawGauge(demoAnalytics);
-    updateRibbon(demoAnalytics);
-    window.addEventListener('resize', ()=>{
-      drawSpark(demoAnalytics);
-      drawDonut(demoAnalytics);
-      drawGauge(demoAnalytics);
-    });
-
-    // Listing inquiry placeholder
-    const btnListing = document.getElementById('btnListing');
-    if (btnListing) {
-      btnListing.addEventListener('click', ()=>{
-        alert('Listing inquiry form will be added soon.');
-      });
-    }
-
+    window.addEventListener('resize', ()=>{ drawSpark(demoAnalytics); drawDonut(demoAnalytics); drawGauge(demoAnalytics); });
   }catch(e){
     console.error('[init]', e);
     alert('Initialization error — see console.');
@@ -765,5 +768,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
-<br><br>
