@@ -174,11 +174,6 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 #tokClose:hover{opacity:1;background:rgba(255,255,255,.08)}
 #tokList .item:hover{background:rgba(255,255,255,.06)}
 
-/* Web3Modal overlay 개선 (모바일 검은 오버레이만 보이는 문제 완화) */
-.web3modal-modal-lightbox{z-index:99999 !important}
-.web3modal-modal-card{max-width:420px !important}
-.web3modal-provider-container{max-height:60vh !important;overflow:auto}
-
 /* TOP 버튼 */
 #toTop{position:fixed;right:14px;bottom:18px;z-index:9999;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(6px);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease}
@@ -310,7 +305,7 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
         <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
       </section>
 
-      <!-- Analytics (demo restored) -->
+      <!-- Analytics -->
       <section class="card analytics" id="analytics">
         <h3>Analytics — “Blockchain that gives back”</h3>
 
@@ -409,12 +404,11 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
   <div class="content" style="padding:16px"><div id="tokList"></div></div>
 </dialog>
 
-<!-- Web3Modal + Ethers -->
-<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+<!-- Ethers only (Web3Modal 제거) -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
 <script>
-/* ===== 토큰리스트 (주요 토큰 확장) ===== */
+/* ===== 토큰리스트 ===== */
 const tokenList = [
   {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
   {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
@@ -516,45 +510,64 @@ function bindFlip(){
   $('#pFlip').onclick = ()=>flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
 }
 
-/* ===== Wallet Connect (Web3Modal + 폴백) ===== */
-let web3Modal, web3Provider, signer, userAddress;
+/* ===== Wallet Connect: MetaMask / Injected Provider 전용 ===== */
+let web3Provider, signer, userAddress;
+
 async function connectWallet(){
   try{
-    // 우선 window.ethereum 존재 확인
-    const hasEth = typeof window.ethereum !== 'undefined';
-    const Web3ModalCtor = window.Web3Modal?.default || window.Web3Modal;
-    if(!web3Modal) web3Modal = new Web3ModalCtor({ cacheProvider:true, providerOptions:{} });
-    let instance;
-    try{
-      instance = await web3Modal.connect();
-    }catch(inner){
-      // Web3Modal이 실패하면 기본 요청 시도 (모바일 인앱/브라우저 케이스)
-      if(hasEth){
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        instance = window.ethereum;
-      }else{
-        throw inner;
-      }
+    if (typeof window.ethereum === 'undefined') {
+      alert([
+        'No Ethereum wallet detected.',
+        '',
+        '• 모바일: MetaMask 앱을 열고, MetaMask 브라우저에서 이 페이지를 열어주세요.',
+        '• 데스크탑: MetaMask 확장을 설치한 뒤 페이지를 새로고침하세요.'
+      ].join('\n'));
+      return;
     }
-    web3Provider = new ethers.providers.Web3Provider(instance);
-    signer = web3Provider.getSigner();
-    userAddress = await signer.getAddress();
 
-    $('#wAddr').textContent = short(userAddress);
+    const instance = window.ethereum;
+
+    // 계정 요청
+    const accounts = await instance.request({ method: 'eth_requestAccounts' });
+    if (!accounts || !accounts.length) {
+      throw new Error('No accounts returned');
+    }
+
+    userAddress = accounts[0];
+    web3Provider = new ethers.providers.Web3Provider(instance, 'any');
+    signer = web3Provider.getSigner();
+
+    // UI 갱신
+    document.getElementById('wAddr').textContent = short(userAddress);
     ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-      const el=document.getElementById(id); if(el){ el.textContent='Connected'; el.classList.add('ghost'); }
+      const el=document.getElementById(id);
+      if(el){
+        el.textContent='Connected';
+        el.classList.add('ghost');
+      }
     });
 
-    instance.on?.('accountsChanged', acc=>{ userAddress = acc && acc.length ? acc[0] : null; $('#wAddr').textContent = short(userAddress); });
-    instance.on?.('chainChanged', _=>{ /* network change hook */ });
+    // 이벤트 리스너
+    if (instance.on) {
+      instance.on('accountsChanged', acc=>{
+        userAddress = (acc && acc.length) ? acc[0] : null;
+        document.getElementById('wAddr').textContent = short(userAddress);
+      });
+      instance.on('chainChanged', _=>{
+        // 네트워크 바뀌면 새로고침 (간단 처리)
+        window.location.reload();
+      });
+    }
   }catch(err){
     console.error('[connectWallet]', err);
-    alert('Wallet connection failed (see console). If using a mobile in-app browser, open in MetaMask Browser or install MetaMask.');
+    alert('Wallet connection was cancelled or failed.\nPlease check MetaMask and try again.');
   }
 }
+
 function bindConnect(){
   ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.onclick=connectWallet;
+    const el=document.getElementById(id);
+    if(el) el.onclick=connectWallet;
   });
   const maxBtn=document.querySelector('.input--stake .max');
   if(maxBtn) maxBtn.onclick=()=>{ document.getElementById('stakeAmt').value='1000'; };
@@ -578,12 +591,22 @@ window.addEventListener('beforeinstallprompt', e=>{
 window.addEventListener('appinstalled', ()=>{ document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); });
 function handleInstallClick(){
   if(isStandaloneMode()) return alert('G-DEX is already installed.');
-  if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); }); return; }
-  if(isIos){ alert('Safari에서 공유 아이콘(□↑) → "홈 화면에 추가"를 선택하세요.'); return; }
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(()=>{
+      deferredPrompt=null;
+      document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none');
+    });
+    return;
+  }
+  if(isIos){
+    alert('Safari에서 공유 아이콘(□↑) → "홈 화면에 추가"를 선택하세요.');
+    return;
+  }
   alert('Use your browser menu → "Add to Home screen".');
 }
 
-/* ===== Analytics Demo (차트 복구) ===== */
+/* ===== Analytics Demo ===== */
 const demoAnalytics = {
   rebateRate: 12,
   feeNet: 420000,
@@ -679,16 +702,13 @@ function drawGauge(d){
   const r = Math.min(w*DPR*0.42, h*DPR*0.9);
   ctx.lineWidth = 16*DPR; ctx.lineCap = "round";
 
-  // base arc
   ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
   ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.stroke();
 
-  // value
   const pct = Math.max(0, Math.min(1, d.co2.current / d.co2.target));
   ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI);
   ctx.strokeStyle = "#1fe3a4"; ctx.stroke();
 
-  // ticks
   ctx.lineWidth = 2*DPR; ctx.strokeStyle = "rgba(255,255,255,.35)";
   for(let i=0;i<=4;i++){
     const a = Math.PI + i*(Math.PI/4);
@@ -697,7 +717,6 @@ function drawGauge(d){
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
   }
 
-  // label
   ctx.fillStyle="#eaf7f0";
   ctx.font = `${12*DPR}px Sora, sans-serif`;
   ctx.textAlign="center";
@@ -718,6 +737,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     bindFlip();
     bindConnect();
     bindTop();
+
     document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick));
     if(isIos && !isStandaloneMode()) document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
 
@@ -732,6 +752,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
     drawGauge(demoAnalytics);
+    updateRibbon(demoAnalytics);
     window.addEventListener('resize', ()=>{ drawSpark(demoAnalytics); drawDonut(demoAnalytics); drawGauge(demoAnalytics); });
   }catch(e){
     console.error('[init]', e);
@@ -741,4 +762,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-<br><br>
