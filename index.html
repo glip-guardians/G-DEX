@@ -556,28 +556,23 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 
 <script>
 /* ===== utils ===== */
-/* ===== utils ===== */
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
-// ★ DApp이 실제로 올라간 도메인 (Netlify 또는 추후 gdex-app.com으로 변경)
-const DAPP_HOST = 'playful-begonia-7c77c3.netlify.app'; 
-// 예: gdex-app.com 으로 옮기면 'gdex-app.com' 으로 바꿔주세요.
+// ★ DApp이 실제로 올라가는 호스트 (도메인)
+// Netlify 사용 중이면 아래처럼, 나중에 gdex-app.com 으로 옮기면 해당 값만 변경
+const DAPP_HOST = 'gdex-app.com';
 
 // 모바일 기기 판별
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-// 모바일 Chrome에서 메타마스크 앱 브라우저로 보내는 딥링크
+// 모바일 브라우저에서 MetaMask 앱 브라우저로 보내는 딥링크
 function openMetaMaskDeepLink() {
-  // 메타마스크 딥링크는 프로토콜+호스트만 필요
   const dappUrl = `https://${DAPP_HOST}`;
-  const target = dappUrl.replace(/^https?:\/\//, ''); 
+  const target = dappUrl.replace(/^https?:\/\//, '');
   const deepLink = `https://metamask.app.link/dapp/${target}`;
-
-  // iframe 안에서 실행되어도 상관 없음 — 메타마스크가 이 URL을 다시 불러옴
   window.location.href = deepLink;
 }
-
 
 /* ===== 토큰리스트 ===== */
 const tokenList = [
@@ -586,7 +581,6 @@ const tokenList = [
   {symbol:"USDT", name:"Tether USD",          address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6,  logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png"},
   {symbol:"USDC", name:"USD Coin",            address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6,  logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
   {symbol:"DAI",  name:"Dai",                 address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"}
-  // … 나머지 토큰은 필요하면 그대로 추가 가능
 ];
 
 /* 기본 아이콘/심볼 적용 */
@@ -650,28 +644,26 @@ function bindFlip(){
   $('#pFlip').onclick = ()=>flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
 }
 
-/* ===== Wallet Connect (MetaMask 전용, ethers 의존성 제거) ===== */
+/* ===== Wallet Connect (MetaMask 전용) ===== */
 let userAddress = null;
 
 async function connectWallet(){
   try{
-    // 1) 메타마스크 provider 자체가 없는 경우
+    // 1) provider가 없는 환경 (예: 모바일 Chrome)
     if (typeof window.ethereum === 'undefined') {
 
-      // ★ 모바일이면 메타마스크 앱 브라우저로 강제 이동 (딥링크)
       if (isMobile) {
-        // 안내문 한 번 보여주고
         alert(
           "Mobile wallet not detected in this browser.\n\n" +
           "We will open this page in the MetaMask app browser.\n" +
-          "If MetaMask does not open, please open the MetaMask app manually " +
+          "If MetaMask does not open automatically, please open the MetaMask app " +
           "and paste this URL:\n\nhttps://" + DAPP_HOST
         );
         openMetaMaskDeepLink();
         return;
       }
 
-      // ★ 데스크탑이면 기존 안내
+      // 데스크탑 환경: MetaMask 설치 안내
       alert(
         "No Ethereum wallet detected.\n\n" +
         "• Mobile: Open this site inside the MetaMask in-app browser.\n" +
@@ -680,7 +672,7 @@ async function connectWallet(){
       return;
     }
 
-    // 2) provider가 있는 경우 (데스크탑, 혹은 메타마스크 in-app 브라우저)
+    // 2) provider가 있는 경우 (데스크탑 + MetaMask, MetaMask in-app 브라우저 등)
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     if (!accounts || !accounts.length) {
       throw new Error('No accounts returned');
@@ -697,7 +689,7 @@ async function connectWallet(){
       }
     });
 
-    // 계정/체인 변경 리스너
+    // 계정/네트워크 변경 감지
     if (window.ethereum.on) {
       window.ethereum.on('accountsChanged', acc=>{
         userAddress = acc && acc.length ? acc[0] : null;
@@ -761,7 +753,7 @@ function handleInstallClick(){
     return;
   }
   if(isIos){
-    alert('Safari에서 공유 아이콘(□↑) → "홈 화면에 추가"를 선택하여 설치할 수 있습니다.');
+    alert('In Safari: tap the share icon (□↑) → "Add to Home Screen" to install.');
     return;
   }
   alert('Use your browser menu → "Add to Home screen".');
@@ -928,4 +920,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
