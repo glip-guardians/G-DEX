@@ -631,69 +631,73 @@ function bindFlip(){
 }
 
 /* ===== Wallet Connect (MetaMask 전용, ethers 의존성 제거) ===== */
-let userAddress = null;
+let web3Modal, web3Provider, signer, userAddress;
 
 async function connectWallet(){
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const hasEth   = typeof window.ethereum !== 'undefined';
+
   try{
-    if (typeof window.ethereum === 'undefined') {
-      alert(
-        "No Ethereum wallet detected.\n\n" +
-        "• 모바일: MetaMask 앱을 열고, MetaMask 브라우저에서 이 페이지를 열어주세요.\n" +
-        "• 데스크탑: MetaMask 확장을 설치한 뒤 페이지를 새로고침하세요."
-      );
+    // 1) window.ethereum 있는 경우 (데스크탑 + MetaMask 브라우저 등)
+    if (hasEth) {
+      const Web3ModalCtor = window.Web3Modal?.default || window.Web3Modal;
+      if (!web3Modal) {
+        web3Modal = new Web3ModalCtor({ cacheProvider:true, providerOptions:{} });
+      }
+
+      let instance;
+      try {
+        // Web3Modal 시도
+        instance = await web3Modal.connect();
+      } catch (inner) {
+        // 실패 시 기본 요청
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        instance = window.ethereum;
+      }
+
+      web3Provider = new ethers.providers.Web3Provider(instance);
+      signer       = web3Provider.getSigner();
+      userAddress  = await signer.getAddress();
+
+      // UI 업데이트
+      document.getElementById('wAddr').textContent = short(userAddress);
+      ['poolConnect','btnConn','swapConnect'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){ el.textContent='Connected'; el.classList.add('ghost'); }
+      });
+
+      // 이벤트 리스너 (선택)
+      instance.on?.('accountsChanged', acc=>{
+        userAddress = acc && acc.length ? acc[0] : null;
+        document.getElementById('wAddr').textContent = short(userAddress);
+      });
+      instance.on?.('chainChanged', _=>{ /* 필요하면 네트워크 변경 처리 */ });
+
       return;
     }
 
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts || !accounts.length) {
-      throw new Error('No accounts returned');
+    // 2) window.ethereum 이 없고, 모바일 브라우저인 경우
+    if (isMobile) {
+      // MetaMask 앱으로 딥링크
+      window.location.href = 'https://metamask.app.link/dapp/https://gdex-app.com';
+      return;
     }
 
-    userAddress = accounts[0];
-    document.getElementById('wAddr').textContent = short(userAddress);
-
-    ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el){
-        el.textContent = 'Connected';
-        el.classList.add('ghost');
-      }
-    });
-
-    // 계정/네트워크 변경 감지
-    window.ethereum.on && window.ethereum.on('accountsChanged', acc=>{
-      userAddress = acc && acc.length ? acc[0] : null;
-      document.getElementById('wAddr').textContent = short(userAddress);
-    });
-    window.ethereum.on && window.ethereum.on('chainChanged', _=>{
-      // 필요 시 네트워크 변경 시 새로고침
-      location.reload();
-    });
-  }catch(e){
-    console.error('[connectWallet]', e);
-    alert('Wallet connection failed.\n\nPlease check MetaMask and try again.');
+    // 3) 데스크탑이고 지갑 확장이 아예 없는 경우
+    alert(
+      'No Ethereum wallet detected.\n\n' +
+      '• Desktop: Please install MetaMask extension and reload this page.\n' +
+      '• Mobile: Open this site inside the MetaMask browser.'
+    );
+  } catch (err) {
+    console.error('[connectWallet]', err);
+    alert(
+      'Wallet connection failed.\n\n' +
+      'Please check MetaMask and try again.'
+    );
   }
 }
 
-function bindConnect(){
-  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.onclick = connectWallet;
-  });
-
-  const maxBtn = document.querySelector('.input--stake .max');
-  if(maxBtn) maxBtn.onclick = ()=>{ document.getElementById('stakeAmt').value='1000'; };
-}
-
-/* TOP */
-function bindTop(){
-  const toTop=document.getElementById('toTop');
-  function toggleTop(){
-    (window.scrollY>200)?toTop.classList.add('show'):toTop.classList.remove('show');
-  }
-  toggleTop(); window.addEventListener('scroll', toggleTop);
-  toTop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
-}
 
 /* ===== PWA install ===== */
 let deferredPrompt=null;
@@ -889,3 +893,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
