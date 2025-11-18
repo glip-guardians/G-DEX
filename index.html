@@ -516,49 +516,170 @@ function bindFlip(){
   $('#pFlip').onclick = ()=>flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
 }
 
-/* ===== Wallet Connect (Web3Modal + 폴백) ===== */
-let web3Modal, web3Provider, signer, userAddress;
+<script>
+/* ====== Wallet Connect: injected 우선 + 모바일 딥링크 폴백 ====== */
+let web3Provider, signer, userAddress;
+
+const $ = s => document.querySelector(s);
+const short = a => (a ? a.slice(0,6)+'…'+a.slice(-4) : '—');
+const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+const dappHost = location.host;                         // ex) gdex-app.com
+const dappHref = location.href.replace(/^http:\/\//,'https://'); // 보안 컨텍스트 권장
+
+function setConnectedUI(addr){
+  $('#wAddr')?.textContent = short(addr);
+  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){ el.textContent = 'Connected'; el.classList.add('ghost'); el.disabled = true; }
+  });
+}
+function setDisconnectedUI(msg){
+  if(msg) console.warn('[wallet]', msg);
+  $('#wAddr')?.textContent = '—';
+  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){ el.textContent = 'Connect Wallet'; el.classList.remove('ghost'); el.disabled = false; }
+  });
+}
+
+/* 메타마스크가 설치되어 있으면 injected로 직접 연결 */
+async function connectInjected(){
+  const eth = window.ethereum;
+  if(!eth) throw new Error('NO_INJECTED');
+
+  // Ethers v5 provider (any → 체인변경 이벤트 대응)
+  web3Provider = new ethers.providers.Web3Provider(eth, 'any');
+
+  // 이미 처리중 에러 방지: 중복 요청 회피
+  try {
+    await web3Provider.send('eth_requestAccounts', []);
+  } catch(e){
+    // 사용자가 거절했을 때
+    if(e && (e.code === 4001 || e.message?.includes('User rejected'))) {
+      throw new Error('USER_REJECTED');
+    }
+    // "Already processing eth_requestAccounts" → 약간 대기 후 재시도 1회
+    if(String(e?.message||'').toLowerCase().includes('already processing')){
+      await new Promise(r=>setTimeout(r, 1200));
+      await web3Provider.send('eth_requestAccounts', []);
+    } else {
+      throw e;
+    }
+  }
+
+  signer = web3Provider.getSigner();
+  userAddress = await signer.getAddress();
+  setConnectedUI(userAddress);
+
+  // 이벤트 바인딩
+  const ethProv = web3Provider.provider;
+  ethProv.removeAllListeners?.('accountsChanged');
+  ethProv.removeAllListeners?.('chainChanged');
+  ethProv.removeAllListeners?.('disconnect');
+
+  ethProv.on?.('accountsChanged', (acc)=>{
+    userAddress = acc && acc.length ? acc[0] : null;
+    userAddress ? setConnectedUI(userAddress) : setDisconnectedUI('No account');
+  });
+  ethProv.on?.('chainChanged', ()=>{ /* 필요시 네트워크 안내 */ });
+  ethProv.on?.('disconnect', (err)=>{ setDisconnectedUI(err?.message||'Disconnected'); });
+
+  return userAddress;
+}
+
+/* Web3Modal 폴백 (브라우저 확장 미탐지 환경) */
+async function connectViaWeb3Modal(){
+  const Web3ModalCtor = window.Web3Modal?.default || window.Web3Modal;
+  const web3Modal = new Web3ModalCtor({
+    cacheProvider: false,
+    providerOptions: {
+      injected: { package: null }  // 메타마스크/브라우저 지갑
+      // 필요 시 WalletConnect 등 추가 가능
+    },
+    disableInjectedProvider: false
+  });
+  const instance = await web3Modal.connect();
+  web3Provider = new ethers.providers.Web3Provider(instance, 'any');
+  signer = web3Provider.getSigner();
+  userAddress = await signer.getAddress();
+  setConnectedUI(userAddress);
+
+  instance.on?.('accountsChanged', (acc)=>{
+    userAddress = acc && acc.length ? acc[0] : null;
+    userAddress ? setConnectedUI(userAddress) : setDisconnectedUI('No account');
+  });
+  instance.on?.('chainChanged', ()=>{ /* noop */ });
+  instance.on?.('disconnect', ()=> setDisconnectedUI('Disconnected') );
+
+  return userAddress;
+}
+
+/* 모바일에서 메타마스크 미설치/미탐지 → dapp 딥링크 */
+function openMetaMaskDeepLink(){
+  // 메타마스크 dapp 딥링크 스킴
+  const deep = `https://metamask.app.link/dapp/${dappHost}`;
+  // 현재 URL이 dapp와 다르면 도메인만 사용, 쿼리가 필요하면 encode하여 붙이세요.
+  location.href = deep;
+}
+
+/* 통합 연결 버튼 핸들러 */
 async function connectWallet(){
   try{
-    // 우선 window.ethereum 존재 확인
-    const hasEth = typeof window.ethereum !== 'undefined';
-    const Web3ModalCtor = window.Web3Modal?.default || window.Web3Modal;
-    if(!web3Modal) web3Modal = new Web3ModalCtor({ cacheProvider:true, providerOptions:{} });
-    let instance;
-    try{
-      instance = await web3Modal.connect();
-    }catch(inner){
-      // Web3Modal이 실패하면 기본 요청 시도 (모바일 인앱/브라우저 케이스)
-      if(hasEth){
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        instance = window.ethereum;
-      }else{
-        throw inner;
-      }
+    // HTTPS 권장 (insecure context에선 provider 접근 제한 가능)
+    if(location.protocol !== 'https:'){
+      alert('Please use HTTPS (TLS) for wallet connection. Redirecting…');
+      location.href = dappHref; return;
     }
-    web3Provider = new ethers.providers.Web3Provider(instance);
-    signer = web3Provider.getSigner();
-    userAddress = await signer.getAddress();
 
-    $('#wAddr').textContent = short(userAddress);
-    ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-      const el=document.getElementById(id); if(el){ el.textContent='Connected'; el.classList.add('ghost'); }
-    });
+    if(window.ethereum){
+      await connectInjected();
+      return;
+    }
 
-    instance.on?.('accountsChanged', acc=>{ userAddress = acc && acc.length ? acc[0] : null; $('#wAddr').textContent = short(userAddress); });
-    instance.on?.('chainChanged', _=>{ /* network change hook */ });
+    // 데스크탑: 메타마스크 미설치 → 설치 안내
+    if(!isMobile){
+      const go = confirm('MetaMask not detected. Open install page?');
+      if(go) window.open('https://metamask.io/download/', '_blank');
+      throw new Error('NO_INJECTED_DESKTOP');
+    }
+
+    // 모바일 일반 브라우저: 메타마스크 앱으로 딥링크
+    openMetaMaskDeepLink();
+    throw new Error('DEEPLINK_REDIRECT');
+
   }catch(err){
     console.error('[connectWallet]', err);
+
+    // Web3Modal 보조 연결 시도 (일부 환경에서 injected 미노출 케이스)
+    if(String(err.message||'').includes('NO_INJECTED_DESKTOP')){
+      try { await connectViaWeb3Modal(); return; } catch(e2){ console.error('[web3modal]', e2); }
+    }
+
+    // 사용자 거절은 조용히
+    if(err.message === 'USER_REJECTED') return;
+
+    // 최종 안내
     alert('Wallet connection failed (see console). If using a mobile in-app browser, open in MetaMask Browser or install MetaMask.');
+    setDisconnectedUI(err?.message);
   }
 }
-function bindConnect(){
+
+/* ===== 버튼 바인딩 (기존 bindConnect 대체) ===== */
+function bindConnectButtons(){
   ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.onclick=connectWallet;
+    const el = document.getElementById(id);
+    if(el) el.onclick = connectWallet;
   });
-  const maxBtn=document.querySelector('.input--stake .max');
-  if(maxBtn) maxBtn.onclick=()=>{ document.getElementById('stakeAmt').value='1000'; };
+  // Stake MAX 데모
+  document.querySelector('.input--stake .max')?.addEventListener('click', ()=>{ document.getElementById('stakeAmt').value='1000'; });
 }
+
+/* 부팅시 호출(기존 DOMContentLoaded 내에서 bindConnect() 대신 사용) */
+document.addEventListener('DOMContentLoaded', ()=>{
+  bindConnectButtons();
+});
+</script>
+
 
 /* TOP */
 function bindTop(){
@@ -741,3 +862,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
