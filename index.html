@@ -31,9 +31,12 @@
   --border:rgba(255,255,255,.18);
   --inner:rgba(255,255,255,.06);
 }
-*{box-sizing:border-box}
-html,body{margin:0;background:#0a1814;color:var(--text);
-  font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif}
+*{box-sizing:border-box; min-width:0}
+html,body{
+  margin:0;background:#0a1814;color:var(--text);
+  font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
+  overflow-x:hidden;
+}
 img{max-width:100%;display:block}
 
 /* ===== HERO ===== */
@@ -112,7 +115,7 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
   box-shadow:0 10px 26px rgba(31,227,164,.28), inset 0 0 0 1px rgba(0,0,0,.25)}
 .btn.ghost{background:transparent;color:#eaf7f0;border:1px solid rgba(255,255,255,.28);box-shadow:none}
 
-/* stake: MAX 버튼 고정 */
+/* stake: MAX 버튼을 입력 내부 고정 */
 .input--stake{position:relative}
 .input--stake input{padding-right:92px}
 .input--stake .max{position:absolute;top:50%;right:8px;transform:translateY(-50%);height:40px;padding:0 16px;border:0;border-radius:12px;
@@ -129,7 +132,7 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 .stake .claimRow{display:flex;justify-content:flex-end;margin-top:12px}
 @media (max-width:560px){.stake .statGrid{grid-template-columns:1fr}.stake .stake-actions{grid-template-columns:1fr}}
 
-/* analytics */
+/* analytics kpis & charts */
 .kpiGrid{display:grid;gap:12px;grid-template-columns:repeat(6,1fr)}
 .kpi{border:1px solid var(--border);border-radius:14px;padding:12px;min-height:84px}
 .kpi .label{opacity:.9;font-weight:700;margin-bottom:6px}
@@ -143,13 +146,16 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 .vizHead .title{font-weight:800}.vizHead .hint{opacity:.75;font-size:12px}
 .sparkWrap{height:180px;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01))}
 .sparkWrap canvas{width:100%;height:100%}
-.donutWrap,.gaugeWrap{height:220px;display:grid;place-items:center;position:relative}
-.centerStat{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
-.centerStat .big{font:800 26px/1 "Sora",sans-serif}.centerStat .cap{opacity:.8;font-size:12px;margin-top:4px}
+.donutWrap,.gaugeWrap{height:220px;display:grid;place-items:center}
+.centerStat{position:absolute;text-align:center}.centerStat .big{font:800 26px/1 "Sora",sans-serif}.centerStat .cap{opacity:.8;font-size:12px;margin-top:4px}
 .ring{position:relative;width:200px;height:200px}.ring canvas{width:100%;height:100%}
 .gauge{position:relative;width:220px;height:120px}.gauge canvas{width:100%;height:100%}
 .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.legend .dot{width:10px;height:10px;border-radius:50%}.legend .item{display:flex;align-items:center;gap:6px;opacity:.9}
 .ribbon{margin-top:12px;border:1px dashed var(--border);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(31,227,164,.08),rgba(31,227,164,.02))}
+
+/* Notes long text safety */
+.notes .inner{overflow:hidden}
+.wrap{overflow-wrap:anywhere; word-break:break-word; hyphens:auto}
 
 /* 모바일 중앙 고정 */
 @media (max-width:768px){
@@ -162,29 +168,18 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
   .notes .inner{width:100%;margin:0 auto}
 }
 
-/* Notes 줄바꿈 강제 (모바일 overflow 방지) */
-.notes .inner{max-width:100%;overflow:hidden}
-.notes .inner p{word-break:break-all;overflow-wrap:anywhere;white-space:normal}
-
-/* Token modal (dialog) */
-#tokModal{border:1px solid var(--border);border-radius:14px;background:#0f1f1a;color:#fff;max-width:min(560px,92vw);padding:0}
-#tokModal::backdrop{background:rgba(0,0,0,.6)}
-#tokModal header{display:flex;align-items:center;justify-content:space-between}
-#tokClose{background:transparent;border:0;color:#fff;opacity:.8;cursor:pointer;font-size:16px;padding:6px 10px;border-radius:8px}
-#tokClose:hover{opacity:1;background:rgba(255,255,255,.08)}
-#tokList .item:hover{background:rgba(255,255,255,.06)}
-
-/* Web3Modal overlay 개선 (모바일 검은 오버레이만 보이는 문제 완화) */
-.web3modal-modal-lightbox{z-index:99999 !important}
-.web3modal-modal-card{max-width:420px !important}
-.web3modal-provider-container{max-height:60vh !important;overflow:auto}
-
 /* TOP 버튼 */
 #toTop{position:fixed;right:14px;bottom:18px;z-index:9999;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(6px);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease}
 #toTop svg{width:20px;height:20px;fill:#fff;opacity:.95}
 #toTop.show{opacity:.85;pointer-events:auto}
 #toTop:hover{opacity:1;transform:translateY(-2px)}
+
+/* Token modal tiny close */
+#tokModal{border:1px solid var(--border);border-radius:14px;background:rgba(10,24,20,.96);color:#fff}
+#tokModal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:800}
+#tokClose{all:unset;cursor:pointer;font-weight:800;font-size:14px;opacity:.85;padding:4px 8px;border:1px solid rgba(255,255,255,.25);border-radius:8px}
+#tokClose:hover{opacity:1}
 </style>
 </head>
 <body>
@@ -310,10 +305,9 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
         <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
       </section>
 
-      <!-- Analytics (demo restored) -->
+      <!-- Analytics (demo) -->
       <section class="card analytics" id="analytics">
         <h3>Analytics — “Blockchain that gives back”</h3>
-
         <div class="kpiGrid">
           <div class="kpi"><div class="label">Rebate Rate (R%)</div><div class="val" id="kRebate">—</div><div class="sub">Governance-set quarterly</div></div>
           <div class="kpi"><div class="label">Returned to Users (QTD)</div><div class="val" id="kReturned">—</div><div class="sub">Cumulative fee-rebates</div></div>
@@ -326,7 +320,10 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
         <div class="anaGrid" style="margin-top:12px">
           <!-- A) Returned Value sparkline -->
           <div class="vizCard">
-            <div class="vizHead"><div class="title">Returned Value to Users — Cumulative</div><div class="hint" id="rvHint">—</div></div>
+            <div class="vizHead">
+              <div class="title">Returned Value to Users — Cumulative</div>
+              <div class="hint" id="rvHint">—</div>
+            </div>
             <div class="sparkWrap"><canvas id="spark"></canvas></div>
             <div class="legend">
               <div class="item"><span class="dot" style="background:#1fe3a4"></span> Users</div>
@@ -336,11 +333,19 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 
           <!-- B) Rebate Split Donut -->
           <div class="vizCard">
-            <div class="vizHead"><div class="title">Quarterly Rebate Split</div><div class="hint">Users / ESG / Treasury</div></div>
+            <div class="vizHead">
+              <div class="title">Quarterly Rebate Split</div>
+              <div class="hint">Users / ESG / Treasury</div>
+            </div>
             <div class="donutWrap">
               <div class="ring">
                 <canvas id="donut"></canvas>
-                <div class="centerStat"><div><div class="big" id="donutCenter">—</div><div class="cap">of Net Fees</div></div></div>
+                <div class="centerStat" style="inset:0;display:grid;place-items:center">
+                  <div>
+                    <div class="big" id="donutCenter">—</div>
+                    <div class="cap">of Net Fees</div>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="legend" id="donutLegend"></div>
@@ -348,7 +353,10 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 
           <!-- C) Green Impact Gauge -->
           <div class="vizCard">
-            <div class="vizHead"><div class="title">Green Impact — Carbon Offset (est.)</div><div class="hint" id="giHint">—</div></div>
+            <div class="vizHead">
+              <div class="title">Green Impact — Carbon Offset (est.)</div>
+              <div class="hint" id="giHint">—</div>
+            </div>
             <div class="gaugeWrap"><div class="gauge"><canvas id="gauge"></canvas></div></div>
             <div class="legend">
               <div class="item"><span class="dot" style="background:#1fe3a4"></span> ESG-funded offsets</div>
@@ -402,62 +410,63 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 
 <!-- Token Selector Modal -->
 <dialog id="tokModal">
-  <header style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.18);font-weight:800">
+  <header>
     <span>Select a token</span>
-    <button id="tokClose" title="Close">✕</button>
+    <button id="tokClose" type="button">✕</button>
   </header>
   <div class="content" style="padding:16px"><div id="tokList"></div></div>
 </dialog>
 
-<!-- Web3Modal + Ethers -->
+<!-- Web3Modal + Ethers (fallback용) -->
 <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
 <script>
 /* ===== 토큰리스트 (주요 토큰 확장) ===== */
 const tokenList = [
-  {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
-  {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
-  {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6, logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png"},
-  {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6, logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
-  {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"},
-  {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193"},
-  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8, logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png"},
-  {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18, logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png"},
-  {symbol:"BNB", name:"BNB", address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18, logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png"},
-  {symbol:"XRP", name:"XRP (ERC20-wrap)", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6, logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png"},
-  {symbol:"LINK", name:"Chainlink", address:"0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals:18, logo:"https://assets.coingecko.com/coins/images/877/standard/chainlink-new-logo.png"},
-  {symbol:"UNI",  name:"Uniswap", address:"0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984/logo.png"},
-  {symbol:"AAVE", name:"Aave", address:"0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", decimals:18, logo:"https://assets.coingecko.com/coins/images/12645/standard/AAVE.png"},
-  {symbol:"LDO", name:"Lido DAO", address:"0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", decimals:18, logo:"https://assets.coingecko.com/coins/images/13573/standard/Lido_DAO.png"},
-  {symbol:"SNX", name:"Synthetix", address:"0xC011A72400E58ecD99Ee497CF89E3775d4bd732F", decimals:18, logo:"https://assets.coingecko.com/coins/images/3406/standard/SNX.png"},
-  {symbol:"CRV", name:"Curve DAO", address:"0xD533a949740bb3306d119CC777fa900bA034cd52", decimals:18, logo:"https://assets.coingecko.com/coins/images/12124/standard/Curve.png"},
-  {symbol:"COMP", name:"Compound", address:"0xc00e94Cb662C3520282E6f5717214004A7f26888", decimals:18, logo:"https://assets.coingecko.com/coins/images/10775/standard/COMP.png"},
-  {symbol:"MKR", name:"Maker", address:"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", decimals:18, logo:"https://assets.coingecko.com/coins/images/1364/standard/Mark_Maker.png"},
-  {symbol:"YFI", name:"yearn.finance", address:"0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/11849/large/yearn.jpg"},
-  {symbol:"SUSHI", name:"Sushi", address:"0x6B3595068778DD592e39A122f4f5a5CF09C90fE2", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12271/large/512x512_Logo_no_chop.png"},
-  {symbol:"BAL", name:"Balancer", address:"0xba100000625a3754423978a60c9317c58a424e3D", decimals:18, logo:"https://assets.coingecko.com/coins/images/11683/standard/Balancer.png"},
-  {symbol:"1INCH", name:"1inch", address:"0x111111111117dC0aa78b770fA6A738034120C302", decimals:18, logo:"https://assets.coingecko.com/coins/images/13469/standard/1inch-token.png"},
-  {symbol:"ENS", name:"Ethereum Name Service", address:"0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/19785/large/ENS.jpg"},
-  {symbol:"OP", name:"Optimism", address:"0x4200000000000000000000000000000000000042", decimals:18, logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png"},
-  {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg"},
-  {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18, logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg"},
-  {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18, logo:"https://assets.coingecko.com/coins/images/11939/standard/shiba.png"},
-  {symbol:"DOGE", name:"Dogecoin (ERC20 wrap)", address:"0x4206931337dc273a630d328da6441786bfad668f", decimals:8, logo:"https://assets.coingecko.com/coins/images/5/standard/dogecoin.png"},
-  {symbol:"BAT", name:"Basic Attention", address:"0x0D8775F648430679A709E98d2b0Cb6250d2887EF", decimals:18, logo:"https://assets.coingecko.com/coins/images/677/standard/basic-attention-token.png"},
-  {symbol:"MANA", name:"Decentraland", address:"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/878/large/decentraland-mana.png"},
-  {symbol:"SAND", name:"The Sandbox", address:"0x3845badAde8e6dFF049820680d1F14bD3903a5d0", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12129/large/sandbox_logo.jpg"},
-  {symbol:"AXS", name:"Axie Infinity", address:"0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b", decimals:18, logo:"https://assets.coingecko.com/coins/images/13029/standard/axie_infinity_logo.png"},
-  {symbol:"GRT", name:"The Graph", address:"0xc944E90C64B2c07662A292be6244BDf05Cda44a7", decimals:18, logo:"https://assets.coingecko.com/coins/images/13397/standard/Graph_Token.png"},
-  {symbol:"FTM", name:"Fantom", address:"0x4e15361FD6b4BB609Fa63C81A2be19d873717870", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16036/large/Fantom.png"},
-  {symbol:"NEAR", name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24, logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg"},
-  {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
+  {symbol:"ETH",  name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png", priority:100},
+  {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png", priority:99},
+  {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6,  logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png", priority:95},
+  {symbol:"USDC", name:"USD Coin",  address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6, logo:"https://cryptologos.cc/logos/usd-coin-usdc-logo.png", priority:94},
+  {symbol:"DAI",  name:"Dai",       address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png", priority:93},
+  {symbol:"FRAX", name:"Frax",      address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png", priority:92},
+  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8, logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png", priority:90},
+  {symbol:"MATIC",name:"Polygon",   address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18, logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png", priority:89},
+  {symbol:"BNB",  name:"BNB",       address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18, logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png", priority:88},
+  {symbol:"XRP",  name:"XRP (erc)", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6, logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png", priority:87},
+  {symbol:"LINK", name:"Chainlink", address:"0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals:18, logo:"https://assets.coingecko.com/coins/images/877/standard/chainlink-new-logo.png", priority:86},
+  {symbol:"UNI",  name:"Uniswap",   address:"0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984/logo.png", priority:85},
+  {symbol:"AAVE", name:"Aave",      address:"0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", decimals:18, logo:"https://assets.coingecko.com/coins/images/12645/standard/AAVE.png", priority:84},
+  {symbol:"LDO",  name:"Lido DAO",  address:"0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", decimals:18, logo:"https://assets.coingecko.com/coins/images/13573/standard/Lido_DAO.png", priority:83},
+  {symbol:"SNX",  name:"Synthetix", address:"0xC011A72400E58ecD99Ee497CF89E3775d4bd732F", decimals:18, logo:"https://assets.coingecko.com/coins/images/3406/standard/SNX.png", priority:82},
+  {symbol:"CRV",  name:"Curve DAO", address:"0xD533a949740bb3306d119CC777fa900bA034cd52", decimals:18, logo:"https://assets.coingecko.com/coins/images/12124/standard/Curve.png", priority:81},
+  {symbol:"COMP", name:"Compound",  address:"0xc00e94Cb662C3520282E6f5717214004A7f26888", decimals:18, logo:"https://assets.coingecko.com/coins/images/10775/standard/COMP.png", priority:80},
+  {symbol:"MKR",  name:"Maker",     address:"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", decimals:18, logo:"https://assets.coingecko.com/coins/images/1364/standard/Mark_Maker.png", priority:79},
+  {symbol:"YFI",  name:"yearn",     address:"0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/11849/large/yearn.jpg", priority:78},
+  {symbol:"SUSHI",name:"Sushi",     address:"0x6B3595068778DD592e39A122f4f5a5CF09C90fE2", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12271/large/512x512_Logo_no_chop.png", priority:77},
+  {symbol:"BAL",  name:"Balancer",  address:"0xba100000625a3754423978a60c9317c58a424e3D", decimals:18, logo:"https://assets.coingecko.com/coins/images/11683/standard/Balancer.png", priority:76},
+  {symbol:"1INCH",name:"1inch",     address:"0x111111111117dC0aa78b770fA6A738034120C302", decimals:18, logo:"https://assets.coingecko.com/coins/images/13469/standard/1inch-token.png", priority:75},
+  {symbol:"ENS",  name:"ENS",       address:"0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/19785/large/ENS.jpg", priority:74},
+  {symbol:"OP",   name:"Optimism",  address:"0x4200000000000000000000000000000000000042", decimals:18, logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png", priority:73},
+  {symbol:"ARB",  name:"Arbitrum",  address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg", priority:72},
+  {symbol:"IMX",  name:"Immutable X",address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3aEC3C3548E3D615c346e79fF/logo.png", priority:71},
+  {symbol:"PEPE", name:"Pepe",      address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18, logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg", priority:70},
+  {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18, logo:"https://assets.coingecko.com/coins/images/11939/standard/shiba.png", priority:69},
+  {symbol:"DOGE", name:"Dogecoin(erc)", address:"0x4206931337dc273a630d328da6441786bfad668f", decimals:8, logo:"https://assets.coingecko.com/coins/images/5/standard/dogecoin.png", priority:68},
+  {symbol:"BAT",  name:"Basic Attention", address:"0x0D8775F648430679A709E98d2b0Cb6250d2887EF", decimals:18, logo:"https://assets.coingecko.com/coins/images/677/standard/basic-attention-token.png", priority:67},
+  {symbol:"MANA", name:"Decentraland", address:"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/878/large/decentraland-mana.png", priority:66},
+  {symbol:"SAND", name:"The Sandbox", address:"0x3845badAde8e6dFF049820680d1F14bD3903a5d0", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12129/large/sandbox_logo.jpg", priority:65},
+  {symbol:"AXS",  name:"Axie Infinity", address:"0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b", decimals:18, logo:"https://assets.coingecko.com/coins/images/13029/standard/axie_infinity_logo.png", priority:64},
+  {symbol:"GRT",  name:"The Graph", address:"0xc944E90C64B2c07662A292be6244BDf05Cda44a7", decimals:18, logo:"https://assets.coingecko.com/coins/images/13397/standard/Graph_Token.png", priority:63},
+  {symbol:"FTM",  name:"Fantom",    address:"0x4e15361FD6b4BB609Fa63C81A2be19d873717870", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16036/large/Fantom.png", priority:62},
+  {symbol:"NEAR", name:"NEAR (erc)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24, logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg", priority:61},
+  {symbol:"ANKR", name:"Ankr",      address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png", priority:60}
 ];
 
 const $ = s=>document.querySelector(s);
 const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'—';
 
-/* ===== 기본 아이콘/심볼 적용 ===== */
+/* ===== 초기 아이콘/심볼 ===== */
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
   const GLIP = tokenList.find(t=>t.symbol==="GLIP");
@@ -473,11 +482,11 @@ function initDefaults(){
 const dlg = document.getElementById('tokModal');
 const list = document.getElementById('tokList');
 let target = null;
+
 function openFor(imgEl, symEl){
   target = {imgEl, symEl};
-  list.innerHTML = tokenList
-    .sort((a,b)=>(b.symbol==='ETH')-(a.symbol==='ETH') || (b.symbol==='GLIP')-(a.symbol==='GLIP') || 0)
-    .map(t=>`
+  const sorted = [...tokenList].sort((a,b)=> (b.priority||0)-(a.priority||0));
+  list.innerHTML = sorted.map(t=>`
     <div class="item" data-sym="${t.symbol}"
       style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
       <img src="${t.logo}" style="width:22px;height:22px;border-radius:50%" alt="">
@@ -495,7 +504,7 @@ list.onclick = e=>{
   target.symEl.dataset.address = t.address;
   dlg.close();
 };
-document.getElementById('tokClose').onclick = ()=>dlg.close();
+document.getElementById('tokClose').onclick = ()=> dlg.close();
 dlg.addEventListener('click',e=>{ if(e.target===dlg) dlg.close(); });
 
 function bindTokenButtons(){
@@ -516,15 +525,11 @@ function bindFlip(){
   $('#pFlip').onclick = ()=>flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
 }
 
-<script>
-/* ====== Wallet Connect: injected 우선 + 모바일 딥링크 폴백 ====== */
+/* ===== Wallet Connect: injected 우선 + 모바일 딥링크 ===== */
 let web3Provider, signer, userAddress;
-
-const $ = s => document.querySelector(s);
-const short = a => (a ? a.slice(0,6)+'…'+a.slice(-4) : '—');
 const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-const dappHost = location.host;                         // ex) gdex-app.com
-const dappHref = location.href.replace(/^http:\/\//,'https://'); // 보안 컨텍스트 권장
+const dappHost = location.host;
+const dappHref = location.href.replace(/^http:\/\//,'https://');
 
 function setConnectedUI(addr){
   $('#wAddr')?.textContent = short(addr);
@@ -542,23 +547,17 @@ function setDisconnectedUI(msg){
   });
 }
 
-/* 메타마스크가 설치되어 있으면 injected로 직접 연결 */
 async function connectInjected(){
   const eth = window.ethereum;
   if(!eth) throw new Error('NO_INJECTED');
 
-  // Ethers v5 provider (any → 체인변경 이벤트 대응)
   web3Provider = new ethers.providers.Web3Provider(eth, 'any');
-
-  // 이미 처리중 에러 방지: 중복 요청 회피
   try {
     await web3Provider.send('eth_requestAccounts', []);
   } catch(e){
-    // 사용자가 거절했을 때
-    if(e && (e.code === 4001 || e.message?.includes('User rejected'))) {
+    if(e && (e.code === 4001 || String(e.message).includes('User rejected'))) {
       throw new Error('USER_REJECTED');
     }
-    // "Already processing eth_requestAccounts" → 약간 대기 후 재시도 1회
     if(String(e?.message||'').toLowerCase().includes('already processing')){
       await new Promise(r=>setTimeout(r, 1200));
       await web3Provider.send('eth_requestAccounts', []);
@@ -571,7 +570,6 @@ async function connectInjected(){
   userAddress = await signer.getAddress();
   setConnectedUI(userAddress);
 
-  // 이벤트 바인딩
   const ethProv = web3Provider.provider;
   ethProv.removeAllListeners?.('accountsChanged');
   ethProv.removeAllListeners?.('chainChanged');
@@ -581,105 +579,49 @@ async function connectInjected(){
     userAddress = acc && acc.length ? acc[0] : null;
     userAddress ? setConnectedUI(userAddress) : setDisconnectedUI('No account');
   });
-  ethProv.on?.('chainChanged', ()=>{ /* 필요시 네트워크 안내 */ });
+  ethProv.on?.('chainChanged', ()=>{ /* network changed */ });
   ethProv.on?.('disconnect', (err)=>{ setDisconnectedUI(err?.message||'Disconnected'); });
 
   return userAddress;
 }
 
-/* Web3Modal 폴백 (브라우저 확장 미탐지 환경) */
-async function connectViaWeb3Modal(){
-  const Web3ModalCtor = window.Web3Modal?.default || window.Web3Modal;
-  const web3Modal = new Web3ModalCtor({
-    cacheProvider: false,
-    providerOptions: {
-      injected: { package: null }  // 메타마스크/브라우저 지갑
-      // 필요 시 WalletConnect 등 추가 가능
-    },
-    disableInjectedProvider: false
-  });
-  const instance = await web3Modal.connect();
-  web3Provider = new ethers.providers.Web3Provider(instance, 'any');
-  signer = web3Provider.getSigner();
-  userAddress = await signer.getAddress();
-  setConnectedUI(userAddress);
-
-  instance.on?.('accountsChanged', (acc)=>{
-    userAddress = acc && acc.length ? acc[0] : null;
-    userAddress ? setConnectedUI(userAddress) : setDisconnectedUI('No account');
-  });
-  instance.on?.('chainChanged', ()=>{ /* noop */ });
-  instance.on?.('disconnect', ()=> setDisconnectedUI('Disconnected') );
-
-  return userAddress;
-}
-
-/* 모바일에서 메타마스크 미설치/미탐지 → dapp 딥링크 */
 function openMetaMaskDeepLink(){
-  // 메타마스크 dapp 딥링크 스킴
   const deep = `https://metamask.app.link/dapp/${dappHost}`;
-  // 현재 URL이 dapp와 다르면 도메인만 사용, 쿼리가 필요하면 encode하여 붙이세요.
   location.href = deep;
 }
 
-/* 통합 연결 버튼 핸들러 */
 async function connectWallet(){
   try{
-    // HTTPS 권장 (insecure context에선 provider 접근 제한 가능)
     if(location.protocol !== 'https:'){
-      alert('Please use HTTPS (TLS) for wallet connection. Redirecting…');
+      alert('Please use HTTPS for wallet connection. Redirecting…');
       location.href = dappHref; return;
     }
-
     if(window.ethereum){
       await connectInjected();
       return;
     }
-
-    // 데스크탑: 메타마스크 미설치 → 설치 안내
     if(!isMobile){
       const go = confirm('MetaMask not detected. Open install page?');
       if(go) window.open('https://metamask.io/download/', '_blank');
       throw new Error('NO_INJECTED_DESKTOP');
     }
-
-    // 모바일 일반 브라우저: 메타마스크 앱으로 딥링크
     openMetaMaskDeepLink();
     throw new Error('DEEPLINK_REDIRECT');
-
   }catch(err){
     console.error('[connectWallet]', err);
-
-    // Web3Modal 보조 연결 시도 (일부 환경에서 injected 미노출 케이스)
-    if(String(err.message||'').includes('NO_INJECTED_DESKTOP')){
-      try { await connectViaWeb3Modal(); return; } catch(e2){ console.error('[web3modal]', e2); }
-    }
-
-    // 사용자 거절은 조용히
     if(err.message === 'USER_REJECTED') return;
-
-    // 최종 안내
     alert('Wallet connection failed (see console). If using a mobile in-app browser, open in MetaMask Browser or install MetaMask.');
     setDisconnectedUI(err?.message);
   }
 }
 
-/* ===== 버튼 바인딩 (기존 bindConnect 대체) ===== */
 function bindConnectButtons(){
   ['poolConnect','btnConn','swapConnect'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.onclick = connectWallet;
   });
-  // Stake MAX 데모
   document.querySelector('.input--stake .max')?.addEventListener('click', ()=>{ document.getElementById('stakeAmt').value='1000'; });
 }
-
-/* 부팅시 호출(기존 DOMContentLoaded 내에서 bindConnect() 대신 사용) */
-document.addEventListener('DOMContentLoaded', ()=>{
-  bindConnectButtons();
-});
-</script>
-
 
 /* TOP */
 function bindTop(){
@@ -689,7 +631,7 @@ function bindTop(){
   toTop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
 }
 
-/* ===== PWA install ===== */
+/* ===== PWA install (옵션) ===== */
 let deferredPrompt=null; const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
 function isStandaloneMode(){return matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true}
 window.addEventListener('beforeinstallprompt', e=>{
@@ -704,31 +646,33 @@ function handleInstallClick(){
   alert('Use your browser menu → "Add to Home screen".');
 }
 
-/* ===== Analytics Demo (차트 복구) ===== */
+/* ===== Analytics Demo ===== */
 const demoAnalytics = {
   rebateRate: 12,
-  feeNet: 420000,
+  feeNet: 420_000,
   split: { users: 0.70, esg: 0.20, treasury: 0.10 },
   returnedSeries: [1200,3400,5600,8300,12000,16200,21000,27900,35000,43600,52000,61500,72000,84500,98000,112000,127800,145200,163500,182400],
   turnout: 38,
   transparency: 92,
   co2: { current: 152, target: 220 }
 };
+
 function fillKpis(d){
   const {rebateRate, feeNet, split, turnout, transparency} = d;
   const returned = feeNet * (rebateRate/100) * split.users;
   const esgAccrual= feeNet * (rebateRate/100) * split.esg;
-  document.getElementById('kRebate').textContent = rebateRate.toFixed(0) + "%";
-  document.getElementById('kReturned').textContent = "$ " + Math.round(returned).toLocaleString();
-  document.getElementById('kESG').textContent = "$ " + Math.round(esgAccrual).toLocaleString();
-  document.getElementById('kTransparency').textContent = transparency.toFixed(0) + "%";
-  document.getElementById('kTurnout').textContent = turnout.toFixed(0) + "%";
+  $('#kRebate').textContent = rebateRate.toFixed(0) + "%";
+  $('#kReturned').textContent = "$ " + Math.round(returned).toLocaleString();
+  $('#kESG').textContent = "$ " + Math.round(esgAccrual).toLocaleString();
+  $('#kTransparency').textContent = transparency.toFixed(0) + "%";
+  $('#kTurnout').textContent = turnout.toFixed(0) + "%";
   const greenScore = Math.round( (transparency/100) * (split.esg*rebateRate) * 10 );
-  document.getElementById('kGreen').textContent = greenScore;
-  document.getElementById('rvHint').textContent = "Net Fees $" + feeNet.toLocaleString() + " · R% " + rebateRate + "%";
-  document.getElementById('esgNote').textContent = `Current quarter alloc: Users ${(split.users*100).toFixed(0)}% · ESG ${(split.esg*100).toFixed(0)}% · Treasury ${(split.treasury*100).toFixed(0)}%.`;
-  document.getElementById('giHint').textContent = `tCO₂e offset est. ${d.co2.current}/${d.co2.target}`;
+  $('#kGreen').textContent = greenScore;
+  $('#rvHint').textContent = "Net Fees $" + feeNet.toLocaleString() + " · R% " + rebateRate + "%";
+  $('#esgNote').textContent = `R%=${rebateRate} ⇒ Users ${(split.users*100).toFixed(0)}%, ESG ${(split.esg*100).toFixed(0)}%, Treasury ${(split.treasury*100).toFixed(0)}%. Transparency ${transparency}%, Gov turnout ${turnout}%.`;
+  $('#giHint').textContent = `tCO₂e offset est. ${d.co2.current}/${d.co2.target}`;
 }
+
 function drawSpark(d){
   const el = document.getElementById('spark');
   const ctx = el.getContext('2d');
@@ -738,27 +682,36 @@ function drawSpark(d){
   const data = d.returnedSeries;
   const min = Math.min(...data), max = Math.max(...data);
   const padX = 20 * DPR, padY = 16 * DPR;
-  const x = i => padX + (i/(data.length-1)) * (w - padX*2);
-  const y = v => { const t=(v-min)/(max-min || 1); return h - padY - t*(h - padY*2); };
-
+  const x = i => padX + (i/(data.length-1))*(w - padX*2);
+  const y = v => {
+    const t = (v-min)/(max-min || 1);
+    return h - padY - t*(h - padY*2);
+  };
   const grad = ctx.createLinearGradient(0, y(max), 0, h-padY);
   grad.addColorStop(0, "rgba(31,227,164,.45)");
   grad.addColorStop(1, "rgba(31,227,164,.05)");
 
-  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
+  ctx.beginPath();
+  ctx.moveTo(x(0), y(data[0]));
   data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
-  ctx.lineTo(x(data.length-1), h-padY); ctx.lineTo(x(0), h-padY); ctx.closePath();
+  ctx.lineTo(x(data.length-1), h-padY);
+  ctx.lineTo(x(0), h-padY);
+  ctx.closePath();
   ctx.fillStyle = grad; ctx.fill();
 
-  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
+  ctx.beginPath();
+  ctx.moveTo(x(0), y(data[0]));
   data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
-  ctx.lineWidth = 2.5 * DPR; ctx.strokeStyle = "#1fe3a4"; ctx.stroke();
+  ctx.lineWidth = 2.5 * DPR;
+  ctx.strokeStyle = "#1fe3a4";
+  ctx.stroke();
 
   const last = data[data.length-1];
   ctx.fillStyle="#eaf7f0";
   ctx.font = `${12*DPR}px Sora, sans-serif`;
   ctx.fillText("$ " + last.toLocaleString(), x(data.length-1)-40*DPR, y(last)-8*DPR);
 }
+
 function drawDonut(d){
   const canvas = document.getElementById('donut');
   const ctx = canvas.getContext('2d');
@@ -770,8 +723,8 @@ function drawDonut(d){
   const rOuter = (dim*DPR)/2 - 6*DPR;
   const rInner = rOuter * 0.62;
   const parts = [
-    {key:"Users", val:d.split.users, color:"#1fe3a4"},
-    {key:"ESG", val:d.split.esg, color:"#11c48c"},
+    {key:"Users",    val:d.split.users,    color:"#1fe3a4"},
+    {key:"ESG",      val:d.split.esg,      color:"#11c48c"},
     {key:"Treasury", val:d.split.treasury, color:"rgba(255,255,255,.35)"}
   ];
   let start = -Math.PI/2;
@@ -781,15 +734,17 @@ function drawDonut(d){
     ctx.arc(cx, cy, rOuter, start, start+arc);
     ctx.arc(cx, cy, rInner, start+arc, start, true);
     ctx.closePath();
-    ctx.fillStyle = p.color; ctx.fill();
+    ctx.fillStyle = p.color;
+    ctx.fill();
     start += arc;
   });
-  document.getElementById('donutCenter').textContent = d.rebateRate + "%";
+  document.getElementById('donutCenter').textContent = `${d.rebateRate}%`;
   const leg = document.getElementById('donutLegend');
   leg.innerHTML = parts.map(p=>(
     `<div class="item"><span class="dot" style="background:${p.color}"></span>${p.key} ${(p.val*100).toFixed(0)}%</div>`
   )).join("");
 }
+
 function drawGauge(d){
   const canvas = document.getElementById('gauge');
   const ctx = canvas.getContext('2d');
@@ -799,17 +754,9 @@ function drawGauge(d){
   const cx = canvas.width/2, cy = canvas.height*0.95;
   const r = Math.min(w*DPR*0.42, h*DPR*0.9);
   ctx.lineWidth = 16*DPR; ctx.lineCap = "round";
-
-  // base arc
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
-  ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.stroke();
-
-  // value
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2); ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.stroke();
   const pct = Math.max(0, Math.min(1, d.co2.current / d.co2.target));
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI);
-  ctx.strokeStyle = "#1fe3a4"; ctx.stroke();
-
-  // ticks
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI); ctx.strokeStyle = "#1fe3a4"; ctx.stroke();
   ctx.lineWidth = 2*DPR; ctx.strokeStyle = "rgba(255,255,255,.35)";
   for(let i=0;i<=4;i++){
     const a = Math.PI + i*(Math.PI/4);
@@ -817,18 +764,8 @@ function drawGauge(d){
     const x2 = cx + Math.cos(a)*r*0.98, y2 = cy + Math.sin(a)*r*0.98;
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
   }
-
-  // label
-  ctx.fillStyle="#eaf7f0";
-  ctx.font = `${12*DPR}px Sora, sans-serif`;
-  ctx.textAlign="center";
+  ctx.fillStyle="#eaf7f0"; ctx.font = `${12*DPR}px Sora, sans-serif`; ctx.textAlign="center";
   ctx.fillText(`${d.co2.current.toFixed(0)} / ${d.co2.target.toFixed(0)} tCO₂e`, cx, cy - r*0.35);
-}
-function updateRibbon(d){
-  const pctESG = (d.split.esg*100).toFixed(0);
-  const pctUsers= (d.split.users*100).toFixed(0);
-  const pctTreas= (d.split.treasury*100).toFixed(0);
-  document.getElementById('esgNote').textContent = `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
 }
 
 /* ===== Boot ===== */
@@ -837,29 +774,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
     initDefaults();
     bindTokenButtons();
     bindFlip();
-    bindConnect();
+    bindConnectButtons();
     bindTop();
     document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick));
     if(isIos && !isStandaloneMode()) document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
 
-    // Stake demo numbers
-    document.getElementById('apr').textContent="12.5%";
-    document.getElementById('myStaked').textContent="1,250 GLIP";
-    document.getElementById('earned').textContent="42.4 GLIP";
-    document.getElementById('est30').textContent="≈ 12.8 GLIP";
+    // Demo stake numbers
+    $('#apr').textContent="12.5%";
+    $('#myStaked').textContent="1,250 GLIP";
+    $('#earned').textContent="42.4 GLIP";
+    $('#est30').textContent="≈ 12.8 GLIP";
 
     // Analytics demo render
     fillKpis(demoAnalytics);
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
     drawGauge(demoAnalytics);
-    window.addEventListener('resize', ()=>{ drawSpark(demoAnalytics); drawDonut(demoAnalytics); drawGauge(demoAnalytics); });
   }catch(e){
-    console.error('[init]', e);
-    alert('Initialization error — see console.');
+    console.error('[init]', e); alert('Initialization error — see console.');
   }
 });
 </script>
 </body>
 </html>
-
