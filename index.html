@@ -25,21 +25,35 @@ img{max-width:100%;display:block}
 
 /* ===== HERO ===== */
 .hero{
-  position:relative; height:min(34vh,420px); overflow:hidden;
+  position:relative;
+  height:min(34vh,420px);
+  overflow:hidden;
   background:
     radial-gradient(1200px 600px at 110% 0%, rgba(0,180,120,.08), transparent 60%),
     radial-gradient(1200px 600px at -10% 20%, rgba(0,255,179,.08), transparent 70%),
     linear-gradient(180deg, rgba(255,255,255,.05), transparent 62%);
 }
+
+/* 전체가 보이도록 contain 적용 + 스케일/블러 제거 */
 .hero::after{
-  content:""; position:absolute; inset:-10px;
-  background:url("https://cdn.imweb.me/thumbnail/20251106/7d3ef3588c2b0.png") center/cover no-repeat;
-  opacity:.40; filter:blur(3px) saturate(1.02); transform:scale(1.03);
+  content:"";
+  position:absolute;
+  inset:0; /* 여백 없이 꽉 채움 */
+  background:url("https://cdn.imweb.me/thumbnail/20251106/7d3ef3588c2b0.png")
+             center / contain no-repeat; /* 핵심: contain */
+  opacity:1;          /* 원본 그대로 선명하게 */
+  filter:none;        /* 이전 contrast/blur 제거 */
+  transform:none;     /* 이전 scale 제거 */
 }
+
+/* 상단 그라데이션 오버레이는 그대로 유지(선택) */
 .hero::before{
-  content:""; position:absolute; inset:0;
+  content:"";
+  position:absolute; inset:0;
   background:linear-gradient(180deg,rgba(0,0,0,.16),rgba(0,0,0,.10) 45%,rgba(0,0,0,.04) 85%,rgba(0,0,0,0));
   z-index:1;
+}
+
 }
 .heroText{position:absolute; inset:0; display:grid; place-items:center; z-index:2; text-align:center; padding:0 16px}
 .heroText h2{margin:0 0 8px; font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif; color:#fff}
@@ -772,4 +786,5 @@ toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior:'smooth'}))
 </script>
 </body>
 </html>
+
 
