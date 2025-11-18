@@ -424,10 +424,11 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 
         <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
 
-        <div class="input">
-          <input id="buy" placeholder="0.0" type="number" disabled>
-          <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS">GLIP</span></button>
-        </div>
+<div class="input">
+  <input id="buy" placeholder="0.0" type="number" min="0" step="any">
+  <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS">GLIP</span></button>
+</div>
+
 
         <div class="helper">
           <div>Slippage <input id="slip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
@@ -946,6 +947,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
 
 
