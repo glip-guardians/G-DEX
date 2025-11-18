@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>G-DEX — GLIP</title>
 
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="G_DEX_icon.png">
+<link rel="apple-touch-icon" href="G_DEX_icon.png">
+<meta name="theme-color" content="#0a1814" />
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(console.error);
+    });
+  }
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -24,119 +37,89 @@ html,body{margin:0;background:#0a1814;color:var(--text);
 img{max-width:100%;display:block}
 
 /* ===== HERO ===== */
-.hero{
-  position:relative; height:min(34vh,420px); overflow:hidden;
+.hero{position:relative;height:min(34vh,420px);overflow:hidden;
   background:
-    radial-gradient(1200px 600px at 110% 0%, rgba(0,180,120,.08), transparent 60%),
-    radial-gradient(1200px 600px at -10% 20%, rgba(0,255,179,.08), transparent 70%),
-    linear-gradient(180deg, rgba(255,255,255,.05), transparent 62%);
-}
-.hero::after{
-  content:""; position:absolute; inset:-10px;
-  background:url("https://cdn.imweb.me/thumbnail/20251104/305eec422f3da.jpg") center/cover no-repeat;
-  opacity:.40; filter:blur(3px) saturate(1.02); transform:scale(1.03);
-}
-.hero::before{
-  content:""; position:absolute; inset:0;
-  background:linear-gradient(180deg,rgba(0,0,0,.16),rgba(0,0,0,.10) 45%,rgba(0,0,0,.04) 85%,rgba(0,0,0,0));
-  z-index:1;
-}
-.heroText{position:absolute; inset:0; display:grid; place-items:center; z-index:2; text-align:center; padding:0 16px}
-.heroText h2{margin:0 0 8px; font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif; color:#fff}
-.heroText p{margin:0; color:#fff; opacity:.98}
+    radial-gradient(1200px 600px at 110% 0%, rgba(0,180,120,.08), transparent 20%),
+    radial-gradient(1200px 600px at -10% 20%, rgba(0,255,179,.08), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,.05), transparent 30%)}
+.hero::after{content:"";position:absolute;inset:-10px;
+  background:url("https://cdn.imweb.me/thumbnail/20251106/7d3ef3588c2b0.png") center/cover no-repeat;
+  opacity:.88;filter:contrast(1.25) brightness(1.1) saturate(1.15);transform:scale(1.02)}
+.hero::before{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.15) 45%,rgba(0,0,0,.06) 85%,rgba(0,0,0,0));z-index:1}
+.heroText{position:absolute;inset:0;display:grid;place-items:center;z-index:2;text-align:center;padding:0 16px}
+.heroText h2{margin:0 0 8px;font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif;color:#fff;text-shadow:0 3px 8px rgba(0,0,0,.4)}
+.heroText p{margin:0;color:#fff;opacity:.96}
+
+/* HERO link bar */
+.heroLinks{position:relative;z-index:3;background:rgba(5,18,14,.96);border-bottom:1px solid var(--border);box-shadow:0 10px 24px rgba(0,0,0,.55)}
+.heroLinks-inner{max-width:1280px;margin:0 auto;padding:8px 16px;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.heroBtn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:600;
+  text-decoration:none;border:1px solid rgba(255,255,255,.35);background:rgba(8,26,21,.9);color:#eaf7f0;cursor:pointer;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background .18s ease, border-color .18s ease, transform .15s ease, box-shadow .15s ease}
+.heroBtn .icon{font-size:13px;opacity:.9}
+.heroBtn:hover{background:rgba(31,227,164,.18);border-color:rgba(31,227,164,.85);transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,0,0,.45)}
+.heroBtn-primary{border-color:rgba(0,0,0,.6);background:linear-gradient(180deg,var(--accent),var(--accent-2));color:#012418;
+  box-shadow:0 8px 18px rgba(31,227,164,.35), inset 0 0 0 1px rgba(0,0,0,.35)}
+.heroBtn-primary:hover{background:linear-gradient(180deg,#34f1b1,#15d199)}
+@media (max-width:768px){.heroLinks-inner{justify-content:center}}
 
 /* ===== LAYOUT ===== */
 .wrapper{width:100%;max-width:1280px;margin:0 auto;padding:0 16px}
 .grid{display:grid;gap:24px;grid-template-columns:260px 1fr;align-items:start}
 
 /* LEFT NAV */
-.nav{
-  background:linear-gradient(180deg,var(--inner),transparent),var(--panel);
+.nav{background:linear-gradient(180deg,var(--inner),transparent),var(--panel);
   border:1px solid var(--border);border-radius:18px;padding:16px;
-  box-shadow:0 10px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
-}
+  box-shadow:0 10px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03)}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.brand img{width:34px;height:34px;border-radius:50%;object-fit:cover;aspect-ratio:1/1}
+.brand img{width:34px;height:34px;border-radius:50%;object-fit:cover}
 .brand h1{margin:0;font:800 22px/1 "Sora",sans-serif;color:#fff;letter-spacing:.06em}
-.nav a{
-  display:block;padding:14px;border-radius:12px;margin-bottom:10px;text-decoration:none;
-  color:#fff;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));
-  border:1px solid rgba(255,255,255,.28);
-}
+.nav a{display:block;padding:14px;border-radius:12px;margin-bottom:10px;text-decoration:none;color:#fff;
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.28)}
 .nav a:is(:hover,:focus){background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.08))}
 .nav .note{margin-top:8px;font-size:12px;line-height:1.35;color:#eaf7f0;opacity:.95}
 
+/* install CTA */
+.install-cta{display:none;min-width:auto;width:100%;margin-top:10px;padding:10px 12px;font-size:13px;justify-content:center}
+
 /* RIGHT CONTENT */
-.main{
-  display:grid; gap:24px;
-  grid-template-areas:
-    "metrics metrics"
-    "pool    pool"
-    "swap    recent"
-    "notes   notes"
-    "analytics analytics"
-    "stake   stake";
-  grid-template-columns:1fr 1fr;
-}
-.card{
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04)),var(--panel-2);
+.main{display:grid;gap:24px;
+  grid-template-areas:"metrics metrics" "pool pool" "swap recent" "notes notes" "analytics analytics" "stake stake";
+  grid-template-columns:1fr 1fr}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04)),var(--panel-2);
   border:1px solid var(--border);border-radius:18px;padding:16px;color:#fff;
   box-shadow:0 10px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.10);
-  backdrop-filter: blur(10px) saturate(140%) brightness(1.05);
-  -webkit-backdrop-filter: blur(10px) saturate(140%) brightness(1.05);
-}
+  backdrop-filter: blur(10px) saturate(140%) brightness(1.05);-webkit-backdrop-filter: blur(10px) saturate(140%) brightness(1.05)}
 h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
-
 .metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
-.metric h4{margin:0 0 6px;font-weight:700}
-.metric .v{font-weight:800;font-size:26px}
-.pool{grid-area:pool}
-.swap{grid-area:swap}
-.recent{grid-area:recent}
-.notes{grid-area:notes}
-.analytics{grid-area:analytics}
-.stake{grid-area:stake}
+.metric h4{margin:0 0 6px;font-weight:700}.metric .v{font-weight:800;font-size:26px}
+.pool{grid-area:pool}.swap{grid-area:swap}.recent{grid-area:recent}.notes{grid-area:notes}.analytics{grid-area:analytics}.stake{grid-area:stake}
 
-/* ===== INPUTS / BUTTONS ===== */
+/* INPUTS & BUTTONS */
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.input{
-  flex:1;display:flex;align-items:center;gap:10px;
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);
-  border-radius:14px;padding:10px 12px;margin:10px 0;min-height:52px
-}
+.input{flex:1;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);
+  border-radius:14px;padding:10px 12px;margin:10px 0;min-height:52px}
 .input input{flex:1;background:transparent;border:0;outline:0;color:#fff;font-size:20px;font-weight:700;min-width:0}
-.tokenBtn{
-  display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;cursor:pointer;
-  background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.22);color:#fff;white-space:nowrap
-}
-.tokenBtn img{width:22px;height:22px;border-radius:50%;object-fit:cover;aspect-ratio:1/1}
+.tokenBtn{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;cursor:pointer;
+  background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.22);color:#fff;white-space:nowrap}
+.tokenBtn img{width:22px;height:22px;border-radius:50%;object-fit:cover}
 .flip{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.22);color:#fff;opacity:.85;cursor:pointer}
 .helper{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap}
 .helper input{width:78px;border:1px solid var(--border);background:transparent;color:#fff;border-radius:10px;padding:7px 8px}
-.btn{
-  display:inline-block;min-width:140px;text-align:center;padding:14px 18px;border-radius:14px;border:0;cursor:pointer;
+.btn{display:inline-block;min-width:140px;text-align:center;padding:14px 18px;border-radius:14px;border:0;cursor:pointer;
   background:linear-gradient(180deg,var(--accent),var(--accent-2));color:#012418;font-weight:900;font-family:"Sora",sans-serif;
-  box-shadow:0 10px 26px rgba(31,227,164,.28), inset 0 0 0 1px rgba(0,0,0,.25);
-}
+  box-shadow:0 10px 26px rgba(31,227,164,.28), inset 0 0 0 1px rgba(0,0,0,.25)}
 .btn.ghost{background:transparent;color:#eaf7f0;border:1px solid rgba(255,255,255,.28);box-shadow:none}
 
-/* Notes 긴 문자열 */
-.wrap{word-break:break-word;overflow-wrap:anywhere}
+/* stake: MAX 버튼을 입력 내부 고정 */
+.input--stake{position:relative}
+.input--stake input{padding-right:92px}
+.input--stake .max{position:absolute;top:50%;right:8px;transform:translateY(-50%);height:40px;padding:0 16px;border:0;border-radius:12px;
+  font-weight:800;font-family:"Sora",sans-serif;color:#012418;background:linear-gradient(180deg,var(--accent),var(--accent-2));
+  box-shadow:0 6px 18px rgba(31,227,164,.28), inset 0 0 0 1px rgba(0,0,0,.25);cursor:pointer;transition:transform .15s ease, box-shadow .15s ease}
+.input--stake .max:hover{transform:translateY(-50%) translateY(-1px);box-shadow:0 8px 20px rgba(31,227,164,.35)}
 
-/* ====== Stake: MAX 버튼을 입력 박스 내부에 고정 ====== */
-.input--stake{ position:relative; }
-.input--stake input{ padding-right:92px; }
-.input--stake .max{
-  position:absolute; top:50%; right:8px; transform:translateY(-50%);
-  height:40px; padding:0 16px; border:0; border-radius:12px;
-  font-weight:800; font-family:"Sora",sans-serif; color:#012418;
-  background:linear-gradient(180deg,var(--accent),var(--accent-2));
-  box-shadow:0 6px 18px rgba(31,227,164,.28), inset 0 0 0 1px rgba(0,0,0,.25);
-  cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
-}
-.input--stake .max:hover{ transform:translateY(-50%) translateY(-1px); box-shadow:0 8px 20px rgba(31,227,164,.35); }
-
-/* STAKE layout */
 .stake .statGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px}
 .stake .stat{border:1px solid var(--border);border-radius:14px;padding:14px}
 .stake .tabs{display:flex;gap:12px;margin:8px 0 10px}
@@ -144,54 +127,46 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 .stake .stake-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
 .stake .stake-actions .btn{min-width:auto;width:100%}
 .stake .claimRow{display:flex;justify-content:flex-end;margin-top:12px}
-@media (max-width:560px){
-  .stake .statGrid{grid-template-columns:1fr}
-  .stake .stake-actions{grid-template-columns:1fr}
-}
+@media (max-width:560px){.stake .statGrid{grid-template-columns:1fr}.stake .stake-actions{grid-template-columns:1fr}}
 
-/* Analytics small KPI */
-.kpiGrid{display:grid;gap:12px;grid-template-columns:repeat(3,1fr)}
-.kpi{border:1px solid var(--border);border-radius:14px;padding:12px}
-@media (max-width:700px){.kpiGrid{grid-template-columns:1fr}}
-
-/* Token Selector Modal */
-dialog#tokModal{
-  border:1px solid var(--border);border-radius:16px;background:rgba(12,29,25,.92);
-  color:#fff;padding:0;max-width:min(560px,95vw)
-}
-#tokModal header{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.18);font-weight:800}
-#tokModal .content{padding:16px}
-#tokList .item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer}
-#tokList .item:hover{background:rgba(255,255,255,.08)}
-#tokList img{width:22px;height:22px;border-radius:50%;object-fit:cover}
+/* analytics kpis */
+.kpiGrid{display:grid;gap:12px;grid-template-columns:repeat(6,1fr)}
+.kpi{border:1px solid var(--border);border-radius:14px;padding:12px;min-height:84px}
+.kpi .label{opacity:.9;font-weight:700;margin-bottom:6px}
+.kpi .val{font-weight:800;font-size:22px}
+.kpi .sub{opacity:.75;font-size:12px;margin-top:2px}
+@media (max-width:1000px){.kpiGrid{grid-template-columns:repeat(3,1fr)}}@media (max-width:700px){.kpiGrid{grid-template-columns:1fr}}
+.anaGrid{display:grid;gap:16px;grid-template-columns:2fr 1fr 1fr}
+@media (max-width:1000px){.anaGrid{grid-template-columns:1fr}}
+.vizCard{border:1px solid var(--border);border-radius:14px;padding:14px;background:rgba(255,255,255,.04)}
+.vizHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.vizHead .title{font-weight:800}.vizHead .hint{opacity:.75;font-size:12px}
+.sparkWrap{height:180px;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01))}
+.sparkWrap canvas{width:100%;height:100%}
+.donutWrap,.gaugeWrap{height:220px;display:grid;place-items:center}
+.centerStat{position:absolute;text-align:center}.centerStat .big{font:800 26px/1 "Sora",sans-serif}.centerStat .cap{opacity:.8;font-size:12px;margin-top:4px}
+.ring{position:relative;width:200px;height:200px}.ring canvas{width:100%;height:100%}
+.gauge{position:relative;width:220px;height:120px}.gauge canvas{width:100%;height:100%}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.legend .dot{width:10px;height:10px;border-radius:50%}.legend .item{display:flex;align-items:center;gap:6px;opacity:.9}
+.ribbon{margin-top:12px;border:1px dashed var(--border);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(31,227,164,.08),rgba(31,227,164,.02))}
 
 /* 모바일 중앙 고정 */
 @media (max-width:768px){
-  .wrapper{padding:0;}
-  .grid{
-    display:flex; flex-direction:column; gap:24px;
-    width:min(92vw,640px);
-    position:relative; left:50%; transform:translateX(-50%);
-  }
+  .wrapper{padding:0}
+  .grid{display:flex;flex-direction:column;gap:24px;width:min(92vw,640px);position:relative;left:50%;transform:translateX(-50%)}
   .nav,.main{width:100%;max-width:min(92vw,640px);margin:0 auto}
   .main{display:flex;flex-direction:column;align-items:center;gap:24px}
   .metrics{display:flex;flex-direction:column;gap:16px;width:100%}
-  .metrics .card,.main > section,.card{width:100%;margin-left:auto;margin-right:auto}
+  .metrics .card,.main>section,.card{width:100%;margin-left:auto;margin-right:auto}
   .notes .inner{width:100%;margin:0 auto}
 }
 
-/* === TOP 버튼 === */
-#toTop{
-  position:fixed; right:14px; bottom:18px; z-index:9999;
-  width:42px; height:42px; border-radius:50%;
-  display:grid; place-items:center;
-  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
-  backdrop-filter: blur(6px);
-  cursor:pointer; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
-}
+/* TOP 버튼 */
+#toTop{position:fixed;right:14px;bottom:18px;z-index:9999;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(6px);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease}
 #toTop svg{width:20px;height:20px;fill:#fff;opacity:.95}
-#toTop.show{opacity:.85; pointer-events:auto}
-#toTop:hover{opacity:1; transform:translateY(-2px)}
+#toTop.show{opacity:.85;pointer-events:auto}
+#toTop:hover{opacity:1;transform:translateY(-2px)}
 </style>
 </head>
 <body>
@@ -203,6 +178,16 @@ dialog#tokModal{
       <h2>NEW DEX INNOVATION</h2>
       <p>Where transparency meets performance</p>
     </div>
+  </div>
+</section>
+
+<!-- Link bar -->
+<section class="heroLinks">
+  <div class="heroLinks-inner">
+    <a class="heroBtn" href="https://t.me/GLIPFoundation" target="_blank" rel="noopener noreferrer"><span class="icon">💬</span><span>Telegram</span></a>
+    <a class="heroBtn" href="mailto:contact_lounge@glipchain.com"><span class="icon">✉️</span><span>Email</span></a>
+    <a class="heroBtn" href="https://glipchain.com" target="_blank" rel="noopener noreferrer"><span class="icon">🌐</span><span>GLIP Official</span></a>
+    <button class="heroBtn heroBtn-primary" type="button" id="btnListing"><span class="icon">📈</span><span>Listing Inquiry</span></button>
   </div>
 </section>
 
@@ -219,6 +204,7 @@ dialog#tokModal{
       <a href="#analytics">Analytics</a>
       <a href="#stake">Stake</a>
       <div class="note">Smart-order routing via 0x API. DYOR — not financial advice.</div>
+      <button class="btn install-cta" id="installSide" type="button">Install G-DEX App</button>
     </aside>
 
     <!-- RIGHT CONTENT -->
@@ -268,13 +254,11 @@ dialog#tokModal{
       <!-- Swap -->
       <section class="card swap" id="swap">
         <h3>Swap</h3>
-
         <div class="input">
           <input id="sell" placeholder="0.0" type="number" min="0" step="any">
           <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS">ETH</span></button>
         </div>
 
-        <!-- ⇅ 버튼을 중앙 정렬하고 오른쪽 ‘—’ 제거 -->
         <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
 
         <div class="input">
@@ -282,7 +266,10 @@ dialog#tokModal{
           <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS">GLIP</span></button>
         </div>
 
-        <div class="helper"><div>Slippage <input id="slip" type="number" value="2" min="0" max="10" step="0.1"> %</div><button class="btn">Connect Wallet</button></div>
+        <div class="helper">
+          <div>Slippage <input id="slip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
+          <button class="btn" id="swapConnect">Connect Wallet</button>
+        </div>
         <div style="height:10px"></div>
         <button class="btn" style="width:100%">Swap</button>
       </section>
@@ -298,70 +285,34 @@ dialog#tokModal{
       <section class="card notes">
         <h3>Notes</h3>
         <div class="card inner" style="background:rgba(255,255,255,.04);border:1px dashed var(--border)">
-          <p class="wrap" style="margin:.2rem 0">• GLIP contract:
-            0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e
-          </p>
+          <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
           <p class="wrap" style="margin:.2rem 0">• Router: 0x API Exchange Proxy (auto-selected in quotes).</p>
           <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals requested only when needed.</p>
         </div>
+        <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
       </section>
 
-      <!-- Analytics (with ESG) -->
+      <!-- Analytics (compact demo) -->
       <section class="card analytics" id="analytics">
-        <h3>Analytics</h3>
+        <h3>Analytics — “Blockchain that gives back”</h3>
         <div class="kpiGrid">
-          <div class="kpi">
-            <div style="opacity:.9;font-weight:700;margin-bottom:6px">TVL (USD)</div>
-            <div id="kpiTVL" style="font-weight:800;font-size:26px">—</div>
-          </div>
-          <div class="kpi">
-            <div style="opacity:.9;font-weight:700;margin-bottom:6px">24h Volume</div>
-            <div id="kpiVol" style="font-weight:800;font-size:26px">—</div>
-          </div>
-          <div class="kpi">
-            <div style="opacity:.9;font-weight:700;margin-bottom:6px">Traders (24h)</div>
-            <div id="kpiTraders" style="font-weight:800;font-size:26px">—</div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:12px;background:rgba(255,255,255,.04)">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-            <div>
-              <div style="font-weight:700;margin-bottom:4px">ESG Contribution</div>
-              <div style="opacity:.85">Quarterly fee-rebate allocation to ESG pool</div>
-            </div>
-            <div style="min-width:220px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
-              <div style="height:10px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden">
-                <div id="esgBar" style="width:0%;height:100%;background:linear-gradient(90deg,#1fe3a4,#11c48c)"></div>
-              </div>
-              <div id="esgPct" style="font-weight:800">0%</div>
-            </div>
-          </div>
-          <div style="margin-top:8px;opacity:.85" id="esgNote">—</div>
+          <div class="kpi"><div class="label">Rebate Rate (R%)</div><div class="val" id="kRebate">12%</div><div class="sub">Governance-set quarterly</div></div>
+          <div class="kpi"><div class="label">Returned to Users (QTD)</div><div class="val" id="kReturned">$ 0</div><div class="sub">Cumulative fee-rebates</div></div>
+          <div class="kpi"><div class="label">ESG Vault Accrual (QTD)</div><div class="val" id="kESG">$ 0</div><div class="sub">Green funds & impact</div></div>
+          <div class="kpi"><div class="label">Transparency Index</div><div class="val" id="kTransparency">—</div><div class="sub">On-chain proof & disclosures</div></div>
+          <div class="kpi"><div class="label">Gov. Turnout (last vote)</div><div class="val" id="kTurnout">—</div><div class="sub">Community participation</div></div>
+          <div class="kpi"><div class="label">GLIP Green Score</div><div class="val" id="kGreen">—</div><div class="sub">Fee impact × ESG allocation</div></div>
         </div>
       </section>
 
       <!-- Stake -->
       <section class="card stake" id="stake">
         <h3>Stake</h3>
-
         <div class="statGrid">
-          <div class="stat">
-            <div style="opacity:.85;font-weight:700">APR</div>
-            <div id="apr" style="font-weight:800;font-size:22px;margin-top:4px">—</div>
-          </div>
-          <div class="stat">
-            <div style="opacity:.85;font-weight:700">My Staked</div>
-            <div id="myStaked" style="font-weight:800;font-size:22px;margin-top:4px">—</div>
-          </div>
-          <div class="stat">
-            <div style="opacity:.85;font-weight:700">Earned</div>
-            <div id="earned" style="font-weight:800;font-size:22px;margin-top:4px">—</div>
-          </div>
-          <div class="stat">
-            <div style="opacity:.85;font-weight:700">Lock</div>
-            <div style="font-weight:800;font-size:22px;margin-top:4px">Flexible</div>
-          </div>
+          <div class="stat"><div style="opacity:.85;font-weight:700">APR</div><div id="apr" style="font-weight:800;font-size:22px;margin-top:4px">—</div></div>
+          <div class="stat"><div style="opacity:.85;font-weight:700">My Staked</div><div id="myStaked" style="font-weight:800;font-size:22px;margin-top:4px">—</div></div>
+          <div class="stat"><div style="opacity:.85;font-weight:700">Earned</div><div id="earned" style="font-weight:800;font-size:22px;margin-top:4px">—</div></div>
+          <div class="stat"><div style="opacity:.85;font-weight:700">Lock</div><div style="font-weight:800;font-size:22px;margin-top:4px">Flexible</div></div>
         </div>
 
         <div class="tabs">
@@ -370,29 +321,20 @@ dialog#tokModal{
         </div>
 
         <div class="amountBox">
-          <!-- 입력 박스 내부에 MAX 버튼 고정 -->
           <div class="input input--stake" style="margin:0;">
             <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any">
             <button class="max" type="button">MAX</button>
           </div>
-
           <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
-
           <div class="stake-actions">
             <button class="btn" id="btnConn">Connect Wallet</button>
             <button class="btn" id="btnStake">Stake GLIP</button>
           </div>
-
           <div style="margin-top:10px">Est. Rewards (30d): <span id="est30">—</span></div>
         </div>
 
-        <div class="claimRow">
-          <button class="btn ghost" id="btnClaim">Claim Rewards</button>
-        </div>
-
-        <div style="margin-top:12px;opacity:.85">
-          Note: Rewards stream per block. Claim triggers transfer from RewardsVault. (Demo data)
-        </div>
+        <div class="claimRow"><button class="btn ghost" id="btnClaim">Claim Rewards</button></div>
+        <div style="margin-top:12px;opacity:.85">Note: Rewards stream per block. Claim triggers transfer from RewardsVault. (Demo data)</div>
       </section>
     </main>
   </div>
@@ -404,112 +346,158 @@ dialog#tokModal{
 </button>
 
 <!-- Token Selector Modal -->
-<dialog id="tokModal">
-  <header>Select a token</header>
-  <div class="content">
-    <div id="tokList"></div>
-  </div>
+<dialog id="tokModal"><header style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.18);font-weight:800">Select a token</header>
+  <div class="content" style="padding:16px"><div id="tokList"></div></div>
 </dialog>
 
+<!-- Web3Modal + Ethers -->
+<script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.12/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+
 <script>
-/* ===== Token List ===== */
+/* ===== 1) 최소 토큰(아이콘 테스트용) ===== */
 const tokenList = [
   {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png", priority:100},
-  {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18,
-   logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png", priority:99},
-  {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6,
-   logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png", priority:95},
-  {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6,
-   logo:"https://cryptologos.cc/logos/usd-coin-usdc-logo.png", priority:94},
-  {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18,
-   logo:"https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png", priority:93}
+   logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
+  {symbol:"GLIP", name:"GLIP Token",
+   address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18,
+   logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"}
 ];
+const $ = s=>document.querySelector(s);
+const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'—';
 
-/* 기본 아이콘/심볼/주소 세팅 */
-(function initDefaults(){
-  const ETH = tokenList.find(t=>t.symbol==="ETH");
-  const GLIP= tokenList.find(t=>t.symbol==="GLIP");
+/* ===== 2) 초기 아이콘/심볼 적용 ===== */
+function initDefaults(){
+  const ETH  = tokenList.find(t=>t.symbol==="ETH");
+  const GLIP = tokenList.find(t=>t.symbol==="GLIP");
   // Swap
-  sellI.src=ETH.logo; sellS.textContent="ETH"; sellS.dataset.address="ETH";
-  buyI.src=GLIP.logo; buyS.textContent="GLIP"; buyS.dataset.address=GLIP.address;
+  $('#sellI').src = ETH.logo;  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
+  $('#buyI').src  = GLIP.logo; $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP.address;
   // Pool
-  pT0Img.src=ETH.logo; pT0Sym.textContent="ETH"; pT0Sym.dataset.address="ETH";
-  pT1Img.src=GLIP.logo; pT1Sym.textContent="GLIP"; pT1Sym.dataset.address=GLIP.address;
-})();
+  $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
+  $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
+}
 
-/* 토큰 선택 모달 */
+/* ===== 3) 토큰 선택 모달 ===== */
 const dlg = document.getElementById('tokModal');
 const list = document.getElementById('tokList');
-let target = null; // {imgEl, symEl}
-function logo(t){return t.logo || "https://via.placeholder.com/64";}
+let target = null;
 function openFor(imgEl, symEl){
   target = {imgEl, symEl};
-  list.innerHTML = tokenList.map(t=>(
-    `<div class="item" data-sym="${t.symbol}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
-       <img src="${logo(t)}" alt="" style="width:22px;height:22px;border-radius:50%"/>
-       <strong>${t.symbol}</strong>
-       <span style="margin-left:6px;opacity:.85">${t.name}</span>
-       <span style="margin-left:auto;opacity:.7">${t.address==="ETH"?"ETH":t.address.slice(0,6)+"…"+t.address.slice(-4)}</span>
-     </div>`
-  )).join('');
+  list.innerHTML = tokenList.map(t=>`
+    <div class="item" data-sym="${t.symbol}"
+      style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
+      <img src="${t.logo}" style="width:22px;height:22px;border-radius:50%" alt="">
+      <strong>${t.symbol}</strong>
+      <span style="margin-left:6px;opacity:.85">${t.name}</span>
+      <span style="margin-left:auto;opacity:.7">${t.address==="ETH"?"ETH":t.address.slice(0,6)+"…"+t.address.slice(-4)}</span>
+    </div>`).join('');
   dlg.showModal();
 }
-list.onclick = (e)=>{
+list.onclick = e=>{
   const row = e.target.closest('.item'); if(!row||!target) return;
   const t = tokenList.find(x=>x.symbol===row.dataset.sym);
-  target.imgEl.src = logo(t);
+  target.imgEl.src = t.logo;
   target.symEl.textContent = t.symbol;
   target.symEl.dataset.address = t.address;
   dlg.close();
 };
 dlg.addEventListener('click',e=>{ if(e.target===dlg) dlg.close(); });
 
-/* 버튼 연결 */
-sellBtn.onclick = ()=>openFor(sellI, sellS);
-buyBtn.onclick  = ()=>openFor(buyI,  buyS);
-pT0Btn.onclick  = ()=>openFor(pT0Img,pT0Sym);
-pT1Btn.onclick  = ()=>openFor(pT1Img,pT1Sym);
-
-/* Flip 공통 */
-function flipTokenMeta(imgA, symA, imgB, symB){
-  const tmpSrc=imgA.src; imgA.src=imgB.src; imgB.src=tmpSrc;
-  const tmpSym=symA.textContent; symA.textContent=symB.textContent; symB.textContent=tmpSym;
-  const aAddr=symA.dataset.address, bAddr=symB.dataset.address;
-  symA.dataset.address=bAddr??""; symB.dataset.address=aAddr??"";
+function bindTokenButtons(){
+  $('#sellBtn').onclick = ()=>openFor($('#sellI'), $('#sellS'));
+  $('#buyBtn').onclick  = ()=>openFor($('#buyI'),  $('#buyS'));
+  $('#pT0Btn').onclick  = ()=>openFor($('#pT0Img'),$('#pT0Sym'));
+  $('#pT1Btn').onclick  = ()=>openFor($('#pT1Img'),$('#pT1Sym'));
 }
-flip.onclick = ()=>flipTokenMeta(sellI, sellS, buyI, buyS);
-pFlip.onclick = ()=>flipTokenMeta(pT0Img, pT0Sym, pT1Img, pT1Sym);
 
-/* Pool preview (demo) */
-(function(){
-  const a0=pAmt0, a1=pAmt1, p=pPrice, sh=pShare;
-  function preview(){
-    const v0=parseFloat(a0.value||0), v1=parseFloat(a1.value||0);
-    p.textContent = (v0>0 && v1>0)? (v1/v0).toFixed(6) : "—";
-    sh.textContent = (v0+v1>0)? (Math.min(100, Math.log10(v0+v1+1)*20).toFixed(2)+" %") : "—";
+/* Flip */
+function flipTokenMeta(imgA, symA, imgB, symB){
+  const s=imgA.src; imgA.src=imgB.src; imgB.src=s;
+  const t=symA.textContent; symA.textContent=symB.textContent; symB.textContent=t;
+  const a=symA.dataset.address, b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
+}
+function bindFlip(){
+  $('#flip').onclick  = ()=>flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
+  $('#pFlip').onclick = ()=>flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
+}
+
+/* ===== 4) Wallet Connect ===== */
+let web3Modal, web3Provider, signer, userAddress;
+async function connectWallet(){
+  try{
+    const Web3ModalCtor = window.Web3Modal?.default || window.Web3Modal;
+    if(!web3Modal) web3Modal = new Web3ModalCtor({ cacheProvider:true, providerOptions:{} });
+    const instance = await web3Modal.connect();
+    web3Provider = new ethers.providers.Web3Provider(instance);
+    signer = web3Provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    $('#wAddr').textContent = short(userAddress);
+    ['poolConnect','btnConn','swapConnect'].forEach(id=>{
+      const el=document.getElementById(id); if(el){ el.textContent='Connected'; el.classList.add('ghost'); }
+    });
+
+    instance.on?.('accountsChanged', acc=>{
+      userAddress = acc && acc.length ? acc[0] : null;
+      $('#wAddr').textContent = short(userAddress);
+    });
+    instance.on?.('chainChanged', _=>{ /* network change hook */ });
+  }catch(err){
+    console.error('[connectWallet]', err);
+    alert('Wallet connection failed (see console).');
   }
-  a0.addEventListener('input',preview); a1.addEventListener('input',preview);
-})();
+}
+function bindConnect(){
+  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.onclick=connectWallet;
+  });
+  const maxBtn=document.querySelector('.input--stake .max');
+  if(maxBtn) maxBtn.onclick=()=>{ document.getElementById('stakeAmt').value='1000'; };
+}
 
-/* Analytics ESG 데모 수치 */
-(function(){
-  const tvl=125000, vol=8420, traders=312;
-  kpiTVL.textContent = "$ " + tvl.toLocaleString();
-  kpiVol.textContent = "$ " + vol.toLocaleString();
-  kpiTraders.textContent = traders.toLocaleString();
+/* TOP */
+function bindTop(){
+  const toTop=document.getElementById('toTop');
+  function toggleTop(){ (window.scrollY>200)?toTop.classList.add('show'):toTop.classList.remove('show'); }
+  toggleTop(); window.addEventListener('scroll', toggleTop);
+  toTop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
+}
 
-  const esgRate = 12;
-  esgBar.style.width = esgRate + "%";
-  esgPct.textContent = esgRate + "%";
-  esgNote.textContent = "Current quarter allocation to ESG vault estimated at " + esgRate + "% of net fees (demo).";
-})();
+/* ===== 5) PWA install (옵션) ===== */
+let deferredPrompt=null; const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
+function isStandaloneMode(){return matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true}
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
+});
+window.addEventListener('appinstalled', ()=>{ document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); });
+function handleInstallClick(){
+  if(isStandaloneMode()) return alert('G-DEX is already installed.');
+  if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); }); return; }
+  if(isIos){ alert('Safari에서 공유 아이콘(□↑) → "홈 화면에 추가"를 선택하세요.'); return; }
+  alert('Use your browser menu → "Add to Home screen".');
+}
 
-/* TOP 버튼 */
-const toTop = document.getElementById('toTop');
-function toggleTop(){ if (window.scrollY > 200) toTop.classList.add('show'); else toTop.classList.remove('show'); }
-toggleTop(); window.addEventListener('scroll', toggleTop);
-toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior:'smooth'}));
+/* ===== 6) Boot ===== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  try{
+    initDefaults();
+    bindTokenButtons();
+    bindFlip();
+    bindConnect();
+    bindTop();
+    document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick));
+    if(isIos && !isStandaloneMode()) document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
+    // Demo stake numbers
+    document.getElementById('apr').textContent="12.5%";
+    document.getElementById('myStaked').textContent="1,250 GLIP";
+    document.getElementById('earned').textContent="42.4 GLIP";
+    document.getElementById('est30').textContent="≈ 12.8 GLIP";
+  }catch(e){
+    console.error('[init]', e); alert('Initialization error — see console.');
+  }
+});
 </script>
 </body>
 </html>
