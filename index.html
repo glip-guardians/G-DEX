@@ -910,6 +910,149 @@ function updateRibbon(d){
     `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
 }
 
+/* ===== 0x API 기반 Swap 로직 (mainnet) ===== */
+const ZEROX_BASE = 'https://api.0x.org'; // Ethereum mainnet
+
+// 주소/decimals 헬퍼
+function getTokenMeta(symbolOrAddress){
+  // symbol 이나 address 둘 다 허용
+  const t = tokenList.find(t =>
+    t.symbol === symbolOrAddress ||
+    t.address.toLowerCase() === symbolOrAddress.toLowerCase()
+  );
+  return t || null;
+}
+
+// 입력값 변경 시 가격 업데이트
+async function updatePricePreview(){
+  const sellVal = parseFloat(document.getElementById('sell').value || '0');
+  if(!sellVal || !userAddress) return; // 지갑 미연결/0 이면 스킵
+
+  const sellSym = document.getElementById('sellS').textContent;
+  const buySym  = document.getElementById('buyS').textContent;
+
+  const sellMeta = getTokenMeta(sellSym);
+  const buyMeta  = getTokenMeta(buySym);
+  if(!sellMeta || !buyMeta) return;
+
+  // ETH 는 0x 에서 "ETH" 로, 나머지는 컨트랙트 주소
+  const sellToken = sellMeta.address === 'ETH' ? 'ETH' : sellMeta.address;
+  const buyToken  = buyMeta.address  === 'ETH' ? 'ETH' : buyMeta.address;
+
+  const sellAmountWei = BigInt(
+    Math.floor(sellVal * 10 ** sellMeta.decimals)
+  ).toString();
+
+  const url = `${ZEROX_BASE}/swap/v1/price` +
+    `?sellToken=${sellToken}&buyToken=${buyToken}&sellAmount=${sellAmountWei}`;
+
+  try{
+    const res = await fetch(url, { headers:{ '0x-api-key': '' } }); // api-key 없으면 기본 레이트리밋
+    if(!res.ok){
+      console.warn('0x price error', await res.text());
+      return;
+    }
+    const data = await res.json();
+
+    const buyAmount = Number(data.buyAmount) / (10 ** buyMeta.decimals);
+    document.getElementById('buy').value = buyAmount.toFixed(6);
+  }catch(e){
+    console.error('updatePricePreview error', e);
+  }
+}
+
+async function executeSwap(){
+  if(!userAddress){
+    alert('먼저 지갑을 연결해 주세요.');
+    return;
+  }
+
+  const sellVal = parseFloat(document.getElementById('sell').value || '0');
+  if(!sellVal){
+    alert('Swap 할 수량을 입력해 주세요.');
+    return;
+  }
+
+  const sellSym = document.getElementById('sellS').textContent;
+  const buySym  = document.getElementById('buyS').textContent;
+
+  const sellMeta = getTokenMeta(sellSym);
+  const buyMeta  = getTokenMeta(buySym);
+  if(!sellMeta || !buyMeta){
+    alert('토큰 정보를 찾을 수 없습니다.');
+    return;
+  }
+
+  const sellToken = sellMeta.address === 'ETH' ? 'ETH' : sellMeta.address;
+  const buyToken  = buyMeta.address  === 'ETH' ? 'ETH' : buyMeta.address;
+  const sellAmountWei = BigInt(
+    Math.floor(sellVal * 10 ** sellMeta.decimals)
+  ).toString();
+
+  const slippage = parseFloat(document.getElementById('slip').value || '2');
+
+  const url = `${ZEROX_BASE}/swap/v1/quote` +
+    `?sellToken=${sellToken}&buyToken=${buyToken}` +
+    `&sellAmount=${sellAmountWei}&slippagePercentage=${(slippage/100).toFixed(4)}` +
+    `&takerAddress=${userAddress}`;
+
+  try{
+    const res = await fetch(url, { headers:{ '0x-api-key': '' } });
+    if(!res.ok){
+      const txt = await res.text();
+      console.error('0x quote error', txt);
+      alert('0x quote 오류:\n' + txt);
+      return;
+    }
+    const q = await res.json();
+
+    // 실제 트랜잭션 전송
+    const txParams = {
+      from: userAddress,
+      to:   q.to,
+      data: q.data,
+      value: q.value ? '0x' + BigInt(q.value).toString(16) : '0x0'
+    };
+
+    const txHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [txParams]
+    });
+
+    alert('Swap submitted:\n' + txHash);
+  }catch(e){
+    console.error('executeSwap error', e);
+    alert('Swap 실행 중 오류:\n' + (e.message || e));
+  }
+}
+
+function bindSwapLogic(){
+  const sellInput = document.getElementById('sell');
+  const flipBtn   = document.getElementById('flip');
+  const swapBtn   = document.getElementById('swapBtn');
+
+  if(sellInput){
+    ['input','change'].forEach(ev =>
+      sellInput.addEventListener(ev, ()=>updatePricePreview())
+    );
+  }
+  if(flipBtn){
+    flipBtn.addEventListener('click', ()=>setTimeout(updatePricePreview, 50));
+  }
+  if(swapBtn){
+    swapBtn.addEventListener('click', executeSwap);
+  }
+}
+
+/* ===== 0x API 기반 Swap 로직 (mainnet) ===== */
+const FEE_ADDRESS = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
+const FEE_BPS = 8; // 0.25% 같은 식으로
+
+function bindSwapLogic(){
+  // 여기서 #sell, #buy, #swap 버튼에 이벤트 연결
+  // 0x quote 불러오기, swap 실행, 수수료 계산 등
+}
+  
 /* ===== Boot ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
   try{
@@ -934,6 +1077,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
     drawGauge(demoAnalytics);
+    // 🔹 0x 스왑 UI/이벤트 바인딩
+    bindSwapLogic();
     window.addEventListener('resize', ()=>{
       drawSpark(demoAnalytics);
       drawDonut(demoAnalytics);
@@ -944,10 +1089,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     alert('Initialization error — see console.');
   }
 });
+  
 </script>
 </body>
 </html>
 <br><br>
+
 
 
 
