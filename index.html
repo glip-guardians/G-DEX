@@ -565,7 +565,7 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
-// DApp host
+// DApp host (MetaMask 딥링크용)
 const DAPP_HOST = 'gdex-app.com';
 
 // 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
@@ -606,7 +606,6 @@ async function postToBackend(path, body) {
 
   console.log("[backend res]", path, res.status, text);
 
-  // HTTP 에러코드면 그대로 프런트에 에러로 던짐
   if (!res.ok) {
     let payload;
     try {
@@ -620,7 +619,6 @@ async function postToBackend(path, body) {
     );
   }
 
-  // 200 이지만 JSON 이 아닐 수도 있으니 방어
   try {
     return JSON.parse(text);
   } catch (e) {
@@ -649,7 +647,6 @@ function openMetaMaskDeepLink() {
   const deepLink = `https://metamask.app.link/dapp/${target}`;
   window.location.href = deepLink;
 }
-
 
 /* ===== 토큰리스트 ===== */
 const tokenList = [
@@ -980,7 +977,7 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== Backend-based Swap logic (0x handled server-side) ====
+   ===== Token meta & amount helpers ===========================
    ============================================================ */
 
 // 토큰 메타 조회
@@ -990,6 +987,17 @@ function getTokenMeta(symbolOrAddress) {
     t.address?.toLowerCase() === symbolOrAddress?.toLowerCase()
   );
 }
+
+// 실제 사용하는 소수자릿수 결정 (ETH는 항상 18)
+function getEffectiveDecimals(meta) {
+  if (!meta) return 18;
+  if (meta.symbol === "ETH" || meta.address === "ETH") return 18;
+  return typeof meta.decimals === "number" ? meta.decimals : 18;
+}
+
+/* ============================================================
+   ===== Backend-based Swap logic (0x handled server-side) ====
+   ============================================================ */
 
 // 가격 미리보기 (sell → buy), /quote 사용
 async function updatePricePreview() {
@@ -1009,8 +1017,10 @@ async function updatePricePreview() {
   const buyMeta  = getTokenMeta(buySym);
   if (!sellMeta || !buyMeta) return;
 
+  // 🔹 프런트에서 한 번만 단위 변환
+  const decimals = getEffectiveDecimals(sellMeta);
   const sellAmountRaw = BigInt(
-    Math.floor(sellVal * 10 ** sellMeta.decimals)
+    Math.floor(sellVal * 10 ** decimals)
   ).toString();
 
   const slipInput = document.getElementById("slip");
@@ -1033,7 +1043,6 @@ async function updatePricePreview() {
     buyInput.value = buyAmount.toFixed(6);
   } catch (err) {
     console.error("[updatePricePreview] error", err);
-    // 미리보기일 뿐이지만, 지금은 문제를 확인해야 하니 팝업도 띄움
     showErrorPopup("Quote request failed", err);
     buyInput.value = "";
   }
@@ -1063,9 +1072,10 @@ async function executeSwap() {
       return;
     }
 
-    // 이미 프런트에서 1번만 단위 변환: amount → wei 문자열
+    // 🔹 프런트에서 한 번만 단위 변환 (updatePricePreview와 동일 로직)
+    const decimals = getEffectiveDecimals(sellMeta);
     const sellAmountRaw = BigInt(
-      Math.floor(sellVal * 10 ** sellMeta.decimals)
+      Math.floor(sellVal * 10 ** decimals)
     ).toString();
 
     const slipInput = document.getElementById("slip");
@@ -1081,15 +1091,10 @@ async function executeSwap() {
 
     console.log("[/swap raw response]", swapRes);
 
-    // 백엔드가 { tx: { ... } } 형태로 줄 수도 있고, 평평한 {to,data,...} 로 줄 수도 있으니 둘 다 대응
-    const tx = swapRes && swapRes.tx ? swapRes.tx : swapRes;
+    const tx = swapRes.tx || swapRes; // server.js 에서 { tx } 형태로 반환
 
-    if (!tx || typeof tx !== "object") {
+    if (!tx || !tx.to || !tx.data) {
       showErrorPopup("Backend /swap returned malformed tx", swapRes);
-      return;
-    }
-    if (!tx.to || !tx.data) {
-      showErrorPopup("Backend /swap did not return valid tx fields", swapRes);
       return;
     }
 
@@ -1098,17 +1103,15 @@ async function executeSwap() {
       return;
     }
 
-    // 0x v2 트랜잭션 그대로 전달
     const txParams = {
       from: userAddress,
       to:   tx.to,
       data: tx.data
     };
 
-    // value / gas / gasPrice 가 있으면 그대로 전달 (대부분 0x-hex 문자열)
-    if (tx.value != null)    txParams.value    = tx.value;
-    if (tx.gas != null)      txParams.gas      = tx.gas;
-    if (tx.gasPrice != null) txParams.gasPrice = tx.gasPrice;
+    if (tx.value)    txParams.value    = tx.value;
+    if (tx.gas)      txParams.gas      = tx.gas;
+    if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
 
     console.log("[swap-tx] params", txParams);
 
@@ -1125,7 +1128,6 @@ async function executeSwap() {
     showErrorPopup("Swap failed", err);
   }
 }
-
 
 // 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
@@ -1187,6 +1189,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
-
-
