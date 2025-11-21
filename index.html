@@ -905,13 +905,10 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== 0x API 기반 Swap 로직 (Ethereum Mainnet) ============
+   ===== 0x API 기반 Swap 로직 (Ethereum Mainnet, 공개키 X) ====
    ============================================================ */
 
-const ZEROX_BASE    = "https://api.0x.org";
-const ZEROX_API_KEY = "5527155c-879f-4194-a986-b81d02ca81b2";
-const FEE_ADDRESS   = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
-const FEE_BPS       = 8;   // 0.08%
+const ZEROX_BASE = "https://api.0x.org";
 
 // 토큰 메타 조회
 function getTokenMeta(symbolOrAddress) {
@@ -946,7 +943,6 @@ async function updatePricePreview() {
   const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
 
   const params = new URLSearchParams({
-    chainId: "1",
     sellToken,
     buyToken,
     sellAmount: sellAmountWei
@@ -957,12 +953,7 @@ async function updatePricePreview() {
   console.log("[0x-price] request", { url, sellToken, buyToken, sellAmountWei });
 
   try {
-    const res = await fetch(url, {
-      headers: {
-        "0x-api-key": ZEROX_API_KEY,
-        "0x-version": "v2"
-      }
-    });
+    const res = await fetch(url);   // 키 없이 호출
     const txt = await res.text();
 
     console.log("[0x-price] raw response", res.status, txt);
@@ -1013,16 +1004,16 @@ async function executeSwap() {
 
   const slippage = parseFloat(document.getElementById("slip").value || "2");
   const slippagePct = slippage / 100;                    // ex) 2% → 0.02
-  const feePct = FEE_BPS / 10000;                        // ex) 8bps → 0.0008
+  const feeRecipient = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
+  const feePct = 8 / 10000;                              // 8bps → 0.0008
 
   const params = new URLSearchParams({
-    chainId: "1",
     sellToken,
     buyToken,
     sellAmount: sellAmountWei,
     takerAddress: userAddress,
     slippagePercentage: slippagePct.toString(),
-    feeRecipient: FEE_ADDRESS,
+    feeRecipient,
     buyTokenPercentageFee: feePct.toString()
   });
 
@@ -1034,12 +1025,7 @@ async function executeSwap() {
   });
 
   try {
-    const res = await fetch(url, {
-      headers: {
-        "0x-api-key": ZEROX_API_KEY,
-        "0x-version": "v2"
-      }
-    });
+    const res = await fetch(url);   // 키 없는 공개 요청
     const txt = await res.text();
 
     console.log("[0x-quote] raw response", res.status, txt);
@@ -1138,7 +1124,7 @@ async function executeSwap() {
   }
 }
 
-// 스왑 UI 이벤트 바인딩 (중복 없음)
+// 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
