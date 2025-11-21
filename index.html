@@ -570,6 +570,33 @@ const DAPP_HOST = 'gdex-app.com';
 // 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
+// ===== Backend helper =====
+async function postToBackend(path, body) {
+  const url = `${BACKEND_URL}${path}`;
+  console.log("[backend]", path, body);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  const text = await res.text();
+  console.log("[backend res]", path, res.status, text);
+
+  if (!res.ok) {
+    throw new Error(text || `Backend ${path} error (${res.status})`);
+  }
+  return JSON.parse(text);
+}
+
+// 0x ETH sentinel wrapper
+function toBackendTokenAddress(meta) {
+  if (!meta) return "";
+  if (meta.address === "ETH") return ETH_ADDRESS_0X;
+  return meta.address;
+}
+  
 // 모바일 판별
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -910,7 +937,7 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== Backend proxy-based Swap logic (no direct 0x calls) ===
+   ===== Backend-based Swap logic (0x handled server-side) ====
    ============================================================ */
 
 // 토큰 메타 조회
@@ -921,42 +948,13 @@ function getTokenMeta(symbolOrAddress) {
   );
 }
 
-// frontend → backend 토큰 포맷 변환
-// ETH는 0x ETH sentinel 주소로 변환, 그 외는 그대로 contract address
-function toBackendTokenAddress(meta) {
-  if (!meta) return "";
-  if (meta.address === "ETH") return ETH_ADDRESS_0X;
-  return meta.address;
-}
-
-// Generic backend POST helper
-async function postToBackend(path, payload) {
-  const url = `${BACKEND_URL}${path}`;
-  console.log("[backend]", path, payload);
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const text = await res.text();
-  console.log("[backend raw]", res.status, text);
-
-  if (!res.ok) {
-    throw new Error(text || `Backend error (${res.status})`);
-  }
-  return JSON.parse(text);
-}
-
-// 가격 미리보기 (sell → buy)
-// uses backend /quote proxy only
+// 가격 미리보기 (sell → buy), /quote 사용
 async function updatePricePreview() {
   const sellInput = document.getElementById("sell");
   const buyInput  = document.getElementById("buy");
   const sellVal   = parseFloat(sellInput.value || "0");
 
-  if (!sellVal) {
+  if (!sellVal || sellVal <= 0) {
     buyInput.value = "";
     return;
   }
@@ -972,23 +970,28 @@ async function updatePricePreview() {
     Math.floor(sellVal * 10 ** sellMeta.decimals)
   ).toString();
 
+  // 슬리피지(%)를 0~1 값으로 변환 (예: 2% → 0.02)
+  const slipInput = document.getElementById("slip");
+  const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
+
   try {
-    const q = await postToBackend("/quote", {
+    const quote = await postToBackend("/quote", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
-      sellAmount: sellAmountRaw
+      sellAmount: sellAmountRaw,
+      slippagePercentage: slipPct
     });
 
-    if (!q.buyAmount) return;
-    const buyAmount = Number(q.buyAmount) / (10 ** buyMeta.decimals);
+    if (!quote.buyAmount) return;
+    const buyAmount = Number(quote.buyAmount) / (10 ** buyMeta.decimals);
     buyInput.value = buyAmount.toFixed(6);
   } catch (err) {
-    console.error("[updatePricePreview]", err);
-    // preview errors are silent in UI
+    console.error("[updatePricePreview] error", err);
+    // preview errors are non-blocking
   }
 }
 
-// 스왑 실행 (backend builds tx; no direct 0x calls)
+// 실제 스왑 실행, /swap 사용
 async function executeSwap() {
   try {
     if (!userAddress) {
@@ -1016,18 +1019,22 @@ async function executeSwap() {
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
 
-    // Ask backend to prepare a swap transaction (0x is handled server-side)
+    const slipInput = document.getElementById("slip");
+    const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
+
+    // 백엔드에 스왑 트랜잭션 생성 요청
     const swapRes = await postToBackend("/swap", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
       sellAmount: sellAmountRaw,
-      taker: userAddress
+      taker: userAddress,
+      slippagePercentage: slipPct
     });
 
     console.log("[/swap raw response]", swapRes);
 
-    // 다양한 응답 형태를 허용 (tx, quote, 직접 필드 등)
-    const tx = swapRes.tx || swapRes.quote || swapRes;
+    // server.js 에서 이미 tx 형식으로 반환하므로 그대로 사용
+    const tx = swapRes;
 
     if (!tx || !tx.to || !tx.data) {
       alert(
@@ -1037,19 +1044,15 @@ async function executeSwap() {
       return;
     }
 
-    // 지갑에 보낼 파라미터 구성
     const txParams = {
       from: userAddress,
-      to: tx.to,
+      to:   tx.to,
       data: tx.data
     };
 
-    // 선택 필드들(있을 때만 추가)
     if (tx.value) txParams.value = tx.value;
     if (tx.gas) txParams.gas = tx.gas;
     if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
-    if (tx.maxFeePerGas) txParams.maxFeePerGas = tx.maxFeePerGas;
-    if (tx.maxPriorityFeePerGas) txParams.maxPriorityFeePerGas = tx.maxPriorityFeePerGas;
 
     console.log("[swap-tx] params", txParams);
 
@@ -1066,7 +1069,6 @@ async function executeSwap() {
     alert("Swap failed:\n" + (err && err.message ? err.message : String(err)));
   }
 }
-
 
 // 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
@@ -1085,6 +1087,7 @@ function bindSwapLogic() {
     swapBtn.addEventListener("click", executeSwap);
   }
 }
+
 
 /* ===== Boot ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -1128,4 +1131,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
