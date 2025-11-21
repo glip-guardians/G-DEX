@@ -562,8 +562,8 @@ const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 // DApp host
 const DAPP_HOST = 'gdex-app.com';
 
-// 0x: ETH 대신 WETH 사용
-const WETH_MAINNET = '0xC02aaA39b223FE8D0A0E5C4F27eAD9083C756Cc2';
+// 0x ETH sentinel address
+const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 // 모바일 판별
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -631,10 +631,10 @@ function initDefaults(){
 /* ===== 토큰 선택 모달 ===== */
 const dlg  = document.getElementById('tokModal');
 const list = document.getElementById('tokList');
-let targetTokenBtn = null;
+let target = null;
 
 function openFor(imgEl, symEl){
-  targetTokenBtn = {imgEl, symEl};
+  target = {imgEl, symEl};
   list.innerHTML = tokenList.map(t=>`
     <div class="item" data-sym="${t.symbol}"
          style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
@@ -649,11 +649,11 @@ function openFor(imgEl, symEl){
 }
 
 list.onclick = e=>{
-  const row = e.target.closest('.item'); if(!row||!targetTokenBtn) return;
+  const row = e.target.closest('.item'); if(!row||!target) return;
   const t = tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
-  targetTokenBtn.imgEl.src = t.logo;
-  targetTokenBtn.symEl.textContent = t.symbol;
-  targetTokenBtn.symEl.dataset.address = t.address;
+  target.imgEl.src = t.logo;
+  target.symEl.textContent = t.symbol;
+  target.symEl.dataset.address = t.address;
   dlg.close();
 };
 document.getElementById('tokClose').onclick = ()=>dlg.close();
@@ -737,7 +737,7 @@ function bindConnect(){
   if(maxBtn) maxBtn.onclick = ()=>{ document.getElementById('stakeAmt').value='1000'; };
 }
 
-/* TOP 버튼 */
+/* TOP */
 function bindTop(){
   const toTop=document.getElementById('toTop');
   function toggleTop(){
@@ -905,15 +905,13 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== 0x v2 Swap API (Allowance Holder) 연결 부분 ==========
+   ===== 0x API 기반 Swap 로직 (Ethereum Mainnet) ============
    ============================================================ */
 
-const ZEROX_BASE       = "https://api.0x.org";
-const ZEROX_PRICE_URL  = `${ZEROX_BASE}/swap/allowance-holder/price`;
-const ZEROX_QUOTE_URL  = `${ZEROX_BASE}/swap/allowance-holder/quote`;
-const ZEROX_API_KEY    = "5527155c-879f-4194-a986-b81d02ca81b2";
-const FEE_ADDRESS      = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
-const FEE_BPS          = 8;   // 0.08%
+const ZEROX_BASE    = "https://api.0x.org";
+const ZEROX_API_KEY = "5527155c-879f-4194-a986-b81d02ca81b2";
+const FEE_ADDRESS   = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
+const FEE_BPS       = 8;   // 0.08%
 
 // 토큰 메타 조회
 function getTokenMeta(symbolOrAddress) {
@@ -923,24 +921,15 @@ function getTokenMeta(symbolOrAddress) {
   );
 }
 
-// 0x로 보낼 실제 토큰 주소 (ETH → WETH)
+// 0x에 보낼 토큰 주소 변환 (ETH → 0xeeee...)
 function to0xTokenAddress(meta) {
   if (!meta) return "";
-  if (meta.symbol === "ETH" || meta.address === "ETH") {
-    return WETH_MAINNET;
-  }
+  if (meta.address === "ETH") return ETH_ADDRESS_0X;
   return meta.address;
 }
 
-// sell 금액 → base unit(BigInt 문자열)
-function toBaseUnit(amountFloat, decimals) {
-  if (!amountFloat || isNaN(amountFloat)) return "0";
-  const pow = 10n ** BigInt(decimals);
-  const v   = BigInt(Math.floor(amountFloat * 10 ** 6));   // 소수 6자리까지만 사용
-  return (v * (pow / 1000000n)).toString();
-}
-
 // 가격 미리보기 (sell → buy)
+// allowance-holder/price 엔드포인트 사용
 async function updatePricePreview() {
   const sellVal = parseFloat(document.getElementById("sell").value || "0");
   if (!sellVal) return;
@@ -955,42 +944,39 @@ async function updatePricePreview() {
   const sellToken = to0xTokenAddress(sellMeta);
   const buyToken  = to0xTokenAddress(buyMeta);
 
-  const sellAmountWei = toBaseUnit(sellVal, sellMeta.decimals);
+  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
 
   const params = new URLSearchParams({
     chainId: "1",
     sellToken,
     buyToken,
-    sellAmount: sellAmountWei
+    taker: userAddress || "0x0000000000000000000000000000000000000001",
+    sellAmount: sellAmountWei,
+    swapFeeRecipient: FEE_ADDRESS,
+    swapFeeBps: String(FEE_BPS)
   });
 
-  // 수수료(통합) – buyToken 기준 BPS
-  params.set("swapFeeRecipient", FEE_ADDRESS);
-  params.set("swapFeeBps", String(FEE_BPS));
-  params.set("swapFeeToken", buyToken);
+  const url = `${ZEROX_BASE}/swap/allowance-holder/price?${params.toString()}`;
 
-  if (userAddress) {
-    params.set("taker", userAddress);
-  }
-
-  const url = `${ZEROX_PRICE_URL}?${params.toString()}`;
-  console.log("[0x-price] request", url);
+  console.log("[0x-price] request", { url, sellToken, buyToken, sellAmountWei });
 
   try {
     const res = await fetch(url, {
       headers: {
-        "0x-api-key": ZEROX_API_KEY,
-        "0x-version": "v2"
+        "0x-api-key": ZEROX_API_KEY
       }
     });
     const txt = await res.text();
-    console.log("[0x-price] raw", res.status, txt);
+
+    console.log("[0x-price] raw response", res.status, txt);
 
     if (!res.ok) {
-      // 유동성 없거나 기타 오류 시 입력값만 유지
+      console.warn("0x price error:", txt);
       return;
     }
     const data = JSON.parse(txt);
+
+    console.log("[0x-price] parsed", data);
 
     const buyAmount = Number(data.buyAmount) / (10 ** buyMeta.decimals);
     document.getElementById("buy").value = buyAmount.toFixed(6);
@@ -1001,6 +987,7 @@ async function updatePricePreview() {
 }
 
 // 스왑 실행
+// allowance-holder/quote 엔드포인트 사용
 async function executeSwap() {
   if (!userAddress) {
     alert("먼저 지갑을 연결하세요.");
@@ -1025,35 +1012,40 @@ async function executeSwap() {
 
   const sellToken = to0xTokenAddress(sellMeta);
   const buyToken  = to0xTokenAddress(buyMeta);
-  const sellAmountWei = toBaseUnit(sellVal, sellMeta.decimals);
+
+  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
 
   const slippage = parseFloat(document.getElementById("slip").value || "2");
-  const slippageBps = Math.round(slippage * 100);  // 2% → 200bps
+  const slippagePct = slippage / 100;                    // ex) 2% → 0.02
+  const feePct = FEE_BPS / 10000;                        // ex) 8bps → 0.0008
 
   const params = new URLSearchParams({
     chainId: "1",
     sellToken,
     buyToken,
-    sellAmount: sellAmountWei,
     taker: userAddress,
-    slippageBps: String(slippageBps),
+    sellAmount: sellAmountWei,
     swapFeeRecipient: FEE_ADDRESS,
     swapFeeBps: String(FEE_BPS),
-    swapFeeToken: buyToken
+    slippagePercentage: slippagePct.toString()
   });
 
-  const url = `${ZEROX_QUOTE_URL}?${params.toString()}`;
-  console.log("[0x-quote] request", url);
+  const url = `${ZEROX_BASE}/swap/allowance-holder/quote?${params.toString()}`;
+
+  console.log("[0x-quote] request", {
+    url, sellToken, buyToken, sellAmountWei,
+    userAddress, slippagePct, feePct
+  });
 
   try {
     const res = await fetch(url, {
       headers: {
-        "0x-api-key": ZEROX_API_KEY,
-        "0x-version": "v2"
+        "0x-api-key": ZEROX_API_KEY
       }
     });
     const txt = await res.text();
-    console.log("[0x-quote] raw", res.status, txt);
+
+    console.log("[0x-quote] raw response", res.status, txt);
 
     if (!res.ok) {
       alert("0x quote 오류:\n" + txt);
@@ -1061,45 +1053,66 @@ async function executeSwap() {
     }
 
     const q = JSON.parse(txt);
+
     console.log("[0x-quote] parsed", q);
 
-    // ERC-20 -> ERC-20 이면 approve 필요 (ETH는 이미 WETH로 취급)
-    if (sellToken.toLowerCase() !== WETH_MAINNET.toLowerCase() &&
-        sellToken.toLowerCase() !== buyToken.toLowerCase()) {
-
+    // ERC-20 -> ERC-20 이면 approve 필요
+    if (sellToken.toLowerCase() !== ETH_ADDRESS_0X.toLowerCase()) {
       const allowanceData =
         "0xdd62ed3e" +
         userAddress.replace("0x", "").padStart(64, "0") +
         q.allowanceTarget.replace("0x", "").padStart(64, "0");
 
+      console.log("[allowance] call", {
+        token: sellToken,
+        spender: q.allowanceTarget,
+        data: allowanceData
+      });
+
       const allowance = await ethereum.request({
         method: "eth_call",
         params: [
-          { to: sellToken, data: allowanceData },
+          {
+            to: sellToken,
+            data: allowanceData
+          },
           "latest"
         ]
       });
 
       const currentAllowance = BigInt(allowance);
 
+      console.log("[allowance] current", currentAllowance.toString());
+
       if (currentAllowance < BigInt(sellAmountWei)) {
-        const maxUint = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        const maxUint =
+          "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
         const approveData =
           "0x095ea7b3" +
           q.allowanceTarget.replace("0x", "").padStart(64, "0") +
           BigInt(maxUint).toString(16).padStart(64, "0");
 
-        const approveHash = await ethereum.request({
-          method: "eth_sendTransaction",
-          params: [{
-            from: userAddress,
-            to: sellToken,
-            data: approveData
-          }]
+        console.log("[approve] tx", {
+          token: sellToken,
+          spender: q.allowanceTarget,
+          data: approveData
         });
 
-        alert("Approve 전송 완료.\n트랜잭션이 채굴된 뒤 다시 Swap을 실행하세요.\nTX: " + approveHash);
+        const approveHash = await ethereum.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: userAddress,
+              to: sellToken,
+              data: approveData
+            }
+          ]
+        });
+
+        console.log("[approve] hash", approveHash);
+
+        alert("Approve 전송 완료.\n트랜잭션이 채굴된 뒤 다시 Swap을 실행하세요.");
         return;
       }
     }
@@ -1111,10 +1124,14 @@ async function executeSwap() {
       value: q.value ? "0x" + BigInt(q.value).toString(16) : "0x0"
     };
 
+    console.log("[swap-tx] params", txParams);
+
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
       params: [txParams]
     });
+
+    console.log("[swap-tx] hash", txHash);
 
     alert("Swap 전송 성공!\nTX Hash:\n" + txHash);
 
@@ -1124,16 +1141,17 @@ async function executeSwap() {
   }
 }
 
-// 스왑 UI 이벤트 바인딩
+// 스왑 UI 이벤트 바인딩 (중복 없음)
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
 
   if (sellInput) {
-    ["input","change"].forEach(ev =>
+    ["input", "change"].forEach(ev =>
       sellInput.addEventListener(ev, () => updatePricePreview())
     );
   }
+
   if (swapBtn) {
     swapBtn.addEventListener("click", executeSwap);
   }
@@ -1165,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     drawGauge(demoAnalytics);
     updateRibbon(demoAnalytics);
 
-    // 0x 스왑 UI/이벤트
+    // 0x 스왑 UI/이벤트 바인딩
     bindSwapLogic();
 
     window.addEventListener('resize', ()=>{
