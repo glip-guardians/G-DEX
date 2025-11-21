@@ -559,14 +559,24 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
-// 0x base + ETH sentinel
-const ZEROX_BASE    = "https://api.0x.org";
-const ETH_ADDRESS_0X = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+// DApp host
+const DAPP_HOST = 'gdex-app.com';
+
+// 0x ETH sentinel address
+const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 // 모바일 판별
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-// 토큰리스트
+// 모바일에서 MetaMask 딥링크
+function openMetaMaskDeepLink() {
+  const dappUrl = `https://${DAPP_HOST}`;
+  const target = dappUrl.replace(/^https?:\/\//, '');
+  const deepLink = `https://metamask.app.link/dapp/${target}`;
+  window.location.href = deepLink;
+}
+
+/* ===== 토큰리스트 ===== */
 const tokenList = [
   {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
   {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
@@ -674,10 +684,7 @@ async function connectWallet(){
   try{
     if (typeof window.ethereum === 'undefined') {
       if (isMobile) {
-        // 메타마스크 딥링크
-        const dappUrl = 'https://gdex-app.com';
-        const target = dappUrl.replace(/^https?:\/\//, '');
-        window.location.href = `https://metamask.app.link/dapp/${target}`;
+        openMetaMaskDeepLink();
         return;
       }
       alert(
@@ -897,26 +904,38 @@ function updateRibbon(d){
     `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
 }
 
-/* ===== 0x helper ===== */
+/* ============================================================
+   ===== 0x API 기반 Swap 로직 (Ethereum Mainnet) ============
+   ============================================================ */
+
+const ZEROX_BASE    = "https://api.0x.org";
+const ZEROX_API_KEY = "5527155c-879f-4194-a986-b81d02ca81b2"; // gdex-app.com API key
+
+// 공통 헤더 (버전 + API 키)
+const ZEROX_HEADERS = {
+  "0x-version": "v2",
+  "0x-api-key": ZEROX_API_KEY
+};
+
+// 토큰 메타 조회
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
     t.symbol === symbolOrAddress ||
     t.address?.toLowerCase() === symbolOrAddress?.toLowerCase()
   );
 }
+
+// 0x에 보낼 토큰 주소 변환 (ETH → 0xeeee...)
 function to0xTokenAddress(meta) {
   if (!meta) return "";
   if (meta.address === "ETH") return ETH_ADDRESS_0X;
   return meta.address;
 }
 
-/* ===== 가격 미리보기 ===== */
+// 가격 미리보기 (sell → buy)
 async function updatePricePreview() {
   const sellVal = parseFloat(document.getElementById("sell").value || "0");
-  if (!sellVal) {
-    document.getElementById("buy").value = "";
-    return;
-  }
+  if (!sellVal) return;
 
   const sellSym = document.getElementById("sellS").textContent;
   const buySym  = document.getElementById("buyS").textContent;
@@ -928,9 +947,7 @@ async function updatePricePreview() {
   const sellToken = to0xTokenAddress(sellMeta);
   const buyToken  = to0xTokenAddress(buyMeta);
 
-  const sellAmountWei = BigInt(
-    Math.floor(sellVal * 10 ** sellMeta.decimals)
-  ).toString();
+  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
 
   const params = new URLSearchParams({
     chainId: "1",
@@ -944,16 +961,19 @@ async function updatePricePreview() {
   console.log("[0x-price] request", { url, sellToken, buyToken, sellAmountWei });
 
   try {
-    const res = await fetch(url);   // 헤더 없음(단순 요청)
+    const res = await fetch(url, {
+      headers: ZEROX_HEADERS
+    });
     const txt = await res.text();
-    console.log("[0x-price] raw", res.status, txt);
+
+    console.log("[0x-price] raw response", res.status, txt);
 
     if (!res.ok) {
       console.warn("0x price error:", txt);
       return;
     }
-
     const data = JSON.parse(txt);
+
     console.log("[0x-price] parsed", data);
 
     const buyAmount = Number(data.buyAmount) / (10 ** buyMeta.decimals);
@@ -964,7 +984,7 @@ async function updatePricePreview() {
   }
 }
 
-/* ===== 스왑 실행 ===== */
+// 스왑 실행
 async function executeSwap() {
   if (!userAddress) {
     alert("먼저 지갑을 연결하세요.");
@@ -990,12 +1010,11 @@ async function executeSwap() {
   const sellToken = to0xTokenAddress(sellMeta);
   const buyToken  = to0xTokenAddress(buyMeta);
 
-  const sellAmountWei = BigInt(
-    Math.floor(sellVal * 10 ** sellMeta.decimals)
-  ).toString();
+  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
 
   const slippage = parseFloat(document.getElementById("slip").value || "2");
-  const slippagePct = slippage / 100;    // ex) 2% → 0.02
+  const slippagePct = slippage / 100;                    // ex) 2% → 0.02
+  const feePct = 0;                                      // 지금은 프로토콜 fee 0
 
   const params = new URLSearchParams({
     chainId: "1",
@@ -1006,17 +1025,24 @@ async function executeSwap() {
     slippagePercentage: slippagePct.toString()
   });
 
+  // feeRecipient / buyTokenPercentageFee 를 쓰고 싶으면 여기에 추가
+  // params.set("feeRecipient", FEE_ADDRESS);
+  // params.set("buyTokenPercentageFee", feePct.toString());
+
   const url = `${ZEROX_BASE}/swap/allowance-holder/quote?${params.toString()}`;
 
   console.log("[0x-quote] request", {
     url, sellToken, buyToken, sellAmountWei,
-    userAddress, slippagePct
+    userAddress, slippagePct, feePct
   });
 
   try {
-    const res = await fetch(url);    // 헤더 없음(단순 요청)
+    const res = await fetch(url, {
+      headers: ZEROX_HEADERS
+    });
     const txt = await res.text();
-    console.log("[0x-quote] raw", res.status, txt);
+
+    console.log("[0x-quote] raw response", res.status, txt);
 
     if (!res.ok) {
       alert("0x quote 오류:\n" + txt);
@@ -1024,24 +1050,35 @@ async function executeSwap() {
     }
 
     const q = JSON.parse(txt);
+
     console.log("[0x-quote] parsed", q);
 
-    // ERC-20 → ERC-20 이면 allowance 확인 + approve
+    // ERC-20 -> ERC-20 이면 approve 필요
     if (sellToken.toLowerCase() !== ETH_ADDRESS_0X.toLowerCase()) {
       const allowanceData =
         "0xdd62ed3e" +
         userAddress.replace("0x", "").padStart(64, "0") +
         q.allowanceTarget.replace("0x", "").padStart(64, "0");
 
+      console.log("[allowance] call", {
+        token: sellToken,
+        spender: q.allowanceTarget,
+        data: allowanceData
+      });
+
       const allowance = await ethereum.request({
         method: "eth_call",
         params: [
-          { to: sellToken, data: allowanceData },
+          {
+            to: sellToken,
+            data: allowanceData
+          },
           "latest"
         ]
       });
 
-      const currentAllowance = BigInt(allowance || "0x0");
+      const currentAllowance = BigInt(allowance);
+
       console.log("[allowance] current", currentAllowance.toString());
 
       if (currentAllowance < BigInt(sellAmountWei)) {
@@ -1062,11 +1099,16 @@ async function executeSwap() {
         const approveHash = await ethereum.request({
           method: "eth_sendTransaction",
           params: [
-            { from: userAddress, to: sellToken, data: approveData }
+            {
+              from: userAddress,
+              to: sellToken,
+              data: approveData
+            }
           ]
         });
 
         console.log("[approve] hash", approveHash);
+
         alert("Approve 전송 완료.\n트랜잭션이 채굴된 뒤 다시 Swap을 실행하세요.");
         return;
       }
@@ -1087,6 +1129,7 @@ async function executeSwap() {
     });
 
     console.log("[swap-tx] hash", txHash);
+
     alert("Swap 전송 성공!\nTX Hash:\n" + txHash);
 
   } catch(err) {
@@ -1095,7 +1138,7 @@ async function executeSwap() {
   }
 }
 
-/* ===== 스왑 UI 이벤트 ===== */
+// 스왑 UI 이벤트 바인딩 (중복 없음)
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
