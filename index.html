@@ -7,7 +7,8 @@
 
 <!-- 🔌 Backend URL (Render deploy) -->
 <script>
-  const BACKEND_URL = "https://gdex-backend.onrender.com";
+  // 마지막 슬래시는 제거해서 "/quote" 등과 정확히 이어지게 처리
+  const BACKEND_URL = "https://gdex-backend.onrender.com".replace(/\/$/, "");
 </script>
 
 <!-- PWA -->
@@ -570,13 +571,15 @@ const DAPP_HOST = 'gdex-app.com';
 // 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
-/* amount(string) → base units(string) */
-function toBaseUnits(amountStr, decimals) {
-  if (!amountStr || isNaN(Number(amountStr))) return "0";
-  const [wholeRaw, fracRaw = ""] = String(amountStr).split(".");
-  const whole = wholeRaw.replace(/\D/g, "") || "0";
-  const fracPadded = (fracRaw.replace(/\D/g, "") + "0".repeat(decimals)).slice(0, decimals);
-  return BigInt(whole + fracPadded).toString();
+/** JS number → 10^decimals 기반 정수 문자열 (BigInt 안전 변환) */
+function toBaseUnits(num, decimals){
+  const s = String(num);
+  if (!s.includes(".")) {
+    return (s + "0".repeat(decimals)).replace(/^0+/, "") || "0";
+  }
+  const [ints, fracRaw] = s.split(".");
+  const frac = (fracRaw + "0".repeat(decimals)).slice(0, decimals);
+  return (ints + frac).replace(/^0+/, "") || "0";
 }
 
 // ===== Backend helper =====
@@ -584,19 +587,29 @@ async function postToBackend(path, body) {
   const url = `${BACKEND_URL}${path}`;
   console.log("[backend]", path, body);
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
 
-  const text = await res.text();
-  console.log("[backend res]", path, res.status, text);
+    const text = await res.text();
+    console.log("[backend res]", path, res.status, text);
 
-  if (!res.ok) {
-    throw new Error(text || `Backend ${path} error (${res.status})`);
+    if (!res.ok) {
+      throw new Error(text || `Backend ${path} error (${res.status})`);
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Backend ${path} returned non-JSON response`);
+    }
+  } catch (err) {
+    console.error("[backend fetch error]", path, err);
+    throw err;
   }
-  return JSON.parse(text);
 }
 
 // 0x ETH sentinel wrapper
@@ -975,7 +988,7 @@ async function updatePricePreview() {
   const buyMeta  = getTokenMeta(buySym);
   if (!sellMeta || !buyMeta) return;
 
-  const sellAmountRaw = toBaseUnits(sellVal.toString(), sellMeta.decimals);
+  const sellAmountRaw = toBaseUnits(sellVal, sellMeta.decimals);
 
   // 슬리피지(%)를 0~1 값으로 변환 (예: 2% → 0.02)
   const slipInput = document.getElementById("slip");
@@ -994,7 +1007,7 @@ async function updatePricePreview() {
     buyInput.value = buyAmount.toFixed(6);
   } catch (err) {
     console.error("[updatePricePreview] error", err);
-    // preview errors are non-blocking
+    // 미리보기 실패는 조용히 무시 (콘솔에서만 확인)
   }
 }
 
@@ -1022,7 +1035,7 @@ async function executeSwap() {
       return;
     }
 
-    const sellAmountRaw = toBaseUnits(sellVal.toString(), sellMeta.decimals);
+    const sellAmountRaw = toBaseUnits(sellVal, sellMeta.decimals);
 
     const slipInput = document.getElementById("slip");
     const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
@@ -1038,7 +1051,6 @@ async function executeSwap() {
 
     console.log("[/swap raw response]", swapRes);
 
-    // server.js 에서 이미 tx 형식으로 반환한다고 가정
     const tx = swapRes;
 
     if (!tx || !tx.to || !tx.data) {
@@ -1046,6 +1058,11 @@ async function executeSwap() {
         "Backend /swap did not return valid transaction fields.\n\n" +
         "Raw response:\n" + JSON.stringify(swapRes, null, 2)
       );
+      return;
+    }
+
+    if (!window.ethereum) {
+      alert("Ethereum provider not found. Please open this page inside MetaMask.");
       return;
     }
 
@@ -1061,7 +1078,7 @@ async function executeSwap() {
 
     console.log("[swap-tx] params", txParams);
 
-    const txHash = await window.ethereum.request({
+    const txHash = await ethereum.request({
       method: "eth_sendTransaction",
       params: [txParams]
     });
@@ -1092,6 +1109,7 @@ function bindSwapLogic() {
     swapBtn.addEventListener("click", executeSwap);
   }
 }
+
 
 /* ===== Boot ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
