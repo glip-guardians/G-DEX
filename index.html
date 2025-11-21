@@ -951,12 +951,54 @@ async function requestQuoteFromBackend(payload) {
 
 // 가격 미리보기 (sell → buy)
 async function updatePricePreview() {
-  const sellInput = document.getElementById("sell");
-  const buyInput  = document.getElementById("buy");
-  const sellVal   = parseFloat(sellInput.value || "0");
+  const sellVal = parseFloat(document.getElementById("sell").value || "0");
+  if (!sellVal) return;
 
+  const sellSym = document.getElementById("sellS").textContent;
+  const buySym  = document.getElementById("buyS").textContent;
+
+  const sellMeta = getTokenMeta(sellSym);
+  const buyMeta  = getTokenMeta(buySym);
+  if (!sellMeta || !buyMeta) return;
+
+  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/quote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sellToken: sellMeta.address === "ETH" ? "ETH" : sellMeta.address,
+        buyToken:  buyMeta.address === "ETH" ? "ETH" : buyMeta.address,
+        sellAmount: sellAmountWei,
+        taker: userAddress || undefined
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("[backend price error]", data);
+      return;
+    }
+
+    const buyAmount = Number(data.buyAmount) / (10 ** buyMeta.decimals);
+    document.getElementById("buy").value = buyAmount.toFixed(6);
+  } catch (e) {
+    console.error("updatePricePreview error:", e);
+  }
+}
+
+
+// 스왑 실행
+async function executeSwap() {
+  if (!userAddress) {
+    alert("지갑을 먼저 연결하세요.");
+    return;
+  }
+
+  const sellVal = parseFloat(document.getElementById("sell").value || "0");
   if (!sellVal) {
-    buyInput.value = "";
+    alert("수량을 입력하세요.");
     return;
   }
 
@@ -967,148 +1009,45 @@ async function updatePricePreview() {
   const buyMeta  = getTokenMeta(buySym);
   if (!sellMeta || !buyMeta) return;
 
-  const sellToken0x = to0xTokenAddress(sellMeta);
-  const buyToken0x  = to0xTokenAddress(buyMeta);
-
-  const sellAmountWei = BigInt(
-    Math.floor(sellVal * 10 ** sellMeta.decimals)
-  ).toString();
+  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
 
   try {
-    const q = await requestQuoteFromBackend({
-      sellToken: sellToken0x,
-      buyToken: buyToken0x,
-      sellAmount: sellAmountWei
-      // taker는 미리보기에서는 불필요
+    const res = await fetch(`${BACKEND_URL}/swap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sellToken: sellMeta.address === "ETH" ? "ETH" : sellMeta.address,
+        buyToken:  buyMeta.address === "ETH" ? "ETH" : buyMeta.address,
+        sellAmount: sellAmountWei,
+        taker: userAddress
+      })
     });
 
-    if (!q.buyAmount) return;
-    const buyAmount = Number(q.buyAmount) / (10 ** buyMeta.decimals);
-    buyInput.value = buyAmount.toFixed(6);
-  } catch (err) {
-    console.error("[updatePricePreview]", err);
-    // 미리보기 에러는 조용히 무시
-  }
-}
-
-// 스왑 실행
-async function executeSwap() {
-  try {
-    if (!userAddress) {
-      alert("먼저 지갑을 연결하세요.");
+    const q = await res.json();
+    if (!res.ok) {
+      alert("백엔드 swap 오류:\n" + JSON.stringify(q, null, 2));
       return;
     }
 
-    const sellVal = parseFloat(document.getElementById("sell").value || "0");
-    if (!sellVal) {
-      alert("Swap 수량을 입력하세요.");
-      return;
-    }
-
-    const sellSym = document.getElementById("sellS").textContent;
-    const buySym  = document.getElementById("buyS").textContent;
-
-    const sellMeta = getTokenMeta(sellSym);
-    const buyMeta  = getTokenMeta(buySym);
-    if (!sellMeta || !buyMeta) {
-      alert("토큰 정보를 찾을 수 없습니다.");
-      return;
-    }
-
-    const sellToken0x = to0xTokenAddress(sellMeta);
-    const buyToken0x  = to0xTokenAddress(buyMeta);
-
-    const sellAmountWei = BigInt(
-      Math.floor(sellVal * 10 ** sellMeta.decimals)
-    ).toString();
-
-    // 백엔드에서 0x quote + 트랜잭션 데이터 받기
-    const q = await requestQuoteFromBackend({
-      sellToken: sellToken0x,
-      buyToken: buyToken0x,
-      sellAmount: sellAmountWei,
-      taker: userAddress
-    });
-
-    console.log("[0x-quote from backend]", q);
-
-    // ETH가 아닌 경우 allowance 확인 및 approve
-    if (sellToken0x.toLowerCase() !== ETH_ADDRESS_0X.toLowerCase()) {
-      // allowance(owner, spender) => 0xdd62ed3e + owner + spender
-      const allowanceData =
-        "0xdd62ed3e" +
-        userAddress.replace("0x", "").padStart(64, "0") +
-        q.allowanceTarget.replace("0x", "").padStart(64, "0");
-
-      const allowanceHex = await ethereum.request({
-        method: "eth_call",
-        params: [
-          {
-            to: sellMeta.address, // 실제 ERC20 주소
-            data: allowanceData
-          },
-          "latest"
-        ]
-      });
-
-      const currentAllowance = BigInt(allowanceHex);
-      console.log("[allowance] current", currentAllowance.toString());
-
-      if (currentAllowance < BigInt(sellAmountWei)) {
-        const maxUint =
-          "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-
-        const approveData =
-          "0x095ea7b3" +
-          q.allowanceTarget.replace("0x", "").padStart(64, "0") +
-          BigInt(maxUint).toString(16).padStart(64, "0");
-
-        console.log("[approve] tx", {
-          token: sellMeta.address,
-          spender: q.allowanceTarget,
-          data: approveData
-        });
-
-        const approveHash = await ethereum.request({
-          method: "eth_sendTransaction",
-          params: [
-            {
-              from: userAddress,
-              to: sellMeta.address,
-              data: approveData
-            }
-          ]
-        });
-
-        console.log("[approve] hash", approveHash);
-        alert("Approve 전송 완료.\n트랜잭션이 채굴된 뒤 다시 Swap을 실행하세요.");
-        return;
-      }
-    }
-
-    // 실제 스왑 트랜잭션 전송
-    const txParams = {
-      from: userAddress,
-      to:   q.to,
-      data: q.data,
-      value: q.value ? "0x" + BigInt(q.value).toString(16) : "0x0"
-    };
-
-    console.log("[swap-tx] params", txParams);
-
+    // 백엔드에서 받은 트랜잭션으로 바로 전송
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
-      params: [txParams]
+      params: [{
+        from: userAddress,
+        to: q.to,
+        data: q.data,
+        value: q.value || "0x0"
+      }]
     });
 
-    console.log("[swap-tx] hash", txHash);
-    alert("Swap 전송 성공!\nTX Hash:\n" + txHash);
+    alert("Swap sent!\nTX: " + txHash);
 
-  } catch (err) {
-    console.error("executeSwap error:", err);
-    alert("스왑 실행 오류:\n" + (err && err.message ? err.message : String(err)));
+  } catch (e) {
+    console.error("executeSwap error:", e);
+    alert("Swap error:\n" + e.message);
   }
 }
+
 
 // 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
@@ -1171,4 +1110,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
