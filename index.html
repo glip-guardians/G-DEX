@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>G-DEX — GLIP</title>
 
-<!-- 🔌 Backend URL (local dev) -->
+<!-- 🔌 Backend URL (Render deploy) -->
 <script>
-  // 필요 시 나중에 실제 배포 URL로 교체 (예: https://api.gdex-app.com)
   const BACKEND_URL = "https://gdex-backend.onrender.com";
 </script>
 
@@ -455,8 +454,8 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
         <h3>Notes</h3>
         <div class="card inner" style="background:rgba(255,255,255,.04);border:1px dashed var(--border)">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
-          <p class="wrap" style="margin:.2rem 0">• Router: 0x API Exchange Proxy (auto-selected in quotes).</p>
-          <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals requested only when needed.</p>
+          <p class="wrap" style="margin:.2rem 0">• Router: 0x API Exchange Proxy (auto-selected in quotes, via backend).</p>
+          <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are handled through your wallet when needed.</p>
         </div>
         <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
       </section>
@@ -567,9 +566,6 @@ const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
 // DApp host
 const DAPP_HOST = 'gdex-app.com';
-
-// 0x ETH sentinel address
-const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 // 모바일 판별
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -911,7 +907,7 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== 0x API + 백엔드 프록시 기반 Swap 로직 ==============
+   ===== Backend proxy-based Swap logic (no direct 0x calls) ===
    ============================================================ */
 
 // 토큰 메타 조회
@@ -922,17 +918,10 @@ function getTokenMeta(symbolOrAddress) {
   );
 }
 
-// 0x에 보낼 토큰 주소 변환 (ETH → 0xeeee...)
-function to0xTokenAddress(meta) {
-  if (!meta) return "";
-  if (meta.address === "ETH") return ETH_ADDRESS_0X;
-  return meta.address;
-}
-
-// 백엔드로 quote 요청
-async function requestQuoteFromBackend(payload) {
-  const url = `${BACKEND_URL}/quote`;
-  console.log("[backend-quote] request", url, payload);
+// Generic backend POST helper
+async function postToBackend(path, payload) {
+  const url = `${BACKEND_URL}${path}`;
+  console.log("[backend]", path, payload);
 
   const res = await fetch(url, {
     method: "POST",
@@ -940,19 +929,26 @@ async function requestQuoteFromBackend(payload) {
     body: JSON.stringify(payload)
   });
 
-  const txt = await res.text();
-  console.log("[backend-quote] raw", res.status, txt);
+  const text = await res.text();
+  console.log("[backend raw]", res.status, text);
 
   if (!res.ok) {
-    throw new Error(txt || `Backend quote error (${res.status})`);
+    throw new Error(text || `Backend error (${res.status})`);
   }
-  return JSON.parse(txt);
+  return JSON.parse(text);
 }
 
 // 가격 미리보기 (sell → buy)
+// uses backend /quote proxy only
 async function updatePricePreview() {
-  const sellVal = parseFloat(document.getElementById("sell").value || "0");
-  if (!sellVal) return;
+  const sellInput = document.getElementById("sell");
+  const buyInput  = document.getElementById("buy");
+  const sellVal   = parseFloat(sellInput.value || "0");
+
+  if (!sellVal) {
+    buyInput.value = "";
+    return;
+  }
 
   const sellSym = document.getElementById("sellS").textContent;
   const buySym  = document.getElementById("buyS").textContent;
@@ -961,93 +957,96 @@ async function updatePricePreview() {
   const buyMeta  = getTokenMeta(buySym);
   if (!sellMeta || !buyMeta) return;
 
-  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
+  const sellAmountRaw = BigInt(
+    Math.floor(sellVal * 10 ** sellMeta.decimals)
+  ).toString();
 
   try {
-    const res = await fetch(`${BACKEND_URL}/quote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sellToken: sellMeta.address === "ETH" ? "ETH" : sellMeta.address,
-        buyToken:  buyMeta.address === "ETH" ? "ETH" : buyMeta.address,
-        sellAmount: sellAmountWei,
-        taker: userAddress || undefined
-      })
+    const q = await postToBackend("/quote", {
+      sellToken: sellMeta.address,  // "ETH" or ERC-20 address
+      buyToken:  buyMeta.address,
+      sellAmount: sellAmountRaw
     });
 
-    const data = await res.json();
-    if (!res.ok) {
-      console.error("[backend price error]", data);
-      return;
-    }
-
-    const buyAmount = Number(data.buyAmount) / (10 ** buyMeta.decimals);
-    document.getElementById("buy").value = buyAmount.toFixed(6);
-  } catch (e) {
-    console.error("updatePricePreview error:", e);
+    if (!q.buyAmount) return;
+    const buyAmount = Number(q.buyAmount) / (10 ** buyMeta.decimals);
+    buyInput.value = buyAmount.toFixed(6);
+  } catch (err) {
+    console.error("[updatePricePreview]", err);
+    // preview errors are silent in UI
   }
 }
 
-
-// 스왑 실행
+// 스왑 실행 (backend builds tx; no allowance/eth_call/0x direct)
 async function executeSwap() {
-  if (!userAddress) {
-    alert("지갑을 먼저 연결하세요.");
-    return;
-  }
-
-  const sellVal = parseFloat(document.getElementById("sell").value || "0");
-  if (!sellVal) {
-    alert("수량을 입력하세요.");
-    return;
-  }
-
-  const sellSym = document.getElementById("sellS").textContent;
-  const buySym  = document.getElementById("buyS").textContent;
-
-  const sellMeta = getTokenMeta(sellSym);
-  const buyMeta  = getTokenMeta(buySym);
-  if (!sellMeta || !buyMeta) return;
-
-  const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
-
   try {
-    const res = await fetch(`${BACKEND_URL}/swap`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sellToken: sellMeta.address === "ETH" ? "ETH" : sellMeta.address,
-        buyToken:  buyMeta.address === "ETH" ? "ETH" : buyMeta.address,
-        sellAmount: sellAmountWei,
-        taker: userAddress
-      })
-    });
-
-    const q = await res.json();
-    if (!res.ok) {
-      alert("백엔드 swap 오류:\n" + JSON.stringify(q, null, 2));
+    if (!userAddress) {
+      alert("Please connect your wallet first.");
       return;
     }
 
-    // 백엔드에서 받은 트랜잭션으로 바로 전송
+    const sellVal = parseFloat(document.getElementById("sell").value || "0");
+    if (!sellVal || sellVal <= 0) {
+      alert("Enter an amount to swap.");
+      return;
+    }
+
+    const sellSym = document.getElementById("sellS").textContent;
+    const buySym  = document.getElementById("buyS").textContent;
+
+    const sellMeta = getTokenMeta(sellSym);
+    const buyMeta  = getTokenMeta(buySym);
+    if (!sellMeta || !buyMeta) {
+      alert("Token metadata not found. Please reselect tokens and try again.");
+      return;
+    }
+
+    const sellAmountRaw = BigInt(
+      Math.floor(sellVal * 10 ** sellMeta.decimals)
+    ).toString();
+
+    // Ask backend to prepare a swap transaction (0x proxy, etc. is handled server-side)
+    const swapRes = await postToBackend("/swap", {
+      sellToken: sellMeta.address,   // "ETH" or ERC-20
+      buyToken:  buyMeta.address,
+      sellAmount: sellAmountRaw,
+      taker: userAddress
+    });
+
+    // Expected to contain a tx object ready for eth_sendTransaction
+    const tx = swapRes.tx || swapRes; // support both shapes
+    if (!tx || !tx.to || !tx.data) {
+      console.error("[executeSwap] Invalid tx from backend", swapRes);
+      alert("Swap configuration from backend is invalid. Please try again.");
+      return;
+    }
+
+    const txParams = {
+      from: userAddress,
+      to: tx.to,
+      data: tx.data,
+      value: tx.value ? tx.value : "0x0",
+      gas: tx.gas,
+      gasPrice: tx.gasPrice,
+      maxFeePerGas: tx.maxFeePerGas,
+      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
+    };
+
+    console.log("[swap-tx] params", txParams);
+
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
-      params: [{
-        from: userAddress,
-        to: q.to,
-        data: q.data,
-        value: q.value || "0x0"
-      }]
+      params: [txParams]
     });
 
-    alert("Swap sent!\nTX: " + txHash);
+    console.log("[swap-tx] hash", txHash);
+    alert("Swap transaction sent!\n\nTX Hash:\n" + txHash);
 
-  } catch (e) {
-    console.error("executeSwap error:", e);
-    alert("Swap error:\n" + e.message);
+  } catch (err) {
+    console.error("executeSwap error:", err);
+    alert("Swap failed:\n" + (err && err.message ? err.message : String(err)));
   }
 }
-
 
 // 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
@@ -1057,7 +1056,6 @@ function bindSwapLogic() {
   if (sellInput) {
     ["input", "change"].forEach(ev =>
       sellInput.addEventListener(ev, () => {
-        // 입력 변경 시 미리보기 업데이트
         updatePricePreview();
       })
     );
@@ -1094,7 +1092,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     drawGauge(demoAnalytics);
     updateRibbon(demoAnalytics);
 
-    // 0x 스왑 UI/이벤트 바인딩
+    // Swap UI/logic (backend proxy)
     bindSwapLogic();
 
     window.addEventListener('resize', ()=>{
@@ -1110,5 +1108,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
-
