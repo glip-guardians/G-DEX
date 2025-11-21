@@ -988,7 +988,7 @@ async function updatePricePreview() {
   }
 }
 
-// 스왑 실행 (backend builds tx; no allowance/eth_call/0x direct)
+// 스왑 실행 (backend builds tx; no direct 0x calls)
 async function executeSwap() {
   try {
     if (!userAddress) {
@@ -1016,7 +1016,7 @@ async function executeSwap() {
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
 
-    // Ask backend to prepare a swap transaction (0x proxy, etc. is handled server-side)
+    // Ask backend to prepare a swap transaction (0x is handled server-side)
     const swapRes = await postToBackend("/swap", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
@@ -1024,24 +1024,32 @@ async function executeSwap() {
       taker: userAddress
     });
 
-    // Expected to contain a tx object ready for eth_sendTransaction
-    const tx = swapRes.tx || swapRes; // support both shapes
+    console.log("[/swap raw response]", swapRes);
+
+    // 다양한 응답 형태를 허용 (tx, quote, 직접 필드 등)
+    const tx = swapRes.tx || swapRes.quote || swapRes;
+
     if (!tx || !tx.to || !tx.data) {
-      console.error("[executeSwap] Invalid tx from backend", swapRes);
-      alert("Swap configuration from backend is invalid. Please try again.");
+      alert(
+        "Backend /swap did not return valid transaction fields.\n\n" +
+        "Raw response:\n" + JSON.stringify(swapRes, null, 2)
+      );
       return;
     }
 
+    // 지갑에 보낼 파라미터 구성
     const txParams = {
       from: userAddress,
       to: tx.to,
-      data: tx.data,
-      value: tx.value ? tx.value : "0x0",
-      gas: tx.gas,
-      gasPrice: tx.gasPrice,
-      maxFeePerGas: tx.maxFeePerGas,
-      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
+      data: tx.data
     };
+
+    // 선택 필드들(있을 때만 추가)
+    if (tx.value) txParams.value = tx.value;
+    if (tx.gas) txParams.gas = tx.gas;
+    if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
+    if (tx.maxFeePerGas) txParams.maxFeePerGas = tx.maxFeePerGas;
+    if (tx.maxPriorityFeePerGas) txParams.maxPriorityFeePerGas = tx.maxPriorityFeePerGas;
 
     console.log("[swap-tx] params", txParams);
 
@@ -1058,6 +1066,7 @@ async function executeSwap() {
     alert("Swap failed:\n" + (err && err.message ? err.message : String(err)));
   }
 }
+
 
 // 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
@@ -1119,3 +1128,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
