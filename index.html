@@ -571,44 +571,64 @@ const DAPP_HOST = 'gdex-app.com';
 // 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
-/** JS number → 10^decimals 기반 정수 문자열 (BigInt 안전 변환) */
-function toBaseUnits(num, decimals){
-  const s = String(num);
-  if (!s.includes(".")) {
-    return (s + "0".repeat(decimals)).replace(/^0+/, "") || "0";
+// ===== 공통 에러 팝업 =====
+function showErrorPopup(title, payload) {
+  let msg = "";
+  if (payload instanceof Error) {
+    msg = payload.message || String(payload);
+  } else if (typeof payload === "string") {
+    msg = payload;
+  } else {
+    msg = JSON.stringify(payload, null, 2);
   }
-  const [ints, fracRaw] = s.split(".");
-  const frac = (fracRaw + "0".repeat(decimals)).slice(0, decimals);
-  return (ints + frac).replace(/^0+/, "") || "0";
+  alert(title + "\n\n" + msg);
 }
 
 // ===== Backend helper =====
 async function postToBackend(path, body) {
   const url = `${BACKEND_URL}${path}`;
-  console.log("[backend]", path, body);
+  console.log("[backend] req", path, body);
 
+  let res, text;
   try {
-    const res = await fetch(url, {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
+    text = await res.text();
+  } catch (e) {
+    console.error("[backend] network error", e);
+    throw new Error("Network / CORS error when calling backend.\n" +
+                    "Check Render logs & CORS settings.\n" +
+                    (e && e.message ? e.message : String(e)));
+  }
 
-    const text = await res.text();
-    console.log("[backend res]", path, res.status, text);
+  console.log("[backend res]", path, res.status, text);
 
-    if (!res.ok) {
-      throw new Error(text || `Backend ${path} error (${res.status})`);
-    }
-
+  // HTTP 에러코드면 그대로 프런트에 에러로 던짐
+  if (!res.ok) {
+    let payload;
     try {
-      return JSON.parse(text);
-    } catch (e) {
-      throw new Error(`Backend ${path} returned non-JSON response`);
+      payload = JSON.parse(text);
+    } catch {
+      payload = text;
     }
-  } catch (err) {
-    console.error("[backend fetch error]", path, err);
-    throw err;
+    throw new Error(
+      `Backend ${path} returned HTTP ${res.status}:\n` +
+      (typeof payload === "string" ? payload : JSON.stringify(payload, null, 2))
+    );
+  }
+
+  // 200 이지만 JSON 이 아닐 수도 있으니 방어
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("[backend] JSON parse error", e);
+    throw new Error(
+      `Backend ${path} responded with non-JSON:\n` +
+      text.slice(0, 500)
+    );
   }
 }
 
@@ -988,9 +1008,10 @@ async function updatePricePreview() {
   const buyMeta  = getTokenMeta(buySym);
   if (!sellMeta || !buyMeta) return;
 
-  const sellAmountRaw = toBaseUnits(sellVal, sellMeta.decimals);
+  const sellAmountRaw = BigInt(
+    Math.floor(sellVal * 10 ** sellMeta.decimals)
+  ).toString();
 
-  // 슬리피지(%)를 0~1 값으로 변환 (예: 2% → 0.02)
   const slipInput = document.getElementById("slip");
   const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
 
@@ -1002,12 +1023,18 @@ async function updatePricePreview() {
       slippagePercentage: slipPct
     });
 
-    if (!quote.buyAmount) return;
+    if (!quote.buyAmount) {
+      showErrorPopup("Quote error (no buyAmount returned)", quote);
+      buyInput.value = "";
+      return;
+    }
     const buyAmount = Number(quote.buyAmount) / (10 ** buyMeta.decimals);
     buyInput.value = buyAmount.toFixed(6);
   } catch (err) {
     console.error("[updatePricePreview] error", err);
-    // 미리보기 실패는 조용히 무시 (콘솔에서만 확인)
+    // 미리보기일 뿐이지만, 지금은 문제를 확인해야 하니 팝업도 띄움
+    showErrorPopup("Quote request failed", err);
+    buyInput.value = "";
   }
 }
 
@@ -1031,16 +1058,17 @@ async function executeSwap() {
     const sellMeta = getTokenMeta(sellSym);
     const buyMeta  = getTokenMeta(buySym);
     if (!sellMeta || !buyMeta) {
-      alert("Token metadata not found. Please reselect tokens and try again.");
+      showErrorPopup("Swap error", "Token metadata not found. Please reselect tokens and try again.");
       return;
     }
 
-    const sellAmountRaw = toBaseUnits(sellVal, sellMeta.decimals);
+    const sellAmountRaw = BigInt(
+      Math.floor(sellVal * 10 ** sellMeta.decimals)
+    ).toString();
 
     const slipInput = document.getElementById("slip");
     const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
 
-    // 백엔드에 스왑 트랜잭션 생성 요청
     const swapRes = await postToBackend("/swap", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
@@ -1051,18 +1079,15 @@ async function executeSwap() {
 
     console.log("[/swap raw response]", swapRes);
 
-    const tx = swapRes;
+    const tx = swapRes; // server.js 에서 tx 형태로 반환
 
     if (!tx || !tx.to || !tx.data) {
-      alert(
-        "Backend /swap did not return valid transaction fields.\n\n" +
-        "Raw response:\n" + JSON.stringify(swapRes, null, 2)
-      );
+      showErrorPopup("Backend /swap did not return valid tx fields", swapRes);
       return;
     }
 
-    if (!window.ethereum) {
-      alert("Ethereum provider not found. Please open this page inside MetaMask.");
+    if (typeof window.ethereum === "undefined") {
+      showErrorPopup("MetaMask not detected", "Install MetaMask and refresh the page.");
       return;
     }
 
@@ -1072,8 +1097,8 @@ async function executeSwap() {
       data: tx.data
     };
 
-    if (tx.value) txParams.value = tx.value;
-    if (tx.gas) txParams.gas = tx.gas;
+    if (tx.value)    txParams.value    = tx.value;
+    if (tx.gas)      txParams.gas      = tx.gas;
     if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
 
     console.log("[swap-tx] params", txParams);
@@ -1088,7 +1113,7 @@ async function executeSwap() {
 
   } catch (err) {
     console.error("executeSwap error:", err);
-    alert("Swap failed:\n" + (err && err.message ? err.message : String(err)));
+    showErrorPopup("Swap failed", err);
   }
 }
 
@@ -1109,6 +1134,7 @@ function bindSwapLogic() {
     swapBtn.addEventListener("click", executeSwap);
   }
 }
+
 
 
 /* ===== Boot ===== */
@@ -1147,9 +1173,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }catch(e){
     console.error('[init]', e);
-    alert('Initialization error — see console.');
+    showErrorPopup('Initialization error — see console.', e);
   }
 });
 </script>
 </body>
 </html>
+
