@@ -570,6 +570,15 @@ const DAPP_HOST = 'gdex-app.com';
 // 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
+/* amount(string) → base units(string) */
+function toBaseUnits(amountStr, decimals) {
+  if (!amountStr || isNaN(Number(amountStr))) return "0";
+  const [wholeRaw, fracRaw = ""] = String(amountStr).split(".");
+  const whole = wholeRaw.replace(/\D/g, "") || "0";
+  const fracPadded = (fracRaw.replace(/\D/g, "") + "0".repeat(decimals)).slice(0, decimals);
+  return BigInt(whole + fracPadded).toString();
+}
+
 // ===== Backend helper =====
 async function postToBackend(path, body) {
   const url = `${BACKEND_URL}${path}`;
@@ -966,9 +975,7 @@ async function updatePricePreview() {
   const buyMeta  = getTokenMeta(buySym);
   if (!sellMeta || !buyMeta) return;
 
-  const sellAmountRaw = BigInt(
-    Math.floor(sellVal * 10 ** sellMeta.decimals)
-  ).toString();
+  const sellAmountRaw = toBaseUnits(sellVal.toString(), sellMeta.decimals);
 
   // 슬리피지(%)를 0~1 값으로 변환 (예: 2% → 0.02)
   const slipInput = document.getElementById("slip");
@@ -1015,9 +1022,7 @@ async function executeSwap() {
       return;
     }
 
-    const sellAmountRaw = BigInt(
-      Math.floor(sellVal * 10 ** sellMeta.decimals)
-    ).toString();
+    const sellAmountRaw = toBaseUnits(sellVal.toString(), sellMeta.decimals);
 
     const slipInput = document.getElementById("slip");
     const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
@@ -1033,7 +1038,7 @@ async function executeSwap() {
 
     console.log("[/swap raw response]", swapRes);
 
-    // server.js 에서 이미 tx 형식으로 반환하므로 그대로 사용
+    // server.js 에서 이미 tx 형식으로 반환한다고 가정
     const tx = swapRes;
 
     if (!tx || !tx.to || !tx.data) {
@@ -1056,7 +1061,7 @@ async function executeSwap() {
 
     console.log("[swap-tx] params", txParams);
 
-    const txHash = await ethereum.request({
+    const txHash = await window.ethereum.request({
       method: "eth_sendTransaction",
       params: [txParams]
     });
@@ -1087,7 +1092,6 @@ function bindSwapLogic() {
     swapBtn.addEventListener("click", executeSwap);
   }
 }
-
 
 /* ===== Boot ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -1131,5 +1135,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
-
