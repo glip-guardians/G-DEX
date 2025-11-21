@@ -1059,7 +1059,7 @@ async function executeSwap() {
     const sellMeta = getTokenMeta(sellSym);
     const buyMeta  = getTokenMeta(buySym);
     if (!sellMeta || !buyMeta) {
-      showErrorPopup("Swap error", "Token metadata not found. Please reselect tokens and try again.");
+      showErrorPopup("Swap error", "Token metadata not found.");
       return;
     }
 
@@ -1070,6 +1070,7 @@ async function executeSwap() {
     const slipInput = document.getElementById("slip");
     const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
 
+    // 🔥 서버가 반환하는 구조는 {tx:{to,data,value}}
     const swapRes = await postToBackend("/swap", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
@@ -1080,15 +1081,16 @@ async function executeSwap() {
 
     console.log("[/swap raw response]", swapRes);
 
-    const tx = swapRes; // server.js 에서 tx 형태로 반환
+    // 🔥 swapRes.tx 구조로 파싱
+    const tx = swapRes.tx;
 
     if (!tx || !tx.to || !tx.data) {
-      showErrorPopup("Backend /swap did not return valid tx fields", swapRes);
+      showErrorPopup("Backend /swap returned malformed tx", swapRes);
       return;
     }
 
     if (typeof window.ethereum === "undefined") {
-      showErrorPopup("MetaMask not detected", "Install MetaMask and refresh the page.");
+      showErrorPopup("MetaMask not detected", "Install MetaMask.");
       return;
     }
 
@@ -1117,6 +1119,7 @@ async function executeSwap() {
     showErrorPopup("Swap failed", err);
   }
 }
+
 
 // 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
@@ -1178,4 +1181,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
