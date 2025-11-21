@@ -1041,79 +1041,78 @@ async function updatePricePreview() {
 // 실제 스왑 실행, /swap 사용
 async function executeSwap() {
   try {
-    if (!userAddress) {
+    if (!provider || !signer) {
       alert("Please connect your wallet first.");
       return;
     }
 
-    const sellVal = parseFloat(document.getElementById("sell").value || "0");
-    if (!sellVal || sellVal <= 0) {
+    const account = await signer.getAddress();
+
+    const sellToken = fromToken.address;
+    const buyToken  = toToken.address;
+
+    const sellAmountHuman = document.getElementById("fromAmount").value;
+    if (!sellAmountHuman || Number(sellAmountHuman) <= 0) {
       alert("Enter an amount to swap.");
       return;
     }
 
-    const sellSym = document.getElementById("sellS").textContent;
-    const buySym  = document.getElementById("buyS").textContent;
-
-    const sellMeta = getTokenMeta(sellSym);
-    const buyMeta  = getTokenMeta(buySym);
-    if (!sellMeta || !buyMeta) {
-      showErrorPopup("Swap error", "Token metadata not found. Please reselect tokens and try again.");
-      return;
-    }
-
-    const sellAmountRaw = BigInt(
-      Math.floor(sellVal * 10 ** sellMeta.decimals)
+    // human → wei
+    const sellAmount = ethers.utils.parseUnits(
+      sellAmountHuman,
+      fromToken.decimals
     ).toString();
 
-    const slipInput = document.getElementById("slip");
-    const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
+    const slipInput = document.getElementById("slippageInput");
+    const slipPercent = slipInput ? Number(slipInput.value || "2") : 2;
+    const slippagePercentage = slipPercent / 100; // 2 → 0.02
 
-    const swapRes = await postToBackend("/swap", {
-      sellToken: toBackendTokenAddress(sellMeta),
-      buyToken:  toBackendTokenAddress(buyMeta),
-      sellAmount: sellAmountRaw,
-      taker: userAddress,
-      slippagePercentage: slipPct
-    });
-
-    console.log("[/swap raw response]", swapRes);
-
-    const tx = swapRes; // server.js 에서 tx 형태로 반환
-
-    if (!tx || !tx.to || !tx.data) {
-      showErrorPopup("Backend /swap did not return valid tx fields", swapRes);
-      return;
-    }
-
-    if (typeof window.ethereum === "undefined") {
-      showErrorPopup("MetaMask not detected", "Install MetaMask and refresh the page.");
-      return;
-    }
-
-    const txParams = {
-      from: userAddress,
-      to:   tx.to,
-      data: tx.data
+    const payload = {
+      chainId: 1,
+      sellToken,
+      buyToken,
+      sellAmount,
+      taker: account,
+      slippagePercentage,
     };
 
-    if (tx.value)    txParams.value    = tx.value;
-    if (tx.gas)      txParams.gas      = tx.gas;
-    if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
+    console.log("[frontend] /swap payload", payload);
 
-    console.log("[swap-tx] params", txParams);
+    // ------------------ 백엔드 호출 ------------------
+    const res = await postToBackend("/swap", payload);
+    console.log("[frontend] /swap response", res);
 
-    const txHash = await ethereum.request({
-      method: "eth_sendTransaction",
-      params: [txParams]
-    });
+    // 백엔드가 { tx: { to, data, value } } 형태로 돌려줌
+    const tx = res.tx || res.transaction || res;
 
-    console.log("[swap-tx] hash", txHash);
-    alert("Swap transaction sent!\n\nTX Hash:\n" + txHash);
+    if (!tx || !tx.to || !tx.data) {
+      console.error("[frontend] invalid tx object from backend:", res);
+      alert("Backend /swap did not return usable tx. See console for details.");
+      return;
+    }
 
+    // value 없으면 0
+    const valueBig = tx.value
+      ? ethers.BigNumber.from(tx.value.toString())
+      : ethers.BigNumber.from(0);
+
+    const txRequest = {
+      to: tx.to,
+      data: tx.data,
+      value: valueBig,
+    };
+
+    console.log("[frontend] sending tx via wallet", txRequest);
+
+    const txResponse = await signer.sendTransaction(txRequest);
+    console.log("[frontend] tx sent", txResponse);
+
+    alert(`Swap transaction sent.\n\nTx hash:\n${txResponse.hash}`);
+
+    // TODO: Recent Transactions 영역에 기록 추가하고 싶으면 여기서 DOM 업데이트
   } catch (err) {
     console.error("executeSwap error:", err);
-    showErrorPopup("Swap failed", err);
+    alert(`Swap failed:\n\n${err.message || err}`);
   }
 }
 
@@ -1179,4 +1178,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
