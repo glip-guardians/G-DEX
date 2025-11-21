@@ -905,12 +905,13 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== 0x API 기반 Swap 로직 (Ethereum Mainnet, v1) =========
+   ===== 0x API 기반 Swap 로직 (Ethereum Mainnet) ============
    ============================================================ */
 
-const ZEROX_BASE = "https://api.0x.org";
-const FEE_ADDRESS = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
-const FEE_BPS = 8;   // 0.08%
+const ZEROX_BASE    = "https://api.0x.org";
+const ZEROX_API_KEY = "5527155c-879f-4194-a986-b81d02ca81b2";
+const FEE_ADDRESS   = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
+const FEE_BPS       = 8;   // 0.08%
 
 // 토큰 메타 조회
 function getTokenMeta(symbolOrAddress) {
@@ -945,6 +946,7 @@ async function updatePricePreview() {
   const sellAmountWei = BigInt(Math.floor(sellVal * 10 ** sellMeta.decimals)).toString();
 
   const params = new URLSearchParams({
+    chainId: "1",
     sellToken,
     buyToken,
     sellAmount: sellAmountWei
@@ -955,7 +957,12 @@ async function updatePricePreview() {
   console.log("[0x-price] request", { url, sellToken, buyToken, sellAmountWei });
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: {
+        "0x-api-key": ZEROX_API_KEY,
+        "0x-version": "v2"
+      }
+    });
     const txt = await res.text();
 
     console.log("[0x-price] raw response", res.status, txt);
@@ -1009,6 +1016,7 @@ async function executeSwap() {
   const feePct = FEE_BPS / 10000;                        // ex) 8bps → 0.0008
 
   const params = new URLSearchParams({
+    chainId: "1",
     sellToken,
     buyToken,
     sellAmount: sellAmountWei,
@@ -1026,7 +1034,12 @@ async function executeSwap() {
   });
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: {
+        "0x-api-key": ZEROX_API_KEY,
+        "0x-version": "v2"
+      }
+    });
     const txt = await res.text();
 
     console.log("[0x-quote] raw response", res.status, txt);
