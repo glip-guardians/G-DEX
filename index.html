@@ -567,6 +567,9 @@ const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 // DApp host
 const DAPP_HOST = 'gdex-app.com';
 
+// 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
+const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+
 // 모바일 판별
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -918,6 +921,14 @@ function getTokenMeta(symbolOrAddress) {
   );
 }
 
+// frontend → backend 토큰 포맷 변환
+// ETH는 0x ETH sentinel 주소로 변환, 그 외는 그대로 contract address
+function toBackendTokenAddress(meta) {
+  if (!meta) return "";
+  if (meta.address === "ETH") return ETH_ADDRESS_0X;
+  return meta.address;
+}
+
 // Generic backend POST helper
 async function postToBackend(path, payload) {
   const url = `${BACKEND_URL}${path}`;
@@ -963,8 +974,8 @@ async function updatePricePreview() {
 
   try {
     const q = await postToBackend("/quote", {
-      sellToken: sellMeta.address,  // "ETH" or ERC-20 address
-      buyToken:  buyMeta.address,
+      sellToken: toBackendTokenAddress(sellMeta),
+      buyToken:  toBackendTokenAddress(buyMeta),
       sellAmount: sellAmountRaw
     });
 
@@ -1007,8 +1018,8 @@ async function executeSwap() {
 
     // Ask backend to prepare a swap transaction (0x proxy, etc. is handled server-side)
     const swapRes = await postToBackend("/swap", {
-      sellToken: sellMeta.address,   // "ETH" or ERC-20
-      buyToken:  buyMeta.address,
+      sellToken: toBackendTokenAddress(sellMeta),
+      buyToken:  toBackendTokenAddress(buyMeta),
       sellAmount: sellAmountRaw,
       taker: userAddress
     });
