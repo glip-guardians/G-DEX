@@ -1059,10 +1059,11 @@ async function executeSwap() {
     const sellMeta = getTokenMeta(sellSym);
     const buyMeta  = getTokenMeta(buySym);
     if (!sellMeta || !buyMeta) {
-      showErrorPopup("Swap error", "Token metadata not found.");
+      showErrorPopup("Swap error", "Token metadata not found. Please reselect tokens and try again.");
       return;
     }
 
+    // 이미 프런트에서 1번만 단위 변환: amount → wei 문자열
     const sellAmountRaw = BigInt(
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
@@ -1070,7 +1071,6 @@ async function executeSwap() {
     const slipInput = document.getElementById("slip");
     const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
 
-    // 🔥 서버가 반환하는 구조는 {tx:{to,data,value}}
     const swapRes = await postToBackend("/swap", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
@@ -1081,28 +1081,34 @@ async function executeSwap() {
 
     console.log("[/swap raw response]", swapRes);
 
-    // 🔥 swapRes.tx 구조로 파싱
-    const tx = swapRes.tx;
+    // 백엔드가 { tx: { ... } } 형태로 줄 수도 있고, 평평한 {to,data,...} 로 줄 수도 있으니 둘 다 대응
+    const tx = swapRes && swapRes.tx ? swapRes.tx : swapRes;
 
-    if (!tx || !tx.to || !tx.data) {
+    if (!tx || typeof tx !== "object") {
       showErrorPopup("Backend /swap returned malformed tx", swapRes);
+      return;
+    }
+    if (!tx.to || !tx.data) {
+      showErrorPopup("Backend /swap did not return valid tx fields", swapRes);
       return;
     }
 
     if (typeof window.ethereum === "undefined") {
-      showErrorPopup("MetaMask not detected", "Install MetaMask.");
+      showErrorPopup("MetaMask not detected", "Install MetaMask and refresh the page.");
       return;
     }
 
+    // 0x v2 트랜잭션 그대로 전달
     const txParams = {
       from: userAddress,
       to:   tx.to,
       data: tx.data
     };
 
-    if (tx.value)    txParams.value    = tx.value;
-    if (tx.gas)      txParams.gas      = tx.gas;
-    if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
+    // value / gas / gasPrice 가 있으면 그대로 전달 (대부분 0x-hex 문자열)
+    if (tx.value != null)    txParams.value    = tx.value;
+    if (tx.gas != null)      txParams.gas      = tx.gas;
+    if (tx.gasPrice != null) txParams.gasPrice = tx.gasPrice;
 
     console.log("[swap-tx] params", txParams);
 
@@ -1181,5 +1187,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
 
