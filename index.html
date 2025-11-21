@@ -1114,6 +1114,7 @@ async function executeSwap() {
     if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
 
     console.log("[swap-tx] params", txParams);
+    console.log("[swap-tx] params going to MetaMask:", txParams);
 
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
@@ -1189,3 +1190,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
