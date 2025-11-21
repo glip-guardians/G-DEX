@@ -606,7 +606,6 @@ async function postToBackend(path, body) {
 
   console.log("[backend res]", path, res.status, text);
 
-  // HTTP 에러코드면 그대로 프런트에 에러로 던짐
   if (!res.ok) {
     let payload;
     try {
@@ -620,7 +619,6 @@ async function postToBackend(path, body) {
     );
   }
 
-  // 200 이지만 JSON 이 아닐 수도 있으니 방어
   try {
     return JSON.parse(text);
   } catch (e) {
@@ -1033,7 +1031,6 @@ async function updatePricePreview() {
     buyInput.value = buyAmount.toFixed(6);
   } catch (err) {
     console.error("[updatePricePreview] error", err);
-    // 미리보기일 뿐이지만, 지금은 문제를 확인해야 하니 팝업도 띄움
     showErrorPopup("Quote request failed", err);
     buyInput.value = "";
   }
@@ -1063,7 +1060,7 @@ async function executeSwap() {
       return;
     }
 
-    // 이미 프런트에서 1번만 단위 변환: amount → wei 문자열
+    // 프런트에서 딱 한 번만 단위 변환: amount → wei 문자열
     const sellAmountRaw = BigInt(
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
@@ -1081,14 +1078,13 @@ async function executeSwap() {
 
     console.log("[/swap raw response]", swapRes);
 
-    // 백엔드가 { tx: { ... } } 형태로 줄 수도 있고, 평평한 {to,data,...} 로 줄 수도 있으니 둘 다 대응
-    const tx = swapRes && swapRes.tx ? swapRes.tx : swapRes;
+    const txFromBackend = swapRes && swapRes.tx ? swapRes.tx : swapRes;
 
-    if (!tx || typeof tx !== "object") {
+    if (!txFromBackend || typeof txFromBackend !== "object") {
       showErrorPopup("Backend /swap returned malformed tx", swapRes);
       return;
     }
-    if (!tx.to || !tx.data) {
+    if (!txFromBackend.to || !txFromBackend.data) {
       showErrorPopup("Backend /swap did not return valid tx fields", swapRes);
       return;
     }
@@ -1098,19 +1094,39 @@ async function executeSwap() {
       return;
     }
 
-    // 0x v2 트랜잭션 그대로 전달
+    // --- 여기서부터 금액 불일치 방지 로직 ---
+    // 1) ETH 스왑인지 확인 (0x ETH sentinel 사용)
+    const isEthSell = toBackendTokenAddress(sellMeta) === ETH_ADDRESS_0X;
+
+    // 2) MetaMask로 보낼 value (16진수) 결정
+    let valueHex = "0x0";
+    if (isEthSell) {
+      // 사용자가 입력한 ETH 수량(wei)을 그대로 metaMask value로 사용
+      const vBig = BigInt(sellAmountRaw);
+      valueHex = "0x" + vBig.toString(16);
+    } else if (txFromBackend.value != null) {
+      // 비 ETH 의 경우, backend value가 있다면 참고용으로만 사용
+      try {
+        const vBig = BigInt(txFromBackend.value);
+        if (vBig > 0n) {
+          valueHex = "0x" + vBig.toString(16);
+        }
+      } catch (_) {
+        // parsing 실패 시 그냥 0으로 둠
+      }
+    }
+
+    // 3) MetaMask에 넘길 tx 파라미터 (gas, gasPrice는 넘기지 않고 MetaMask가 추정하게 둠)
     const txParams = {
       from: userAddress,
-      to:   tx.to,
-      data: tx.data
+      to:   txFromBackend.to,
+      data: txFromBackend.data
     };
+    if (valueHex !== "0x0") {
+      txParams.value = valueHex;
+    }
 
-    // value / gas / gasPrice 가 있으면 그대로 전달 (대부분 0x-hex 문자열)
-    if (tx.value != null)    txParams.value    = tx.value;
-    if (tx.gas != null)      txParams.gas      = tx.gas;
-    if (tx.gasPrice != null) txParams.gasPrice = tx.gasPrice;
-
-    console.log("[swap-tx] params", txParams);
+    console.log("[swap-tx] params going to MetaMask:", txParams);
 
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
@@ -1125,7 +1141,6 @@ async function executeSwap() {
     showErrorPopup("Swap failed", err);
   }
 }
-
 
 // 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
@@ -1187,7 +1202,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
-
-
-
