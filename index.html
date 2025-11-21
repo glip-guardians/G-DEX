@@ -780,9 +780,129 @@ function handleInstallClick(){
   alert('Use your browser menu → "Add to Home screen".');
 }
 
-/* ===== Analytics Demo 등 (생략: 기존 그대로) ===== */
-/* ...여기에는 demoAnalytics, fillKpis, drawSpark, drawDonut, drawGauge, updateRibbon 함수
-   를 그대로 두시면 됩니다. 위쪽 코드와 동일하게 유지하세요... */
+/* ===== Analytics Demo 데이터 & 차트 ===== */
+const demoAnalytics = {
+  rebateRate: 12,
+  feeNet: 420000,
+  split: { users: 0.70, esg: 0.20, treasury: 0.10 },
+  returnedSeries: [1200,3400,5600,8300,12000,16200,21000,27900,35000,43600,52000,61500,72000,84500,98000,112000,127800,145200,163500,182400],
+  turnout: 38,
+  transparency: 92,
+  co2: { current: 152, target: 220 }
+};
+function fillKpis(d){
+  const {rebateRate, feeNet, split, turnout, transparency} = d;
+  const returned = feeNet * (rebateRate/100) * split.users;
+  const esgAccrual= feeNet * (rebateRate/100) * split.esg;
+  document.getElementById('kRebate').textContent = rebateRate.toFixed(0) + "%";
+  document.getElementById('kReturned').textContent = "$ " + Math.round(returned).toLocaleString();
+  document.getElementById('kESG').textContent = "$ " + Math.round(esgAccrual).toLocaleString();
+  document.getElementById('kTransparency').textContent = transparency.toFixed(0) + "%";
+  document.getElementById('kTurnout').textContent = turnout.toFixed(0) + "%";
+  const greenScore = Math.round( (transparency/100) * (split.esg*rebateRate) * 10 );
+  document.getElementById('kGreen').textContent = greenScore;
+  document.getElementById('rvHint').textContent = "Net Fees $" + feeNet.toLocaleString() + " · R% " + rebateRate + "%";
+  document.getElementById('esgNote').textContent = `Current quarter alloc: Users ${(split.users*100).toFixed(0)}% · ESG ${(split.esg*100).toFixed(0)}% · Treasury ${(split.treasury*100).toFixed(0)}%.`;
+  document.getElementById('giHint').textContent = `tCO₂e offset est. ${d.co2.current}/${d.co2.target}`;
+}
+function drawSpark(d){
+  const el = document.getElementById('spark');
+  const ctx = el.getContext('2d');
+  const DPR = window.devicePixelRatio||1;
+  const w = el.clientWidth * DPR, h = el.clientHeight * DPR;
+  el.width = w; el.height = h;
+  const data = d.returnedSeries;
+  const min = Math.min(...data), max = Math.max(...data);
+  const padX = 20 * DPR, padY = 16 * DPR;
+  const x = i => padX + (i/(data.length-1)) * (w - padX*2);
+  const y = v => { const t=(v-min)/(max-min || 1); return h - padY - t*(h - padY*2); };
+
+  const grad = ctx.createLinearGradient(0, y(max), 0, h-padY);
+  grad.addColorStop(0, "rgba(31,227,164,.45)");
+  grad.addColorStop(1, "rgba(31,227,164,.05)");
+
+  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
+  ctx.lineTo(x(data.length-1), h-padY); ctx.lineTo(x(0), h-padY); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
+  ctx.lineWidth = 2.5 * DPR; ctx.strokeStyle = "#1fe3a4"; ctx.stroke();
+
+  const last = data[data.length-1];
+  ctx.fillStyle="#eaf7f0";
+  ctx.font = `${12*DPR}px Sora, sans-serif`;
+  ctx.fillText("$ " + last.toLocaleString(), x(data.length-1)-40*DPR, y(last)-8*DPR);
+}
+function drawDonut(d){
+  const canvas = document.getElementById('donut');
+  const ctx = canvas.getContext('2d');
+  const DPR = window.devicePixelRatio||1;
+  const size = canvas.parentElement.clientWidth;
+  const dim = Math.min(200, size);
+  canvas.width = dim * DPR; canvas.height = dim * DPR;
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const rOuter = (dim*DPR)/2 - 6*DPR;
+  const rInner = rOuter * 0.62;
+  const parts = [
+    {key:"Users",    val:d.split.users,    color:"#1fe3a4"},
+    {key:"ESG",      val:d.split.esg,      color:"#11c48c"},
+    {key:"Treasury", val:d.split.treasury, color:"rgba(255,255,255,.35)"}
+  ];
+  let start = -Math.PI/2;
+  parts.forEach(p=>{
+    const arc = p.val * Math.PI*2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rOuter, start, start+arc);
+    ctx.arc(cx, cy, rInner, start+arc, start, true);
+    ctx.closePath();
+    ctx.fillStyle = p.color; ctx.fill();
+    start += arc;
+  });
+  document.getElementById('donutCenter').textContent = d.rebateRate + "%";
+  const leg = document.getElementById('donutLegend');
+  leg.innerHTML = parts.map(p=>
+    `<div class="item"><span class="dot" style="background:${p.color}"></span>${p.key} ${(p.val*100).toFixed(0)}%</div>`
+  ).join("");
+}
+function drawGauge(d){
+  const canvas = document.getElementById('gauge');
+  const ctx = canvas.getContext('2d');
+  const DPR = window.devicePixelRatio||1;
+  const w = canvas.parentElement.clientWidth, h = 120;
+  canvas.width = w*DPR; canvas.height = h*DPR;
+  const cx = canvas.width/2, cy = canvas.height*0.95;
+  const r = Math.min(w*DPR*0.42, h*DPR*0.9);
+  ctx.lineWidth = 16*DPR; ctx.lineCap = "round";
+
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
+  ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.stroke();
+
+  const pct = Math.max(0, Math.min(1, d.co2.current / d.co2.target));
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI);
+  ctx.strokeStyle = "#1fe3a4"; ctx.stroke();
+
+  ctx.lineWidth = 2*DPR; ctx.strokeStyle = "rgba(255,255,255,.35)";
+  for(let i=0;i<=4;i++){
+    const a = Math.PI + i*(Math.PI/4);
+    const x1 = cx + Math.cos(a)*r*0.86, y1 = cy + Math.sin(a)*r*0.86;
+    const x2 = cx + Math.cos(a)*r*0.98, y2 = cy + Math.sin(a)*r*0.98;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+
+  ctx.fillStyle="#eaf7f0";
+  ctx.font = `${12*DPR}px Sora, sans-serif`;
+  ctx.textAlign="center";
+  ctx.fillText(`${d.co2.current.toFixed(0)} / ${d.co2.target.toFixed(0)} tCO₂e`, cx, cy - r*0.35);
+}
+function updateRibbon(d){
+  const pctESG = (d.split.esg*100).toFixed(0);
+  const pctUsers= (d.split.users*100).toFixed(0);
+  const pctTreas= (d.split.treasury*100).toFixed(0);
+  document.getElementById('esgNote').textContent =
+    `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
+}
 
 /* ============================================================
    ===== 0x API 기반 Swap 로직 (Allowance Holder) ============
@@ -793,7 +913,7 @@ const ZEROX_API_KEY = "5527155c-879f-4194-a986-b81d02ca81b2";
 const FEE_ADDRESS   = "0xd840b263bed70c8ef3728ddcae64d482e7fdd513";
 const FEE_BPS       = 8;   // 0.08%
 
-// 0x 요청에 공통으로 넣을 헤더 ★★ (v2 버전 + API 키)
+// 0x 요청에 공통으로 넣을 헤더
 const ZEROX_HEADERS = {
   "0x-version": "v2",
   "0x-api-key": ZEROX_API_KEY
@@ -894,7 +1014,6 @@ async function executeSwap() {
 
   const slippage = parseFloat(document.getElementById("slip").value || "2");
   const slippagePct = slippage / 100;                    // ex) 2% → 0.02
-  const feePct = FEE_BPS / 10000;                        // ex) 8bps → 0.0008
 
   const params = new URLSearchParams({
     chainId: "1",
@@ -911,7 +1030,7 @@ async function executeSwap() {
 
   console.log("[0x-quote] request", {
     url, sellToken, buyToken, sellAmountWei,
-    userAddress, slippagePct, feePct
+    userAddress, slippagePct
   });
 
   try {
@@ -988,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('earned').textContent="42.4 GLIP";
     document.getElementById('est30').textContent="≈ 12.8 GLIP";
 
-    // Analytics demo (위에서 정의해둔 demoAnalytics 사용)
+    // Analytics demo
     fillKpis(demoAnalytics);
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
@@ -1009,7 +1128,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 });
 </script>
-
 </body>
 </html>
-
