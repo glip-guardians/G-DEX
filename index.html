@@ -1103,23 +1103,92 @@ async function executeSwap() {
       return;
     }
 
+async function executeSwap() {
+  try {
+    if (!userAddress) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
+    const sellVal = parseFloat(document.getElementById("sell").value || "0");
+    if (!sellVal || sellVal <= 0) {
+      alert("Enter an amount to swap.");
+      return;
+    }
+
+    const sellSym = document.getElementById("sellS").textContent;
+    const buySym  = document.getElementById("buyS").textContent;
+
+    const sellMeta = getTokenMeta(sellSym);
+    const buyMeta  = getTokenMeta(buySym);
+    if (!sellMeta || !buyMeta) {
+      showErrorPopup("Swap error", "Token metadata not found. Please reselect tokens and try again.");
+      return;
+    }
+
+    // 프론트에서 한 번만 단위 변환 (amount → wei, 10진수 문자열)
+    const sellAmountRaw = BigInt(
+      Math.floor(sellVal * 10 ** sellMeta.decimals)
+    ).toString();
+
+    const slipInput = document.getElementById("slip");
+    const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
+
+    // 백엔드에 스왑 요청
+    const swapRes = await postToBackend("/swap", {
+      sellToken: toBackendTokenAddress(sellMeta),
+      buyToken:  toBackendTokenAddress(buyMeta),
+      sellAmount: sellAmountRaw,
+      taker: userAddress,
+      slippagePercentage: slipPct
+    });
+
+    console.log("[/swap raw response]", swapRes);
+
+    const tx = swapRes.tx || swapRes; // 백엔드가 { tx } 형식으로 보내기 때문에 안전하게
+    if (!tx || !tx.to || !tx.data) {
+      showErrorPopup("Swap error", "Backend /swap returned malformed tx");
+      console.error("Backend /swap returned malformed tx", swapRes);
+      return;
+    }
+
+    // ---------------------- ★ 여기 핵심 수정 부분 ★ ----------------------
+    // 백엔드에서 온 value 는 10진수 문자열(wei) 이므로
+    // MetaMask에 보내기 전에 16진수 "0x..." 형식으로 변환해야 함
+    let valueHex = "0x0";
+    if (tx.value && tx.value !== "0") {
+      try {
+        valueHex = "0x" + BigInt(tx.value).toString(16);
+      } catch (e) {
+        console.error("Failed to convert tx.value to hex:", tx.value, e);
+        showErrorPopup("Swap error", "Failed to build transaction value.");
+        return;
+      }
+    }
+    // -------------------------------------------------------------------
+
     const txParams = {
       from: userAddress,
-      to:   tx.to,
-      data: tx.data
+      to: tx.to,
+      data: tx.data,
+      value: valueHex,          // ← 이제 hex 로 전달
     };
-
-    if (tx.value)    txParams.value    = tx.value;
-    if (tx.gas)      txParams.gas      = tx.gas;
-    if (tx.gasPrice) txParams.gasPrice = tx.gasPrice;
 
     console.log("[swap-tx] params", txParams);
     console.log("[swap-tx] params going to MetaMask:", txParams);
 
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
-      params: [txParams]
+      params: [txParams],
     });
+
+    console.log("Swap sent, txHash:", txHash);
+  } catch (err) {
+    console.error("executeSwap error:", err);
+    showErrorPopup("Swap failed", err.message || "Unknown error");
+  }
+}
+
 
     console.log("[swap-tx] hash", txHash);
     alert("Swap transaction sent!\n\nTX Hash:\n" + txHash);
@@ -1190,4 +1259,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
