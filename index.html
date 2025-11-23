@@ -560,6 +560,7 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
   <div class="content" style="padding:16px"><div id="tokList"></div></div>
 </dialog>
 
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 <script>
 /* ===== utils ===== */
 const $ = s => document.querySelector(s);
@@ -978,10 +979,29 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== Backend-based Swap logic (0x handled server-side) ====
+
+/* ============================================================
+   ===== Hybrid Swap logic: Sushi (ETH↔GLIP) + 0x backend =====
    ============================================================ */
 
-// 토큰 메타 조회
+// SushiSwap mainnet router + key tokens
+const SUSHI_ROUTER_ADDRESS = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
+const SUSHI_WETH_ADDRESS   = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+const SUSHI_GLIP_ADDRESS   = "0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e";
+
+// 최소한의 Router / ERC20 ABI (ETH↔GLIP 스왑에만 사용)
+const SUSHI_ROUTER_ABI = [
+  "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)",
+  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
+];
+
+const ERC20_MIN_ABI = [
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function approve(address spender, uint256 amount) external returns (bool)"
+];
+
+// 토큰 메타 조회 (symbol / address 둘 다 지원)
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
     t.symbol === symbolOrAddress ||
@@ -989,7 +1009,49 @@ function getTokenMeta(symbolOrAddress) {
   );
 }
 
-// 가격 미리보기 (sell → buy), /quote 사용
+// ETH↔GLIP 쌍인지 판별
+function isEthGlipPair(sellMeta, buyMeta) {
+  const s = sellMeta?.symbol || "";
+  const b = buyMeta?.symbol || "";
+  return (s === "ETH" && b === "GLIP") || (s === "GLIP" && b === "ETH");
+}
+
+// ETH↔GLIP 경로 생성
+function buildEthGlipPath(sellMeta, buyMeta) {
+  if (!isEthGlipPair(sellMeta, buyMeta)) {
+    throw new Error("buildEthGlipPath called for non ETH↔GLIP pair");
+  }
+  if (sellMeta.symbol === "ETH") {
+    return [SUSHI_WETH_ADDRESS, SUSHI_GLIP_ADDRESS];
+  }
+  // GLIP → ETH
+  return [SUSHI_GLIP_ADDRESS, SUSHI_WETH_ADDRESS];
+}
+
+// ethers.js + MetaMask 기반 Router 인스턴스 가져오기
+async function getSushiRouterWithSigner() {
+  if (typeof window.ethereum === "undefined") {
+    throw new Error("MetaMask not detected for SushiSwap route.");
+  }
+  if (typeof ethers === "undefined") {
+    throw new Error("ethers.js is not loaded.");
+  }
+
+  const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+  const signer = web3Provider.getSigner();
+  const addr = await signer.getAddress().catch(()=>null);
+
+  if (addr && !userAddress) {
+    userAddress = addr;
+    const wSpan = document.getElementById('wAddr');
+    if (wSpan) wSpan.textContent = short(userAddress);
+  }
+
+  const router = new ethers.Contract(SUSHI_ROUTER_ADDRESS, SUSHI_ROUTER_ABI, signer);
+  return { router, signer };
+}
+
+// 가격 미리보기 (sell → buy), ETH↔GLIP은 Sushi, 나머지는 0x backend 사용
 async function updatePricePreview() {
   const sellInput = document.getElementById("sell");
   const buyInput  = document.getElementById("buy");
@@ -1005,16 +1067,37 @@ async function updatePricePreview() {
 
   const sellMeta = getTokenMeta(sellSym);
   const buyMeta  = getTokenMeta(buySym);
-  if (!sellMeta || !buyMeta) return;
-
-  const sellAmountRaw = BigInt(
-    Math.floor(sellVal * 10 ** sellMeta.decimals)
-  ).toString();
+  if (!sellMeta || !buyMeta) {
+    buyInput.value = "";
+    return;
+  }
 
   const slipInput = document.getElementById("slip");
   const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
 
+  // 1) ETH↔GLIP 쌍이면 SushiSwap 경로 사용
+  if (isEthGlipPair(sellMeta, buyMeta)) {
+    try {
+      const { router } = await getSushiRouterWithSigner();
+      const path = buildEthGlipPath(sellMeta, buyMeta);
+      const amountIn = ethers.utils.parseUnits(String(sellVal), sellMeta.decimals);
+      const amounts  = await router.getAmountsOut(amountIn, path);
+      const outRaw   = amounts[amounts.length - 1];
+      const out      = Number(ethers.utils.formatUnits(outRaw, buyMeta.decimals));
+      buyInput.value = out.toFixed(6);
+    } catch (err) {
+      console.error("[updatePricePreview][Sushi] error", err);
+      buyInput.value = "";
+    }
+    return;
+  }
+
+  // 2) 그 외 모든 쌍은 기존 0x backend 경로 사용
   try {
+    const sellAmountRaw = BigInt(
+      Math.floor(sellVal * 10 ** sellMeta.decimals)
+    ).toString();
+
     const quote = await postToBackend("/quote", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
@@ -1030,13 +1113,13 @@ async function updatePricePreview() {
     const buyAmount = Number(quote.buyAmount) / (10 ** buyMeta.decimals);
     buyInput.value = buyAmount.toFixed(6);
   } catch (err) {
-    console.error("[updatePricePreview] error", err);
+    console.error("[updatePricePreview][0x] error", err);
     showErrorPopup("Quote request failed", err);
     buyInput.value = "";
   }
 }
 
-// 실제 스왑 실행, /swap 사용
+// 실제 스왑 실행 — ETH↔GLIP은 Sushi, 그 외에는 0x backend 사용
 async function executeSwap() {
   try {
     if (!userAddress) {
@@ -1060,13 +1143,70 @@ async function executeSwap() {
       return;
     }
 
-    // 프런트에서 딱 한 번만 단위 변환: amount → wei 문자열
+    const slipInput = document.getElementById("slip");
+    const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : 0.02;
+
+    // 1) ETH↔GLIP 쌍이면 SushiSwap direct 호출
+    if (isEthGlipPair(sellMeta, buyMeta)) {
+      if (typeof window.ethereum === "undefined" || typeof ethers === "undefined") {
+        showErrorPopup("SushiSwap route unavailable", "MetaMask / ethers.js not detected.");
+        return;
+      }
+
+      const { router, signer } = await getSushiRouterWithSigner();
+      const path = buildEthGlipPath(sellMeta, buyMeta);
+
+      const amountIn = ethers.utils.parseUnits(String(sellVal), sellMeta.decimals);
+
+      // 예상 아웃풋 조회 후 슬리피지 적용
+      const amounts = await router.getAmountsOut(amountIn, path);
+      const outRaw  = amounts[amounts.length - 1];
+
+      // 슬리피지 처리 (basis points 기반)
+      const bps = Math.floor((1 - slipPct) * 10000); // 예: 2% 슬리피지 → 9800
+      const amountOutMin = outRaw.mul(bps).div(10000);
+
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 10; // 10분
+
+      let tx;
+      if (sellMeta.symbol === "ETH") {
+        // ETH → GLIP
+        tx = await router.swapExactETHForTokens(
+          amountOutMin,
+          path,
+          userAddress,
+          deadline,
+          { value: amountIn }
+        );
+      } else {
+        // GLIP → ETH : allowance 확인 후 swapExactTokensForETH
+        const glip = new ethers.Contract(SUSHI_GLIP_ADDRESS, ERC20_MIN_ABI, signer);
+        const currentAllow = await glip.allowance(userAddress, SUSHI_ROUTER_ADDRESS);
+        if (currentAllow.lt(amountIn)) {
+          const approveTx = await glip.approve(SUSHI_ROUTER_ADDRESS, amountIn);
+          await approveTx.wait();
+        }
+
+        tx = await router.swapExactTokensForETH(
+          amountIn,
+          amountOutMin,
+          path,
+          userAddress,
+          deadline
+        );
+      }
+
+      const receipt = await tx.wait();
+      alert("Swap completed on SushiSwap!\n\nTX Hash:\n" + receipt.transactionHash);
+      document.getElementById("sell").value = "";
+      document.getElementById("buy").value  = "";
+      return;
+    }
+
+    // 2) 나머지 모든 쌍은 기존 0x backend 경로 사용
     const sellAmountRaw = BigInt(
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
-
-    const slipInput = document.getElementById("slip");
-    const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
 
     const swapRes = await postToBackend("/swap", {
       sellToken: toBackendTokenAddress(sellMeta),
@@ -1094,29 +1234,25 @@ async function executeSwap() {
       return;
     }
 
-    // --- 여기서부터 금액 불일치 방지 로직 ---
-    // 1) ETH 스왑인지 확인 (0x ETH sentinel 사용)
+    // ETH 스왑인지 확인 (0x ETH sentinel 사용)
     const isEthSell = toBackendTokenAddress(sellMeta) === ETH_ADDRESS_0X;
 
-    // 2) MetaMask로 보낼 value (16진수) 결정
+    // MetaMask로 보낼 value (16진수) 결정
     let valueHex = "0x0";
     if (isEthSell) {
-      // 사용자가 입력한 ETH 수량(wei)을 그대로 metaMask value로 사용
       const vBig = BigInt(sellAmountRaw);
       valueHex = "0x" + vBig.toString(16);
     } else if (txFromBackend.value != null) {
-      // 비 ETH 의 경우, backend value가 있다면 참고용으로만 사용
       try {
         const vBig = BigInt(txFromBackend.value);
         if (vBig > 0n) {
           valueHex = "0x" + vBig.toString(16);
         }
       } catch (_) {
-        // parsing 실패 시 그냥 0으로 둠
+        // ignore parse error
       }
     }
 
-    // 3) MetaMask에 넘길 tx 파라미터 (gas, gasPrice는 넘기지 않고 MetaMask가 추정하게 둠)
     const txParams = {
       from: userAddress,
       to:   txFromBackend.to,
@@ -1126,14 +1262,14 @@ async function executeSwap() {
       txParams.value = valueHex;
     }
 
-    console.log("[swap-tx] params going to MetaMask:", txParams);
+    console.log("[swap-tx][0x] params going to MetaMask:", txParams);
 
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
       params: [txParams]
     });
 
-    console.log("[swap-tx] hash", txHash);
+    console.log("[swap-tx][0x] hash", txHash);
     alert("Swap transaction sent!\n\nTX Hash:\n" + txHash);
 
   } catch (err) {
@@ -1159,7 +1295,6 @@ function bindSwapLogic() {
     swapBtn.addEventListener("click", executeSwap);
   }
 }
-
 /* ===== Boot ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
   try{
