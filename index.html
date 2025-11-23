@@ -983,6 +983,99 @@ function updateRibbon(d){
 /* ============================================================
    ===== Hybrid Swap logic: Sushi (ETH↔GLIP) + 0x backend =====
    ============================================================ */
+// ===== SushiSwap (ETH <-> GLIP 전용) =====
+const SUSHI_ROUTER = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // mainnet
+const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+const GLIP_ADDRESS = "0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e";
+
+const SUSHI_ROUTER_ABI = [
+  "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)",
+  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
+];
+
+const ERC20_MIN_ABI = [
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function approve(address spender, uint256 amount) external returns (bool)"
+];
+
+let sushiProvider = null;
+let sushiSigner   = null;
+let sushiRouter   = null;
+
+function isEthGlipPair(sellMeta, buyMeta){
+  const s = sellMeta.symbol, b = buyMeta.symbol;
+  return (s === "ETH" && b === "GLIP") || (s === "GLIP" && b === "ETH");
+}
+
+function buildSushiPath(sellMeta, buyMeta){
+  if (sellMeta.symbol === "ETH" && buyMeta.symbol === "GLIP") {
+    return [WETH_ADDRESS, GLIP_ADDRESS];
+  }
+  if (sellMeta.symbol === "GLIP" && buyMeta.symbol === "ETH") {
+    return [GLIP_ADDRESS, WETH_ADDRESS];
+  }
+  throw new Error("Not an ETH/GLIP pair");
+}
+
+async function ensureSushiReady(){
+  if (!window.ethereum || !window.ethers) {
+    throw new Error("MetaMask / ethers.js not detected.");
+  }
+  if (!sushiProvider) {
+    sushiProvider = new ethers.providers.Web3Provider(window.ethereum);
+    sushiSigner   = sushiProvider.getSigner();
+    sushiRouter   = new ethers.Contract(SUSHI_ROUTER, SUSHI_ROUTER_ABI, sushiSigner);
+  }
+}
+
+async function ensureGlipAllowance(amountWei){
+  const token = new ethers.Contract(GLIP_ADDRESS, ERC20_MIN_ABI, sushiSigner);
+  const current = await token.allowance(userAddress, SUSHI_ROUTER);
+  if (current.gte(amountWei)) return;
+  const tx = await token.approve(SUSHI_ROUTER, amountWei);
+  await tx.wait();
+}
+
+async function sushiSwapEthGlip(sellMeta, buyMeta, sellAmountRaw, slipPct){
+  await ensureSushiReady();
+
+  const amountIn = ethers.BigNumber.from(sellAmountRaw);
+  const path     = buildSushiPath(sellMeta, buyMeta);
+  const amounts  = await sushiRouter.getAmountsOut(amountIn, path);
+  const expectedOut = amounts[amounts.length - 1];
+
+  // 슬리피지: 기본 2% (입력값 사용)
+  const basis = 10000;
+  const slipBps = Math.round((slipPct || 0.02) * basis);
+  const amountOutMin = expectedOut.mul(basis - slipBps).div(basis);
+
+  const deadline = Math.floor(Date.now() / 1000) + 600; // 10분
+
+  let tx;
+  if (sellMeta.symbol === "ETH" && buyMeta.symbol === "GLIP") {
+    tx = await sushiRouter.swapExactETHForTokens(
+      amountOutMin,
+      path,
+      userAddress,
+      deadline,
+      { value: amountIn }
+    );
+  } else {
+    // GLIP -> ETH
+    await ensureGlipAllowance(amountIn);
+    tx = await sushiRouter.swapExactTokensForETH(
+      amountIn,
+      amountOutMin,
+      path,
+      userAddress,
+      deadline
+    );
+  }
+
+  const receipt = await tx.wait();
+  return receipt.transactionHash;
+}
 
 // SushiSwap mainnet router + key tokens
 const SUSHI_ROUTER_ADDRESS = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
@@ -1001,6 +1094,7 @@ const ERC20_MIN_ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)"
 ];
 
+  
 // 토큰 메타 조회 (symbol / address 둘 다 지원)
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
@@ -1119,7 +1213,7 @@ async function updatePricePreview() {
   }
 }
 
-// 실제 스왑 실행 — ETH↔GLIP은 Sushi, 그 외에는 0x backend 사용
+// 실제 스왑 실행 (ETH<->GLIP은 Sushi, 그 외는 0x)
 async function executeSwap() {
   try {
     if (!userAddress) {
@@ -1143,71 +1237,29 @@ async function executeSwap() {
       return;
     }
 
-    const slipInput = document.getElementById("slip");
-    const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : 0.02;
-
-    // 1) ETH↔GLIP 쌍이면 SushiSwap direct 호출
-    if (isEthGlipPair(sellMeta, buyMeta)) {
-      if (typeof window.ethereum === "undefined" || typeof ethers === "undefined") {
-        showErrorPopup("SushiSwap route unavailable", "MetaMask / ethers.js not detected.");
-        return;
-      }
-
-      const { router, signer } = await getSushiRouterWithSigner();
-      const path = buildEthGlipPath(sellMeta, buyMeta);
-
-      const amountIn = ethers.utils.parseUnits(String(sellVal), sellMeta.decimals);
-
-      // 예상 아웃풋 조회 후 슬리피지 적용
-      const amounts = await router.getAmountsOut(amountIn, path);
-      const outRaw  = amounts[amounts.length - 1];
-
-      // 슬리피지 처리 (basis points 기반)
-      const bps = Math.floor((1 - slipPct) * 10000); // 예: 2% 슬리피지 → 9800
-      const amountOutMin = outRaw.mul(bps).div(10000);
-
-      const deadline = Math.floor(Date.now() / 1000) + 60 * 10; // 10분
-
-      let tx;
-      if (sellMeta.symbol === "ETH") {
-        // ETH → GLIP
-        tx = await router.swapExactETHForTokens(
-          amountOutMin,
-          path,
-          userAddress,
-          deadline,
-          { value: amountIn }
-        );
-      } else {
-        // GLIP → ETH : allowance 확인 후 swapExactTokensForETH
-        const glip = new ethers.Contract(SUSHI_GLIP_ADDRESS, ERC20_MIN_ABI, signer);
-        const currentAllow = await glip.allowance(userAddress, SUSHI_ROUTER_ADDRESS);
-        if (currentAllow.lt(amountIn)) {
-          const approveTx = await glip.approve(SUSHI_ROUTER_ADDRESS, amountIn);
-          await approveTx.wait();
-        }
-
-        tx = await router.swapExactTokensForETH(
-          amountIn,
-          amountOutMin,
-          path,
-          userAddress,
-          deadline
-        );
-      }
-
-      const receipt = await tx.wait();
-      alert("Swap completed on SushiSwap!\n\nTX Hash:\n" + receipt.transactionHash);
-      document.getElementById("sell").value = "";
-      document.getElementById("buy").value  = "";
-      return;
-    }
-
-    // 2) 나머지 모든 쌍은 기존 0x backend 경로 사용
+    // 금액을 wei 문자열로 변환 (기존과 동일)
     const sellAmountRaw = BigInt(
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
 
+    const slipInput = document.getElementById("slip");
+    const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
+
+    const isEthGlip = isEthGlipPair(sellMeta, buyMeta);
+
+    // 1) ETH <-> GLIP 이면 먼저 Sushi 경로 시도
+    if (isEthGlip) {
+      try {
+        const txHash = await sushiSwapEthGlip(sellMeta, buyMeta, sellAmountRaw, slipPct);
+        alert("Swap sent via SushiSwap.\n\nTX Hash:\n" + txHash);
+        return; // 성공했으면 0x로 안 내려감
+      } catch (e) {
+        console.error("SushiSwap failed, falling back to 0x.", e);
+        // fall-through → 아래 0x 로직으로 계속 진행
+      }
+    }
+
+    // 2) 그 외 (또는 Sushi 실패 시) 0x 백엔드 사용
     const swapRes = await postToBackend("/swap", {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
@@ -1234,10 +1286,7 @@ async function executeSwap() {
       return;
     }
 
-    // ETH 스왑인지 확인 (0x ETH sentinel 사용)
     const isEthSell = toBackendTokenAddress(sellMeta) === ETH_ADDRESS_0X;
-
-    // MetaMask로 보낼 value (16진수) 결정
     let valueHex = "0x0";
     if (isEthSell) {
       const vBig = BigInt(sellAmountRaw);
@@ -1248,9 +1297,7 @@ async function executeSwap() {
         if (vBig > 0n) {
           valueHex = "0x" + vBig.toString(16);
         }
-      } catch (_) {
-        // ignore parse error
-      }
+      } catch (_) {}
     }
 
     const txParams = {
@@ -1262,15 +1309,15 @@ async function executeSwap() {
       txParams.value = valueHex;
     }
 
-    console.log("[swap-tx][0x] params going to MetaMask:", txParams);
+    console.log("[swap-tx] params going to MetaMask:", txParams);
 
     const txHash = await ethereum.request({
       method: "eth_sendTransaction",
       params: [txParams]
     });
 
-    console.log("[swap-tx][0x] hash", txHash);
-    alert("Swap transaction sent!\n\nTX Hash:\n" + txHash);
+    console.log("[swap-tx] hash", txHash);
+    alert("Swap transaction sent via 0x.\n\nTX Hash:\n" + txHash);
 
   } catch (err) {
     console.error("executeSwap error:", err);
@@ -1337,3 +1384,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
