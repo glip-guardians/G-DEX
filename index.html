@@ -190,7 +190,16 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
   background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.22);
   color:#fff;white-space:nowrap
 }
-.tokenBtn img{width:22px;height:22px;border-radius:50%;object-fit:cover}
+/* 토큰 로고: 버튼 + 드롭다운 모두 완전 원형 */
+.tokenBtn img,
+#tokList .item img{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  object-fit:cover;
+  display:block;
+  background:#000;
+}
 .flip{
   width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
   border:1px solid rgba(255,255,255,.22);color:#fff;opacity:.85;cursor:pointer
@@ -308,7 +317,20 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 #tokModal::backdrop{background:rgba(0,0,0,.6)}
 #tokModal header{
   padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.18);font-weight:800;
-  display:flex;align-items:center;justify-content:space-between
+  display:flex;align-items:center;justify-content:space-between;gap:8px
+}
+/* 상단 검색 입력창 */
+#tokSearch{
+  flex:1;
+  background:rgba(255,255,255,.06);
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.25);
+  color:#fff;
+  padding:7px 10px;
+  font-size:14px;
+}
+#tokSearch::placeholder{
+  color:rgba(255,255,255,.65);
 }
 #tokClose{
   background:transparent;border:0;color:#fff;opacity:.8;cursor:pointer;
@@ -554,10 +576,13 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 <!-- Token Selector Modal -->
 <dialog id="tokModal">
   <header>
-    <span>Select a token</span>
+    <!-- 토큰 검색 입력란 -->
+    <input id="tokSearch" type="text" placeholder="Search token by name, symbol, or address" autocomplete="off">
     <button id="tokClose" title="Close">✕</button>
   </header>
-  <div class="content" style="padding:16px"><div id="tokList"></div></div>
+  <div class="content" style="padding:16px">
+    <div id="tokList"></div>
+  </div>
 </dialog>
 
 <script>
@@ -704,21 +729,48 @@ function initDefaults(){
 /* ===== 토큰 선택 모달 ===== */
 const dlg  = document.getElementById('tokModal');
 const list = document.getElementById('tokList');
+const tokSearchInput = document.getElementById('tokSearch');
 let target = null;
 
-function openFor(imgEl, symEl){
-  target = {imgEl, symEl};
-  list.innerHTML = tokenList.map(t=>`
+/* 검색어 기준으로 토큰 리스트 렌더링 */
+function renderTokenList(query=""){
+  const q = query.trim().toLowerCase();
+  const filtered = !q
+    ? tokenList
+    : tokenList.filter(t =>
+        t.symbol.toLowerCase().includes(q) ||
+        t.name.toLowerCase().includes(q) ||
+        (t.address && t.address.toLowerCase().includes(q))
+      );
+
+  if (!filtered.length) {
+    list.innerHTML = `<div style="padding:6px 0;opacity:.7;font-size:13px">No tokens match.</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(t=>`
     <div class="item" data-sym="${t.symbol}"
          style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
-      <img src="${t.logo}" style="width:22px;height:22px;border-radius:50%" alt="">
+      <img src="${t.logo}" alt="">
       <strong>${t.symbol}</strong>
       <span style="margin-left:6px;opacity:.85">${t.name}</span>
       <span style="margin-left:auto;opacity:.7">${
         t.address==="ETH" ? "ETH" : t.address.slice(0,6)+"…"+t.address.slice(-4)
       }</span>
     </div>`).join('');
+}
+
+function openFor(imgEl, symEl){
+  target = {imgEl, symEl};
+  if (tokSearchInput) {
+    tokSearchInput.value = "";
+  }
+  renderTokenList("");
   dlg.showModal();
+  // 자동 포커스
+  setTimeout(()=>{
+    tokSearchInput && tokSearchInput.focus();
+  }, 10);
 }
 
 list.onclick = e=>{
@@ -737,6 +789,13 @@ function bindTokenButtons(){
   $('#buyBtn').onclick  = ()=>openFor($('#buyI'),  $('#buyS'));
   $('#pT0Btn').onclick  = ()=>openFor($('#pT0Img'),$('#pT0Sym'));
   $('#pT1Btn').onclick  = ()=>openFor($('#pT1Img'),$('#pT1Sym'));
+}
+
+/* 검색 입력 이벤트 바인딩 */
+if (tokSearchInput) {
+  tokSearchInput.addEventListener('input', e=>{
+    renderTokenList(e.target.value);
+  });
 }
 
 /* Flip */
