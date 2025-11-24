@@ -402,18 +402,18 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
     <main class="main">
       <!-- Metrics -->
       <section class="metrics">
-        <div class="card metric"><h4>Recently Created Pools</h4><div class="v" id="mPools">—</div></div>
-        <div class="card metric"><h4>24h Volume</h4><div class="v" id="mVol">$ —</div></div>
-        <div class="card metric"><h4>GLIP Price</h4><div class="v" id="mPrice">$ —</div></div>
+        <div class="card metric"><h4>Recently Created Pools</h4><div class="v">—</div></div>
+        <div class="card metric"><h4>24h Volume</h4><div class="v">$ —</div></div>
+        <div class="card metric"><h4>GLIP Price</h4><div class="v">$ —</div></div>
       </section>
 
       <!-- Pool -->
       <section class="card pool" id="pool">
         <h3>Pool</h3>
         <div class="row" style="gap:8px;margin-bottom:6px">
-          <button class="btn" id="poolAddBtn" style="min-width:auto;padding:10px 14px">Add</button>
-          <button class="btn ghost" id="poolRemoveBtn" style="min-width:auto;padding:10px 14px">Remove</button>
-          <button class="btn ghost" id="poolMyPosBtn" style="min-width:auto;padding:10px 14px">My Positions</button>
+          <button class="btn" style="min-width:auto;padding:10px 14px">Add</button>
+          <button class="btn ghost" style="min-width:auto;padding:10px 14px">Remove</button>
+          <button class="btn ghost" style="min-width:auto;padding:10px 14px">My Positions</button>
         </div>
 
         <div class="input">
@@ -440,12 +440,6 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
             <button class="btn" id="poolSupply">Supply</button>
           </div>
         </div>
-              <p id="poolInfo"
-         style="margin-top:10px;opacity:.82;font-size:13px">
-        G-DEX Pool v1 is a read-only view of the GLIP-ETH pool on SushiSwap V2.
-        All liquidity add/remove actions happen on SushiSwap; this panel only
-        reads and displays the pool metrics.
-      </p>
       </section>
 
       <!-- Swap -->
@@ -592,48 +586,6 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 </dialog>
 
 <script>
-/* ====== v1 Manual Metrics (EDIT HERE) ====== */
-const MANUAL_POOL_STATS = {
-  // 메트릭 상단 3개 박스
-  recentPools:  "1 GLIP-ETH (SushiSwap V2)",  // Recently Created Pools
-  volume24hUsd: 0,                            // 24h Volume (USD)
-  glipPriceUsd: 0.00002,                      // 1 GLIP 가격(USD) 예시
-
-  // Pool 카드 안 하단 영역
-  poolPriceText: "Manual: 1 GLIP ≈ 0.00002 ETH",   // Price (T1 per T0)
-  sharePreviewText: "Initial GLIP-ETH pool on SushiSwap V2", // Share preview
-  infoText:
-    "G-DEX Pool v1 shows the GLIP-ETH pool created on SushiSwap V2. " +
-    "All metrics above are updated manually during the early phase."
-};
-
-/* v1에서만 수동 값 적용 — 나중에 서브그래프 연결 시 이 함수만 교체하면 됨 */
-function applyManualPoolStats() {
-  try {
-    // ① 상단 메트릭 3개 박스
-    const metricCards = document.querySelectorAll(".metrics .metric .v");
-    if (metricCards[0]) metricCards[0].textContent = MANUAL_POOL_STATS.recentPools;
-    if (metricCards[1]) metricCards[1].textContent =
-      "$ " + Number(MANUAL_POOL_STATS.volume24hUsd)
-                .toLocaleString(undefined, { maximumFractionDigits: 0 });
-    if (metricCards[2]) metricCards[2].textContent =
-      "$ " + MANUAL_POOL_STATS.glipPriceUsd.toString();
-
-    // ② Pool 카드 하단 Price / Share preview
-    const priceEl = document.getElementById("pPrice");
-    const shareEl = document.getElementById("pShare");
-    if (priceEl) priceEl.textContent = MANUAL_POOL_STATS.poolPriceText;
-    if (shareEl) shareEl.textContent = MANUAL_POOL_STATS.sharePreviewText;
-
-    // ③ Pool 섹션 안내 문구 (있으면)
-    const info = document.getElementById("poolInfo");
-    if (info) info.textContent = MANUAL_POOL_STATS.infoText;
-  } catch (e) {
-    console.error("[applyManualPoolStats]", e);
-  }
-}
-
-  
 /* ===== utils ===== */
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
@@ -641,12 +593,8 @@ const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 // DApp host
 const DAPP_HOST = 'gdex-app.com';
 
-// 0x ETH sentinel
+// 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-
-// GLIP / WETH 주소 (Sushi 서브그래프 조회용)
-const GLIP_TOKEN = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e'.toLowerCase();
-const WETH_TOKEN = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'.toLowerCase();
 
 // ===== 공통 에러 팝업 =====
 function showErrorPopup(title, payload) {
@@ -819,7 +767,10 @@ function openFor(imgEl, symEl){
   }
   renderTokenList("");
   dlg.showModal();
-  setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); }, 10);
+  // 자동 포커스
+  setTimeout(()=>{
+    tokSearchInput && tokSearchInput.focus();
+  }, 10);
 }
 
 list.onclick = e=>{
@@ -1086,132 +1037,6 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== v1 Pool View — SushiSwap Subgraph 읽기 전용 =====
-   ============================================================ */
-
-const SUSHI_SUBGRAPH = 'https://api.thegraph.com/subgraphs/name/sushiswap/exchange';
-let primaryGlipPoolId = null;
-
-async function fetchGlipPoolsFromSushi() {
-  const query = `
-  {
-    pairs(
-      first: 5,
-      orderBy: createdAtTimestamp,
-      orderDirection: desc,
-      where: {
-        token0_in: ["${GLIP_TOKEN}", "${WETH_TOKEN}"],
-        token1_in: ["${GLIP_TOKEN}", "${WETH_TOKEN}"]
-      }
-    ) {
-      id
-      token0 { id symbol }
-      token1 { id symbol }
-      reserve0
-      reserve1
-      volumeUSD
-    }
-    bundle(id: "1") { ethPrice }
-  }`;
-
-  const res = await fetch(SUSHI_SUBGRAPH, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query })
-  });
-  const json = await res.json();
-  if (!json || !json.data) throw new Error('Invalid response from Sushi subgraph');
-  return json.data;
-}
-
-function initPoolButtonsExternal() {
-  const base = 'https://www.sushi.com/ethereum';
-
-  $('#poolAddBtn').onclick = () => {
-    if (primaryGlipPoolId) {
-      window.open(`${base}/pool/${primaryGlipPoolId}`, '_blank');
-    } else {
-      window.open(`${base}/pools`, '_blank');
-    }
-  };
-  $('#poolRemoveBtn').onclick = () => {
-    window.open(`${base}/positions`, '_blank');
-  };
-  $('#poolMyPosBtn').onclick = () => {
-    window.open(`${base}/positions`, '_blank');
-  };
-
-  // v1에서는 Supply 버튼도 Sushi로 안내 (실제 LP는 Sushi에서)
-  $('#poolSupply').onclick = () => {
-    if (primaryGlipPoolId) {
-      window.open(`${base}/pool/${primaryGlipPoolId}`, '_blank');
-    } else {
-      window.open(`${base}/pools`, '_blank');
-    }
-  };
-}
-
-async function initPoolView() {
-  try {
-    const data = await fetchGlipPoolsFromSushi();
-    const pairs = data.pairs || [];
-    const ethPrice = data.bundle ? Number(data.bundle.ethPrice) : NaN;
-
-    // 메트릭: 풀 개수
-    $('#mPools').textContent = pairs.length ? pairs.length.toString() : '0';
-
-    // 메트릭: 볼륨 (대략, lifetime volumeUSD 합)
-    let vol = 0;
-    for (const p of pairs) {
-      vol += Number(p.volumeUSD || 0);
-    }
-    if (vol > 0) {
-      $('#mVol').textContent = '$ ' + Math.round(vol).toLocaleString();
-    } else {
-      $('#mVol').textContent = '$ —';
-    }
-
-    if (!pairs.length) {
-      $('#mPrice').textContent = '$ —';
-      $('#pPrice').textContent = 'No GLIP pools on Sushi yet';
-      return;
-    }
-
-    // 첫 번째 풀을 메인 풀로 사용
-    const main = pairs[0];
-    primaryGlipPoolId = main.id;
-
-    const r0 = Number(main.reserve0 || 0);
-    const r1 = Number(main.reserve1 || 0);
-    const t0 = main.token0.id.toLowerCase();
-    const t1 = main.token1.id.toLowerCase();
-
-    let priceGlipInEth;
-    if (t0 === GLIP_TOKEN && t1 === WETH_TOKEN && r0 > 0) {
-      priceGlipInEth = r1 / r0;
-    } else if (t1 === GLIP_TOKEN && t0 === WETH_TOKEN && r1 > 0) {
-      priceGlipInEth = r0 / r1;
-    }
-
-    if (priceGlipInEth && !isNaN(priceGlipInEth) && ethPrice && !isNaN(ethPrice)) {
-      const priceUsd = priceGlipInEth * ethPrice;
-      $('#mPrice').textContent = '$ ' + priceUsd.toFixed(6);
-    } else {
-      $('#mPrice').textContent = '$ —';
-    }
-
-    // Pool 카드 가격 텍스트 (기본 ETH → GLIP)
-    if (priceGlipInEth && !isNaN(priceGlipInEth)) {
-      $('#pPrice').textContent = `1 ETH ≈ ${priceGlipInEth.toFixed(4)} GLIP`;
-    }
-
-  } catch (e) {
-    console.error('[initPoolView]', e);
-    $('#pPrice').textContent = 'Sushi pool data unavailable';
-  }
-}
-
-/* ============================================================
    ===== Backend-based Swap logic (0x handled server-side) ====
    ============================================================ */
 
@@ -1294,6 +1119,7 @@ async function executeSwap() {
       return;
     }
 
+    // 프런트에서 딱 한 번만 단위 변환: amount → wei 문자열
     const sellAmountRaw = BigInt(
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
@@ -1327,21 +1153,29 @@ async function executeSwap() {
       return;
     }
 
+    // --- 여기서부터 금액 불일치 방지 로직 ---
+    // 1) ETH 스왑인지 확인 (0x ETH sentinel 사용)
     const isEthSell = toBackendTokenAddress(sellMeta) === ETH_ADDRESS_0X;
 
+    // 2) MetaMask로 보낼 value (16진수) 결정
     let valueHex = "0x0";
     if (isEthSell) {
+      // 사용자가 입력한 ETH 수량(wei)을 그대로 metaMask value로 사용
       const vBig = BigInt(sellAmountRaw);
       valueHex = "0x" + vBig.toString(16);
     } else if (txFromBackend.value != null) {
+      // 비 ETH 의 경우, backend value가 있다면 참고용으로만 사용
       try {
         const vBig = BigInt(txFromBackend.value);
         if (vBig > 0n) {
           valueHex = "0x" + vBig.toString(16);
         }
-      } catch (_) {}
+      } catch (_) {
+        // parsing 실패 시 그냥 0으로 둠
+      }
     }
 
+    // 3) MetaMask에 넘길 tx 파라미터 (gas, gasPrice는 넘기지 않고 MetaMask가 추정하게 둠)
     const txParams = {
       from: userAddress,
       to:   txFromBackend.to,
@@ -1414,10 +1248,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // Swap UI/logic (backend proxy)
     bindSwapLogic();
 
-    // Pool v1: 외부 서브그래프 + Sushi 링크
-    initPoolButtonsExternal();
-    initPoolView();
-
     window.addEventListener('resize', ()=>{
       drawSpark(demoAnalytics);
       drawDonut(demoAnalytics);
@@ -1431,5 +1261,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
 
