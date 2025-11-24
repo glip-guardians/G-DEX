@@ -291,6 +291,27 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
   background:linear-gradient(180deg,rgba(31,227,164,.08),rgba(31,227,164,.02))
 }
 
+/* Pool info (Sushi overview) */
+.poolInfoList{
+  margin-top:14px;
+  border-top:1px solid var(--border);
+  padding-top:10px;
+  font-size:13px;
+}
+.poolInfoItem{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-top:6px;
+}
+.poolInfoItem .label{opacity:.9}
+.poolInfoItem a{
+  font-size:12px;
+  text-decoration:underline;
+  color:#1fe3a4;
+}
+
 /* 모바일 중앙 고정 */
 @media (max-width:768px){
   .wrapper{padding:0}
@@ -402,18 +423,18 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
     <main class="main">
       <!-- Metrics -->
       <section class="metrics">
-        <div class="card metric"><h4>Recently Created Pools</h4><div class="v">—</div></div>
-        <div class="card metric"><h4>24h Volume</h4><div class="v">$ —</div></div>
-        <div class="card metric"><h4>GLIP Price</h4><div class="v">$ —</div></div>
+        <div class="card metric"><h4>Recently Created Pools</h4><div class="v" id="mPools">—</div></div>
+        <div class="card metric"><h4>24h Volume</h4><div class="v" id="mVolume">$ —</div></div>
+        <div class="card metric"><h4>GLIP Price</h4><div class="v" id="mGlipPrice">$ —</div></div>
       </section>
 
       <!-- Pool -->
       <section class="card pool" id="pool">
         <h3>Pool</h3>
         <div class="row" style="gap:8px;margin-bottom:6px">
-          <button class="btn" style="min-width:auto;padding:10px 14px">Add</button>
-          <button class="btn ghost" style="min-width:auto;padding:10px 14px">Remove</button>
-          <button class="btn ghost" style="min-width:auto;padding:10px 14px">My Positions</button>
+          <button class="btn" id="poolAddBtn" style="min-width:auto;padding:10px 14px">Add</button>
+          <button class="btn ghost" id="poolRemoveBtn" style="min-width:auto;padding:10px 14px">Remove</button>
+          <button class="btn ghost" id="poolMyPositionsBtn" style="min-width:auto;padding:10px 14px">My Positions</button>
         </div>
 
         <div class="input">
@@ -438,6 +459,13 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
           <div style="display:flex;gap:10px;align-items:center">
             <button class="btn" id="poolConnect">Connect Wallet</button>
             <button class="btn" id="poolSupply">Supply</button>
+          </div>
+        </div>
+
+        <!-- SushiSwap GLIP Pool overview (읽기 전용) -->
+        <div id="poolInfo" class="poolInfoList">
+          <div style="opacity:.85;font-size:13px;margin-bottom:6px;">
+            GLIP liquidity is currently hosted on <strong>SushiSwap</strong>. Use the buttons above to manage liquidity; an overview of main pools will appear here.
           </div>
         </div>
       </section>
@@ -590,11 +618,27 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
+function formatUSD(v){
+  const n = Number(v || 0);
+  if (!isFinite(n) || n <= 0) return "$ —";
+  if (n >= 1e9) return "$" + (n/1e9).toFixed(2) + "B";
+  if (n >= 1e6) return "$" + (n/1e6).toFixed(2) + "M";
+  if (n >= 1e3) return "$" + (n/1e3).toFixed(2) + "K";
+  return "$" + n.toFixed(2);
+}
+
 // DApp host
 const DAPP_HOST = 'gdex-app.com';
 
 // 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+
+// GLIP + SushiSwap Subgraph (Pool v1: 외부 풀 조회)
+const GLIP_ADDRESS = "0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e".toLowerCase();
+const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc".toLowerCase();
+const SUSHI_SUBGRAPH = "https://api.thegraph.com/subgraphs/name/sushiswap/exchange";
+let glipPoolsCache = [];
+let glipMainPair = null;
 
 // ===== 공통 에러 팝업 =====
 function showErrorPopup(title, payload) {
@@ -673,6 +717,135 @@ function openMetaMaskDeepLink() {
   window.location.href = deepLink;
 }
 
+/* ===== SushiSwap GLIP Pools (조회용) ===== */
+async function fetchGlipPoolsFromSushi(){
+  const query = `
+    {
+      asToken0: pairs(
+        first: 5,
+        orderBy: reserveUSD,
+        orderDirection: desc,
+        where: { token0: "${GLIP_ADDRESS}" }
+      ) {
+        id
+        reserve0
+        reserve1
+        reserveUSD
+        volumeUSD
+        token0 { id symbol }
+        token1 { id symbol }
+      }
+      asToken1: pairs(
+        first: 5,
+        orderBy: reserveUSD,
+        orderDirection: desc,
+        where: { token1: "${GLIP_ADDRESS}" }
+      ) {
+        id
+        reserve0
+        reserve1
+        reserveUSD
+        volumeUSD
+        token0 { id symbol }
+        token1 { id symbol }
+      }
+    }
+  `;
+
+  const res = await fetch(SUSHI_SUBGRAPH, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query })
+  });
+
+  if (!res.ok) {
+    throw new Error("SushiSwap subgraph returned HTTP " + res.status);
+  }
+  const json = await res.json();
+  const a0 = (json.data && json.data.asToken0) || [];
+  const a1 = (json.data && json.data.asToken1) || [];
+  const map = {};
+  [...a0, ...a1].forEach(p => { map[p.id] = p; });
+  const all = Object.values(map);
+
+  glipPoolsCache = all;
+  glipMainPair = all.find(p => {
+    const t0 = p.token0.id.toLowerCase();
+    const t1 = p.token1.id.toLowerCase();
+    return (t0 === GLIP_ADDRESS && t1 === WETH_ADDRESS) ||
+           (t1 === GLIP_ADDRESS && t0 === WETH_ADDRESS);
+  }) || all[0] || null;
+
+  return all;
+}
+
+function getGlipPoolUrl(){
+  if (glipMainPair && glipMainPair.id) {
+    return "https://www.sushi.com/pool/" + glipMainPair.id;
+  }
+  return "https://www.sushi.com/pool";
+}
+
+async function initPoolView(){
+  const infoEl = document.getElementById("poolInfo");
+  try{
+    const pools = await fetchGlipPoolsFromSushi();
+    if (!pools || !pools.length) {
+      if (infoEl) {
+        infoEl.innerHTML = '<div style="opacity:.85;font-size:13px;">No GLIP pools found on SushiSwap yet.</div>';
+      }
+      return;
+    }
+
+    // 상단 Metrics 업데이트
+    const mPools  = document.getElementById("mPools");
+    const mVolume = document.getElementById("mVolume");
+    const mPrice  = document.getElementById("mGlipPrice");
+
+    if (mPools) {
+      mPools.textContent = String(pools.length);
+    }
+    if (mVolume) {
+      const totalVol = pools.reduce((sum,p)=> sum + Number(p.volumeUSD || 0), 0);
+      mVolume.textContent = formatUSD(totalVol);
+    }
+    if (mPrice && glipMainPair) {
+      const isGlip0 = glipMainPair.token0.id.toLowerCase() === GLIP_ADDRESS;
+      const reserveGlip = Number(isGlip0 ? glipMainPair.reserve0 : glipMainPair.reserve1);
+      const reserveUsd  = Number(glipMainPair.reserveUSD || 0);
+      if (reserveGlip > 0 && reserveUsd > 0) {
+        const priceUsd = reserveUsd / 2 / reserveGlip;
+        mPrice.textContent = "$" + priceUsd.toFixed(6);
+      }
+    }
+
+    // Pool 카드 내 GLIP 풀 리스트 간단 표시
+    if (infoEl) {
+      const top = pools.slice(0, 3);
+      infoEl.innerHTML = `
+        <div style="opacity:.85;font-size:13px;margin-bottom:6px;">
+          GLIP liquidity is currently hosted on <strong>SushiSwap</strong>. Manage positions there; main pools are listed below.
+        </div>
+      ` + top.map(p=>{
+        const symbol = `${p.token0.symbol} / ${p.token1.symbol}`;
+        const tvl    = formatUSD(p.reserveUSD);
+        const href   = "https://www.sushi.com/pool/" + p.id;
+        return `
+          <div class="poolInfoItem">
+            <span class="label">${symbol}</span>
+            <span style="opacity:.8;">TVL: ${tvl}</span>
+            <a href="${href}" target="_blank" rel="noopener">Open</a>
+          </div>
+        `;
+      }).join("");
+    }
+  }catch(e){
+    console.error("[initPoolView] error", e);
+    if (infoEl) {
+      infoEl.innerHTML = '<div style="opacity:.85;font-size:13px;">Unable to load SushiSwap pool data right now.</div>';
+    }
+  }
+}
 
 /* ===== 토큰리스트 ===== */
 const tokenList = [
@@ -867,6 +1040,32 @@ function bindConnect(){
 
   const maxBtn = document.querySelector('.input--stake .max');
   if(maxBtn) maxBtn.onclick = ()=>{ document.getElementById('stakeAmt').value='1000'; };
+}
+
+// Pool 상단 버튼 → SushiSwap 링크
+function bindPoolButtons(){
+  const addBtn    = document.getElementById("poolAddBtn");
+  const removeBtn = document.getElementById("poolRemoveBtn");
+  const myBtn     = document.getElementById("poolMyPositionsBtn");
+  const supplyBtn = document.getElementById("poolSupply");
+
+  if (addBtn) {
+    addBtn.onclick = ()=> window.open(getGlipPoolUrl(), "_blank", "noopener");
+  }
+  if (removeBtn) {
+    removeBtn.onclick = ()=> window.open(getGlipPoolUrl(), "_blank", "noopener");
+  }
+  if (supplyBtn) {
+    supplyBtn.onclick = ()=> window.open(getGlipPoolUrl(), "_blank", "noopener");
+  }
+  if (myBtn) {
+    myBtn.onclick = ()=>{
+      if (!userAddress) {
+        alert("Connect your wallet first, then manage positions on SushiSwap.");
+      }
+      window.open("https://www.sushi.com/portfolio", "_blank", "noopener");
+    };
+  }
 }
 
 /* TOP */
@@ -1226,6 +1425,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     bindTokenButtons();
     bindFlip();
     bindConnect();
+    bindPoolButtons();
     bindTop();
     document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick));
     if(isIos && !isStandaloneMode()){
@@ -1247,6 +1447,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     // Swap UI/logic (backend proxy)
     bindSwapLogic();
+
+    // Pool v1: SushiSwap 외부 풀 조회
+    initPoolView();
 
     window.addEventListener('resize', ()=>{
       drawSpark(demoAnalytics);
