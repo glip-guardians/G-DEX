@@ -440,12 +440,6 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
             <button class="btn" id="poolSupply">Supply</button>
           </div>
         </div>
-              <p id="poolInfo"
-         style="margin-top:10px;opacity:.82;font-size:13px">
-        G-DEX Pool v1 is a read-only view of the GLIP-ETH pool on SushiSwap V2.
-        All liquidity add/remove actions happen on SushiSwap; this panel only
-        reads and displays the pool metrics.
-      </p>
       </section>
 
       <!-- Swap -->
@@ -592,48 +586,6 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif}
 </dialog>
 
 <script>
-/* ====== v1 Manual Metrics (EDIT HERE) ====== */
-const MANUAL_POOL_STATS = {
-  // 메트릭 상단 3개 박스
-  recentPools:  "1 GLIP-ETH (SushiSwap V2)",  // Recently Created Pools
-  volume24hUsd: 0,                            // 24h Volume (USD)
-  glipPriceUsd: 0.00002,                      // 1 GLIP 가격(USD) 예시
-
-  // Pool 카드 안 하단 영역
-  poolPriceText: "Manual: 1 GLIP ≈ 0.00002 ETH",   // Price (T1 per T0)
-  sharePreviewText: "Initial GLIP-ETH pool on SushiSwap V2", // Share preview
-  infoText:
-    "G-DEX Pool v1 shows the GLIP-ETH pool created on SushiSwap V2. " +
-    "All metrics above are updated manually during the early phase."
-};
-
-/* v1에서만 수동 값 적용 — 나중에 서브그래프 연결 시 이 함수만 교체하면 됨 */
-function applyManualPoolStats() {
-  try {
-    // ① 상단 메트릭 3개 박스
-    const metricCards = document.querySelectorAll(".metrics .metric .v");
-    if (metricCards[0]) metricCards[0].textContent = MANUAL_POOL_STATS.recentPools;
-    if (metricCards[1]) metricCards[1].textContent =
-      "$ " + Number(MANUAL_POOL_STATS.volume24hUsd)
-                .toLocaleString(undefined, { maximumFractionDigits: 0 });
-    if (metricCards[2]) metricCards[2].textContent =
-      "$ " + MANUAL_POOL_STATS.glipPriceUsd.toString();
-
-    // ② Pool 카드 하단 Price / Share preview
-    const priceEl = document.getElementById("pPrice");
-    const shareEl = document.getElementById("pShare");
-    if (priceEl) priceEl.textContent = MANUAL_POOL_STATS.poolPriceText;
-    if (shareEl) shareEl.textContent = MANUAL_POOL_STATS.sharePreviewText;
-
-    // ③ Pool 섹션 안내 문구 (있으면)
-    const info = document.getElementById("poolInfo");
-    if (info) info.textContent = MANUAL_POOL_STATS.infoText;
-  } catch (e) {
-    console.error("[applyManualPoolStats]", e);
-  }
-}
-
-  
 /* ===== utils ===== */
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
@@ -1431,5 +1383,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-
-
