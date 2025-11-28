@@ -423,7 +423,28 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif;color:#000000}
           <div class="v" id="metricGlipPrice">$ —</div>
         </div>
       </section>
+      <!-- Swap -->
+      <section class="card swap" id="swap">
+        <h3>Swap</h3>
+        <div class="input">
+          <input id="sell" placeholder="0.0" type="number" min="0" step="any">
+          <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS">ETH</span></button>
+        </div>
 
+        <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
+
+        <div class="input">
+          <input id="buy" placeholder="0.0" type="number" disabled>
+          <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS">GLIP</span></button>
+        </div>
+
+        <div class="helper">
+          <div>Slippage <input id="slip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
+          <button class="btn" id="swapConnect">Connect Wallet</button>
+        </div>
+        <div style="height:10px"></div>
+        <button class="btn" id="swapBtn" style="width:100%">Swap</button>
+      </section>
       <!-- Pool -->
       <section class="card pool" id="pool">
         <h3>Pool</h3>
@@ -490,28 +511,7 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif;color:#000000}
         </p>
       </section>
 
-      <!-- Swap -->
-      <section class="card swap" id="swap">
-        <h3>Swap</h3>
-        <div class="input">
-          <input id="sell" placeholder="0.0" type="number" min="0" step="any">
-          <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS">ETH</span></button>
-        </div>
 
-        <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
-
-        <div class="input">
-          <input id="buy" placeholder="0.0" type="number" disabled>
-          <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS">GLIP</span></button>
-        </div>
-
-        <div class="helper">
-          <div>Slippage <input id="slip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
-          <button class="btn" id="swapConnect">Connect Wallet</button>
-        </div>
-        <div style="height:10px"></div>
-        <button class="btn" id="swapBtn" style="width:100%">Swap</button>
-      </section>
 
       <!-- Recent -->
       <section class="card recent">
@@ -1408,3 +1408,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
   <br><br>
 </html>
+
