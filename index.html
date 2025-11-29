@@ -39,9 +39,15 @@
   --inner:rgba(0,0,0,.03);
 }
 *{box-sizing:border-box}
+
+/* ★★★ 배경 = 에코 그린 그라디언트 + subtle noise ★★★ */
 html,body{
   margin:0;
-  background:#ffffff;
+  background:
+    url("https://www.transparenttextures.com/patterns/noise.png"),
+    radial-gradient(1200px 700px at 10% 20%, rgba(180,255,225,0.45), transparent 50%),
+    radial-gradient(1200px 700px at 90% 80%, rgba(160,255,220,0.40), transparent 55%),
+    linear-gradient(180deg, #ffffff, #f8fefa 65%, #f3fcf9);
   color:var(--text);
   font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
 }
@@ -123,7 +129,10 @@ img{max-width:100%;display:block}
 .nav{
   background:linear-gradient(180deg,var(--inner),transparent),var(--panel);
   border:1px solid var(--border);border-radius:18px;padding:16px;
-  box-shadow:0 8px 20px rgba(0,0,0,.05)
+  /* ★★★ 업그레이드된 그림자 ★★★ */
+  box-shadow:
+    0 4px 10px rgba(0,0,0,.06),
+    0 18px 36px rgba(0,0,0,.05);
 }
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .brand img{width:34px;height:34px;border-radius:50%;object-fit:cover}
@@ -133,7 +142,8 @@ img{max-width:100%;display:block}
   text-decoration:none;color:#000000;
   background:#fafafa;
   border:1px solid rgba(0,0,0,.2);
-  text-align:center;              /* ▶ 메뉴 텍스트 중앙 정렬 추가 */
+  /* 이전에 중앙 정렬을 적용했다면 그대로 유지할 수 있음
+     text-align:center; */
 }
 .nav a:is(:hover,:focus){
   background:#f1f1f1
@@ -163,7 +173,10 @@ img{max-width:100%;display:block}
 .card{
   background:var(--panel-2);
   border:1px solid var(--border);border-radius:18px;padding:16px;color:var(--text);
-  box-shadow:0 8px 20px rgba(0,0,0,.04);
+  /* ★★★ 업그레이드된 그림자 ★★★ */
+  box-shadow:
+    0 3px 6px rgba(0,0,0,.06),
+    0 14px 28px rgba(0,0,0,.04);
 }
 h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif;color:#000000}
 .metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
@@ -381,15 +394,13 @@ h3{margin:0 0 12px;font:800 22px/1.25 "Sora",sans-serif;color:#000000}
     <a class="heroBtn" href="https://glipchain.com" target="_blank" rel="noopener noreferrer">
       <span class="icon">🌐</span><span>GLIP Official</span>
     </a>
-    <!-- Listing Inquiry 버튼: 다른 버튼과 동일 스타일로 변경 -->
-    <a class="heroBtn"
-       id="btnListing"
-       href="https://glipchain.com/Inquiry"
-       target="_blank"
-       rel="noopener noreferrer">
+    <button class="heroBtn heroBtn-primary" 
+        type="button" 
+        id="btnListing"
+        onclick="window.location.href='https://glipchain.com/Inquiry';">
       <span class="icon">📈</span>
       <span>Listing Inquiry</span>
-    </a>
+    </button>
   </div>
 </section>
 
@@ -1413,4 +1424,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-<br><br>
