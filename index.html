@@ -44,9 +44,10 @@
 html,body{
   margin:0;
   min-height:100%;
-  /* ④ 라이트톤 + 그린톤 유동(gradiant-flow) 스타일 */
+  /* ④ 라이트톤 + 그린톤 유동(gradient-flow) + ③ 아주 약한 노이즈 텍스처 */
   background:
     radial-gradient(1100px 800px at -10% -10%, rgba(0,255,179,.20), transparent 55%),
+    url("https://www.transparenttextures.com/patterns/noise.png"), /* ③ 노이즈 텍스처 (2번째 레이어) */
     radial-gradient(1100px 800px at 110% 110%, rgba(17,196,140,.18), transparent 55%),
     radial-gradient(900px 700px at 10% 120%, rgba(0,180,120,.12), transparent 60%),
     linear-gradient(180deg,#f8fffb,#ecf8f2,#fdfefc);
@@ -1437,3 +1438,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
