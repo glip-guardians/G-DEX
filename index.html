@@ -44,18 +44,22 @@
 html,body{
   margin:0;
   min-height:100%;
-  /* ④ 라이트톤 + 그린톤 유동(gradient-flow) + ③ 아주 약한 노이즈 텍스처 */
+
+  /* ③ 아주 약한 노이즈 텍스처 → 두 번째 레이어로 삽입 */
   background:
     radial-gradient(1100px 800px at -10% -10%, rgba(0,255,179,.20), transparent 55%),
-    url("https://www.transparenttextures.com/patterns/noise.png"), /* ③ 노이즈 텍스처 (2번째 레이어) */
+    url("https://www.transparenttextures.com/patterns/noise.png"), /* ← 두 번째 레이어 */
     radial-gradient(1100px 800px at 110% 110%, rgba(17,196,140,.18), transparent 55%),
     radial-gradient(900px 700px at 10% 120%, rgba(0,180,120,.12), transparent 60%),
     linear-gradient(180deg,#f8fffb,#ecf8f2,#fdfefc);
+
   background-attachment: fixed; /* 모바일에서도 최대한 배경 유지 */
   color:var(--text);
   font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
 }
+
 img{max-width:100%;display:block}
+
 
 /* ===== HERO ===== */
 .hero{
@@ -1438,4 +1442,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
