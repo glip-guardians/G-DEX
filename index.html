@@ -45,20 +45,91 @@ html,body{
   margin:0;
   min-height:100%;
 
-  /* 강한 블랙 노이즈 텍스처로 변경된 버전 */
+  /* 딥블랙 베이스 + 그린/블루 글로우 + 강한 노이즈 */
   background:
-    radial-gradient(1100px 800px at -10% -10%, rgba(0,255,179,.20), transparent 55%),
-    url("https://www.transparenttextures.com/patterns/asfalt-dark.png"), /* ← 강한 블랙 노이즈 */
-    radial-gradient(1100px 800px at 110% 110%, rgba(17,196,140,.18), transparent 55%),
-    radial-gradient(900px 700px at 10% 120%, rgba(0,180,120,.12), transparent 60%),
-    linear-gradient(180deg,#f8fffb,#ecf8f2,#fdfefc);
-
+    radial-gradient(900px 700px at -10% -20%, rgba(0,255,179,0.22), transparent 60%),
+    url("https://www.transparenttextures.com/patterns/asfalt-dark.png"),  /* 강한 블랙 노이즈 */
+    radial-gradient(900px 700px at 110% 120%, rgba(0,140,255,0.20), transparent 60%),
+    radial-gradient(700px 600px at 15% 120%, rgba(0,255,179,0.16), transparent 65%),
+    linear-gradient(180deg,#050608,#040509,#020308);
   background-attachment: fixed;
+  background-repeat: no-repeat;
   color:var(--text);
   font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
 }
 
 img{max-width:100%;display:block}
+
+/* ===== 형이상학 3D 입체 도형들 (작게 여러 개) ===== */
+body{
+  position:relative;
+}
+
+/* 좌측 영역에 둥근 3D 블롭 여러 개 */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:
+    radial-gradient(circle at 8% 22%, rgba(255,255,255,0.18), transparent 55%),
+    radial-gradient(circle at 15% 30%, rgba(0,255,179,0.38), transparent 60%),
+    radial-gradient(circle at 20% 18%, rgba(0,140,255,0.30), transparent 60%);
+  opacity:0.55;
+  filter:blur(0.6px);
+}
+
+/* 우측 중단/하단에 작은 프리즘·디스크 느낌 3D 도형들 */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:
+    /* 작은 3D 디스크 */
+    conic-gradient(from 210deg,
+      transparent 0deg 15deg,
+      rgba(0,255,179,0.70) 40deg,
+      rgba(0,140,255,0.75) 90deg,
+      rgba(255,255,255,0.85) 130deg,
+      transparent 180deg
+    ),
+    /* 길쭉한 프리즘 조각 */
+    conic-gradient(from 40deg,
+      transparent 0deg 25deg,
+      rgba(255,255,255,0.6) 50deg,
+      rgba(0,255,179,0.55) 90deg,
+      transparent 140deg
+    ),
+    /* 살짝 멀리 있는 작은 조각 */
+    conic-gradient(from 120deg,
+      transparent 0deg 40deg,
+      rgba(0,140,255,0.55) 80deg,
+      rgba(255,255,255,0.65) 110deg,
+      transparent 160deg
+    );
+  background-size: 120px 120px, 90px 90px, 70px 70px;
+  background-position: 88% 26%, 78% 62%, 92% 78%;
+  opacity:0.42;
+  filter:blur(1px);
+}
+
+/* 모바일에서는 도형을 조금 안쪽으로 */
+@media (max-width:768px){
+  body::before{
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255,255,255,0.16), transparent 55%),
+      radial-gradient(circle at 18% 28%, rgba(0,255,179,0.34), transparent 60%),
+      radial-gradient(circle at 24% 16%, rgba(0,140,255,0.26), transparent 60%);
+  }
+  body::after{
+    background-position: 82% 30%, 72% 64%, 88% 82%;
+    background-size: 96px 96px, 78px 78px, 60px 60px;
+  }
+}
+
 
 
 /* ===== HERO ===== */
@@ -1489,6 +1560,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
 
 
