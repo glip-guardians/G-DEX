@@ -70,50 +70,69 @@ img{max-width:100%;display:block}
   position:relative;
   height:min(34vh,420px);
   overflow:hidden;
-  background:#000;  /* 기존 블랙 유지 */
+  /* 블랙 단색 X → 기하학+노이즈+그라디언트 섞기 */
+  background:
+    radial-gradient(900px 600px at -10% -40%, rgba(255,255,255,0.14), transparent 60%),
+    radial-gradient(700px 500px at 120% 120%, rgba(255,255,255,0.10), transparent 60%),
+    url("https://www.transparenttextures.com/patterns/asfalt-dark.png"),
+    #000000;
+  background-repeat:no-repeat,no-repeat,repeat,no-repeat;
+  background-size:auto,auto,260px 260px,auto;
 }
 
-/* 기하학 3D 도형 이미지 1 — 좌측 상단 */
+/* 왼쪽 위 — 둥근 3D 광원 느낌 */
 .hero::before{
   content:"";
   position:absolute;
-  inset:0;
+  width:420px;
+  height:420px;
+  left:-120px;
+  top:-160px;
   background:
-    url("https://images.unsplash.com/photo-1616401784845-19f52d90e743") no-repeat;
-  background-position: left -120px top -80px;
-  background-size: 420px;
-  opacity:0.16;            /* 은은하게 */
-  mix-blend-mode:screen;   /* 밝게 섞임 */
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.48), transparent 60%),
+    radial-gradient(circle at 80% 70%, rgba(180,255,230,0.25), transparent 65%);
+  opacity:0.55;
+  filter:blur(6px);
+  z-index:1;
   pointer-events:none;
 }
 
-/* 기하학 3D 도형 이미지 2 — 우측 하단 */
+/* 오른쪽 아래 — 기하학 그리드 느낌 */
 .hero::after{
   content:"";
   position:absolute;
-  inset:0;
-  background:
-    url("https://images.unsplash.com/photo-1620240465843-e6c90e1c5a2e") no-repeat;
-  background-position: right -120px bottom -80px;
-  background-size: 460px;
-  opacity:0.14;
-  mix-blend-mode:screen;
+  width:520px;
+  height:520px;
+  right:-180px;
+  bottom:-220px;
+  background-image:
+    linear-gradient(90deg, rgba(255,255,255,0.10) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,255,0.10) 1px, transparent 1px);
+  background-size:60px 60px;
+  opacity:0.28;
+  filter:blur(2px);
+  z-index:1;
   pointer-events:none;
 }
 
 .heroText{
-  position:absolute;inset:0;display:grid;place-items:center;z-index:2;
-  text-align:center;padding:0 16px
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  z-index:2;              /* ← 배경 도형 위로 */
+  text-align:center;
+  padding:0 16px;
 }
 .heroText h2{
   margin:0 0 8px;
   font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif;
-  color:#ffffff;                       /* 문구 흰색 */
-  text-shadow:0 0 18px rgba(0,0,0,.55); /* 가독성 향상 */
+  color:#ffffff;
+  text-shadow:0 0 18px rgba(0,0,0,.7);
 }
 .heroText p{
   margin:0;
-  color:#f6fffb;                       /* 밝은 톤의 화이트 */
+  color:#f6fffb;
   opacity:.9;
 }
 
@@ -1456,6 +1475,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
 
 
