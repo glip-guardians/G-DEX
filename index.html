@@ -45,18 +45,25 @@ html,body{
   margin:0;
   min-height:100%;
 
-  /* 검은색 톤 다크그라디언트 + 강한 블랙 노이즈 */
+  /* 다크 + 스팟라이트 + 노이즈 레이어 */
   background:
-    linear-gradient(180deg, #1c1c1c, #111111 40%, #0a0a0a 100%), /* 다크 그라디언트 */
-    url("https://www.transparenttextures.com/patterns/asfalt-dark.png"); /* 강한 블랙 노이즈 */
+    /* 1) 상단 왼쪽에서 떨어지는 은은한 스팟 */
+    radial-gradient(900px 700px at 10% -10%, rgba(255,255,255,0.06), transparent 60%),
+    /* 2) 우측 하단 스팟 (살짝만) */
+    radial-gradient(900px 700px at 110% 110%, rgba(255,255,255,0.04), transparent 65%),
+    /* 3) 기본 다크 그라디언트 (검은색 계열) */
+    linear-gradient(135deg, #050509, #020206, #000000),
+    /* 4) 가장 위에 올라오는 노이즈 텍스처 */
+    url("https://www.transparenttextures.com/patterns/asfalt-dark.png");
 
   background-attachment: fixed;
-  background-size: cover;
+  background-size: cover, cover, cover, auto;
   color:var(--text);
   font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
 }
 
 img{max-width:100%;display:block}
+
 
 
 
@@ -1442,6 +1449,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
 
 
