@@ -61,43 +61,39 @@ html,body{
 img{max-width:100%;display:block}
 
 
-
-
-
-
 /* ===== HERO ===== */
 .hero{
   position:relative;
   height:min(34vh,420px);
   overflow:hidden;
-  /* 블랙 단색 X → 기하학+노이즈+그라디언트 섞기 */
+  /* 더 입체적인 다층 배경 */
   background:
-    radial-gradient(900px 600px at -10% -40%, rgba(255,255,255,0.14), transparent 60%),
-    radial-gradient(700px 500px at 120% 120%, rgba(255,255,255,0.10), transparent 60%),
-    url("https://www.transparenttextures.com/patterns/asfalt-dark.png"),
-    #000000;
-  background-repeat:no-repeat,no-repeat,repeat,no-repeat;
-  background-size:auto,auto,260px 260px,auto;
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.10), transparent 60%),   /* 중앙 상단 라이트 */
+    radial-gradient(900px 400px at -10% 120%, rgba(0,255,179,0.22), transparent 70%), /* 좌하단 그린 글로우 */
+    radial-gradient(900px 400px at 110% -20%, rgba(0,140,255,0.18), transparent 70%), /* 우상단 블루 글로우 */
+    #020308;
 }
 
-/* 왼쪽 위 — 둥근 3D 광원 느낌 */
+/* 대각선으로 흐르는 빛 띠 */
 .hero::before{
   content:"";
   position:absolute;
-  width:420px;
-  height:420px;
-  left:-120px;
-  top:-160px;
+  inset:-40%;
   background:
-    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.48), transparent 60%),
-    radial-gradient(circle at 80% 70%, rgba(180,255,230,0.25), transparent 65%);
+    linear-gradient(120deg,
+      transparent 0%,
+      rgba(255,255,255,0.14) 35%,
+      rgba(255,255,255,0.02) 55%,
+      transparent 80%
+    );
   opacity:0.55;
-  filter:blur(6px);
-  z-index:1;
+  mix-blend-mode:screen;
+  filter:blur(2px);
   pointer-events:none;
+  z-index:1;
 }
 
-/* 오른쪽 아래 — 기하학 그리드 느낌 */
+/* 우측 하단 기하학 그리드 */
 .hero::after{
   content:"";
   position:absolute;
@@ -109,10 +105,11 @@ img{max-width:100%;display:block}
     linear-gradient(90deg, rgba(255,255,255,0.10) 1px, transparent 1px),
     linear-gradient(180deg, rgba(255,255,255,0.10) 1px, transparent 1px);
   background-size:60px 60px;
-  opacity:0.28;
-  filter:blur(2px);
-  z-index:1;
+  opacity:0.32;
+  filter:blur(1px);
+  mix-blend-mode:screen;
   pointer-events:none;
+  z-index:1;
 }
 
 .heroText{
@@ -120,20 +117,37 @@ img{max-width:100%;display:block}
   inset:0;
   display:grid;
   place-items:center;
-  z-index:2;              /* ← 배경 도형 위로 */
+  z-index:2;              /* 배경 레이어 위로 */
   text-align:center;
   padding:0 16px;
 }
+
 .heroText h2{
   margin:0 0 8px;
   font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif;
   color:#ffffff;
-  text-shadow:0 0 18px rgba(0,0,0,.7);
+  letter-spacing:0.08em;
+  text-shadow:
+    0 0 18px rgba(0,0,0,.7),
+    0 12px 28px rgba(0,0,0,.9);
 }
+
+/* 제목 아래 그린 그라디언트 바 */
+.heroText h2::after{
+  content:"";
+  display:block;
+  width:96px;
+  height:3px;
+  margin:14px auto 0;
+  border-radius:999px;
+  background:linear-gradient(90deg,#1fe3a4,#11c48c);
+}
+
 .heroText p{
-  margin:0;
+  margin:10px 0 0;
   color:#f6fffb;
   opacity:.9;
+  font-size:clamp(13px,1.6vw,15px);
 }
 
 /* HERO link bar */
@@ -1475,6 +1489,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
 
 
