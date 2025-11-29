@@ -45,24 +45,21 @@ html,body{
   margin:0;
   min-height:100%;
 
-  /* 다크 + 스팟라이트 + 노이즈 레이어 */
+  /* 강한 블랙 노이즈 텍스처로 변경된 버전 */
   background:
-    /* 1) 상단 왼쪽에서 떨어지는 은은한 스팟 */
-    radial-gradient(900px 700px at 10% -10%, rgba(255,255,255,0.06), transparent 60%),
-    /* 2) 우측 하단 스팟 (살짝만) */
-    radial-gradient(900px 700px at 110% 110%, rgba(255,255,255,0.04), transparent 65%),
-    /* 3) 기본 다크 그라디언트 (검은색 계열) */
-    linear-gradient(135deg, #050509, #020206, #000000),
-    /* 4) 가장 위에 올라오는 노이즈 텍스처 */
-    url("https://www.transparenttextures.com/patterns/asfalt-dark.png");
+    radial-gradient(1100px 800px at -10% -10%, rgba(0,255,179,.20), transparent 55%),
+    url("https://www.transparenttextures.com/patterns/asfalt-dark.png"), /* ← 강한 블랙 노이즈 */
+    radial-gradient(1100px 800px at 110% 110%, rgba(17,196,140,.18), transparent 55%),
+    radial-gradient(900px 700px at 10% 120%, rgba(0,180,120,.12), transparent 60%),
+    linear-gradient(180deg,#f8fffb,#ecf8f2,#fdfefc);
 
   background-attachment: fixed;
-  background-size: cover, cover, cover, auto;
   color:var(--text);
   font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
 }
 
 img{max-width:100%;display:block}
+
 
 
 
@@ -1449,6 +1446,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
 
 
