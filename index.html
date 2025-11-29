@@ -48,32 +48,95 @@ html,body{
 img{max-width:100%;display:block}
 
 /* ===== HERO ===== */
+/* ===== HERO ===== */
 .hero{
-  position:relative;height:min(34vh,420px);overflow:hidden;
+  position:relative;
+  height:min(34vh,420px);
+  overflow:hidden;
+  /* 더 입체적인 다층 배경 */
   background:
-    radial-gradient(1200px 600px at 110% 0%, rgba(0,180,120,.05), transparent 20%),
-    radial-gradient(1200px 600px at -10% 20%, rgba(0,255,179,.05), transparent 30%),
-    linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,1));
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,0.10), transparent 60%),   /* 중앙 상단 라이트 */
+    radial-gradient(900px 400px at -10% 120%, rgba(0,255,179,0.22), transparent 70%), /* 좌하단 그린 글로우 */
+    radial-gradient(900px 400px at 110% -20%, rgba(0,140,255,0.18), transparent 70%), /* 우상단 블루 글로우 */
+    #020308;
 }
-.hero::after{
-  content:"";position:absolute;inset:-10px;
-  background:url("https://cdn.imweb.me/thumbnail/20251106/7d3ef3588c2b0.png") center/cover no-repeat;
-  opacity:.28;filter:contrast(1.15) brightness(1.08) saturate(1.05);transform:scale(1.02)
-}
+
+/* 대각선으로 흐르는 빛 띠 */
 .hero::before{
-  content:"";position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.75) 45%,rgba(255,255,255,.3) 85%,rgba(255,255,255,0));
-  z-index:1
+  content:"";
+  position:absolute;
+  inset:-40%;
+  background:
+    linear-gradient(120deg,
+      transparent 0%,
+      rgba(255,255,255,0.14) 35%,
+      rgba(255,255,255,0.02) 55%,
+      transparent 80%
+    );
+  opacity:0.55;
+  mix-blend-mode:screen;
+  filter:blur(2px);
+  pointer-events:none;
+  z-index:1;
 }
+
+/* 우측 하단 기하학 그리드 */
+.hero::after{
+  content:"";
+  position:absolute;
+  width:520px;
+  height:520px;
+  right:-180px;
+  bottom:-220px;
+  background-image:
+    linear-gradient(90deg, rgba(255,255,255,0.10) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,255,0.10) 1px, transparent 1px);
+  background-size:60px 60px;
+  opacity:0.32;
+  filter:blur(1px);
+  mix-blend-mode:screen;
+  pointer-events:none;
+  z-index:1;
+}
+
 .heroText{
-  position:absolute;inset:0;display:grid;place-items:center;z-index:2;
-  text-align:center;padding:0 16px
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  z-index:2;              /* 배경 레이어 위로 */
+  text-align:center;
+  padding:0 16px;
 }
+
 .heroText h2{
-  margin:0 0 8px;font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif;
-  color:#000000;
+  margin:0 0 8px;
+  font:800 clamp(28px,3.6vw,48px)/1.06 "Sora",sans-serif;
+  color:#ffffff;
+  letter-spacing:0.08em;
+  text-shadow:
+    0 0 18px rgba(0,0,0,.7),
+    0 12px 28px rgba(0,0,0,.9);
 }
-.heroText p{margin:0;color:#000000;opacity:.86}
+
+/* 제목 아래 그린 그라디언트 바 */
+.heroText h2::after{
+  content:"";
+  display:block;
+  width:96px;
+  height:3px;
+  margin:14px auto 0;
+  border-radius:999px;
+  background:linear-gradient(90deg,#1fe3a4,#11c48c);
+}
+
+.heroText p{
+  margin:10px 0 0;
+  color:#f6fffb;
+  opacity:.9;
+  font-size:clamp(13px,1.6vw,15px);
+}
+
 
 /* HERO link bar */
 .heroLinks{
@@ -1414,3 +1477,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
