@@ -940,7 +940,8 @@ h3::before{
         <h3>Notes</h3>
         <div class="card inner" style="background:#fafafa;border:1px dashed var(--border)">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
-          <p class="wrap" style="margin:.2rem 0">• Router: 0x API Exchange Proxy (auto-selected in quotes, via backend).</p>
+          <!-- ✅ 여기: Router 표기용 문구만 업데이트 (기능 영향 없음) -->
+          <p class="wrap" style="margin:.2rem 0">• Router: GDEXRouterV2 (via backend) — 0xcbAeD90D5eA36DB0F26499061A0f2E497879608f</p>
           <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are handled through your wallet when needed.</p>
         </div>
         <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
@@ -1103,6 +1104,13 @@ h3::before{
 /* ===== utils ===== */
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
+
+/* ============================================================
+   ✅ GDEX Router V2 (표기/백엔드 전달용)
+   - 프런트는 직접 컨트랙트 호출을 하지 않음
+   - /quote, /swap에 옵션 필드로 전달 (백엔드가 지원하면 적용)
+   ============================================================ */
+const GDEX_ROUTER_V2_ADDRESS = "0xcbAeD90D5eA36DB0F26499061A0f2E497879608f";
 
 // 수기 메트릭 설정 읽기
 let gdexPoolConfig = {};
@@ -1596,7 +1604,7 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== Backend-based Swap logic (0x handled server-side) ====
+   ===== Backend-based Swap logic (routing handled server-side) =
    ============================================================ */
 
 // 토큰 메타 조회
@@ -1637,7 +1645,10 @@ async function updatePricePreview() {
       sellToken: toBackendTokenAddress(sellMeta),
       buyToken:  toBackendTokenAddress(buyMeta),
       sellAmount: sellAmountRaw,
-      slippagePercentage: slipPct
+      slippagePercentage: slipPct,
+
+      /* ✅ 백엔드가 RouterV2를 지원할 경우 사용하도록 힌트 전달 (지원 안 하면 무시됨) */
+      routerV2: GDEX_ROUTER_V2_ADDRESS
     });
 
     if (!quote.buyAmount) {
@@ -1691,7 +1702,10 @@ async function executeSwap() {
       buyToken:  toBackendTokenAddress(buyMeta),
       sellAmount: sellAmountRaw,
       taker: userAddress,
-      slippagePercentage: slipPct
+      slippagePercentage: slipPct,
+
+      /* ✅ 백엔드가 RouterV2를 지원할 경우 사용하도록 힌트 전달 (지원 안 하면 무시됨) */
+      routerV2: GDEX_ROUTER_V2_ADDRESS
     });
 
     console.log("[/swap raw response]", swapRes);
@@ -1823,4 +1837,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
-
