@@ -370,11 +370,12 @@ h3::before{content:""; display:none;} /* remove gift emoji */
   border:1px solid rgba(12,25,45,.16);
   border-radius:18px;padding:10px 12px;margin:10px 0;min-height:52px;
   box-shadow:0 10px 22px rgba(9,18,33,.08);
-  position:relative; /* ✅ for balance + max */
+  position:relative; /* ✅ balance overlay용 */
 }
 .input input{
   flex:1;background:transparent;border:0;outline:0;color:rgba(11,18,32,.92);
-  font-size:20px;font-weight:900;min-width:0
+  font-size:20px;font-weight:900;min-width:0;
+  padding-left:0;
 }
 .tokenBtn{
   display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;cursor:pointer;
@@ -444,45 +445,7 @@ h3::before{content:""; display:none;} /* remove gift emoji */
   box-shadow:0 10px 22px rgba(9,18,33,.10);
 }
 
-/* ✅ balance label inside input (placeholder 옆 느낌) */
-.balTag{
-  position:absolute;
-  left:12px;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:12px;
-  font-weight:800;
-  color:rgba(11,18,32,.55);
-  pointer-events:none;
-  display:none; /* 연결 전 숨김 */
-  max-width:60%;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.balTag.show{display:block;}
-/* input 텍스트가 balTag와 겹치지 않도록 왼쪽 패딩 */
-.input.hasBal input{padding-left:92px;}
-
-/* ✅ Swap MAX 버튼 */
-.maxSwap{
-  position:absolute;top:50%;right:132px;transform:translateY(-50%);
-  height:34px;padding:0 14px;border:0;border-radius:999px;
-  font-weight:900;font-family:"Sora",sans-serif;color:rgba(11,18,32,.92);
-  background:rgba(255,255,255,.88);
-  border:1px solid rgba(12,25,45,.16);
-  box-shadow:0 10px 20px rgba(9,18,33,.12);
-  cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-  display:none; /* 연결 전 숨김 */
-}
-.maxSwap.show{display:block;}
-.maxSwap:hover{
-  transform:translateY(-50%) translateY(-1px);
-  border-color:rgba(123,183,255,.42);
-  box-shadow:0 14px 26px rgba(9,18,33,.14);
-}
-
-/* stake: MAX 버튼 고정 */
+/* ===== Stake: MAX 버튼 고정 ===== */
 .input--stake{position:relative}
 .input--stake input{padding-right:92px}
 .input--stake .max{
@@ -500,6 +463,62 @@ h3::before{content:""; display:none;} /* remove gift emoji */
   box-shadow:0 16px 26px rgba(9,18,33,.14);
 }
 
+/* ===== Swap: MAX 버튼(토큰버튼 옆) ===== */
+.input--swap{position:relative}
+.input--swap input{padding-right:170px} /* max+tokenBtn 자리 확보 */
+.input--swap .maxSwap{
+  position:absolute;
+  top:50%;
+  right:108px; /* tokenBtn 바로 왼쪽 */
+  transform:translateY(-50%);
+  height:34px;
+  padding:0 14px;
+  border:0;
+  border-radius:999px;
+  font-weight:900;
+  font-family:"Sora",sans-serif;
+  font-size:12px;
+  color:rgba(11,18,32,.92);
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(12,25,45,.16);
+  box-shadow:0 10px 18px rgba(9,18,33,.12);
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.input--swap .maxSwap:hover{
+  transform:translateY(-50%) translateY(-1px);
+  border-color:rgba(123,183,255,.42);
+  box-shadow:0 14px 22px rgba(9,18,33,.14);
+}
+
+/* ===== Balance inside input (AUTO no-overlap) ===== */
+.balIn{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:13px;
+  font-weight:900;
+  color:rgba(11,18,32,.70);
+  pointer-events:none;
+  white-space:nowrap;
+  max-width:60%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.input.hasBal input{
+  padding-left: var(--balPad, 150px);
+}
+.input--stake.hasBal input{
+  padding-left: var(--balPad, 150px);
+  padding-right:92px;
+}
+.input--swap.hasBal input{
+  padding-left: var(--balPad, 150px);
+  padding-right:170px;
+}
+
+/* stake */
 .stake .statGrid{
   display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px
 }
@@ -580,6 +599,20 @@ h3::before{content:""; display:none;} /* remove gift emoji */
   .notes .inner{width:100%;margin:0 auto}
 }
 
+/* 모바일에서 balance/Max 더 촘촘히 */
+@media (max-width:520px){
+  .balIn{ font-size:12px; left:12px; max-width:55%; }
+  .input--swap input{ padding-right:160px; }
+  .input--swap .maxSwap{ right:100px; height:32px; padding:0 12px; font-size:11px; }
+  .tokenBtn{ padding:9px 10px; }
+  .tokenBtn img{ width:22px; height:22px; }
+}
+@media (max-width:380px){
+  .balIn{ max-width:50%; }
+  .input--swap input{ padding-right:150px; }
+  .input--swap .maxSwap{ right:92px; }
+}
+
 /* Notes: remove speech-bubble + pink; keep clean */
 .notes .inner{
   max-width:100%;
@@ -650,6 +683,7 @@ h3::before{content:""; display:none;} /* remove gift emoji */
 #toTop:hover{opacity:1;transform:translateY(-3px); border-color:rgba(123,183,255,.42)}
 </style>
 </head>
+
 <body>
 
 <!-- HERO -->
@@ -729,22 +763,17 @@ h3::before{content:""; display:none;} /* remove gift emoji */
       <section class="card swap" id="swap">
         <h3>Swap</h3>
 
-        <div class="input hasBal" id="swapSellWrap">
-          <!-- ✅ 잔액 표시 (입력창 안, placeholder 옆) -->
-          <span class="balTag" id="balSellTag">Bal: —</span>
-          <!-- ✅ MAX 버튼 (Swap) -->
-          <button class="maxSwap" id="swapMaxBtn" type="button">MAX</button>
-
+        <div class="input input--swap hasBal">
+          <span class="balIn" id="balSell">Bal: —</span>
           <input id="sell" placeholder="0.0" type="number" min="0" step="any">
+          <button class="maxSwap" id="swapMax" type="button">MAX</button>
           <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS" data-address="">ETH</span></button>
         </div>
 
         <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
 
-        <div class="input hasBal" id="swapBuyWrap">
-          <!-- ✅ 잔액 표시 (입력창 안, placeholder 옆) -->
-          <span class="balTag" id="balBuyTag">Bal: —</span>
-
+        <div class="input hasBal">
+          <span class="balIn" id="balBuy">Bal: —</span>
           <input id="buy" placeholder="0.0" type="number" disabled>
           <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS" data-address="">GLIP</span></button>
         </div>
@@ -785,16 +814,16 @@ h3::before{content:""; display:none;} /* remove gift emoji */
           <button class="btn ghost" style="min-width:auto;padding:10px 14px">My Positions</button>
         </div>
 
-        <div class="input hasBal" id="pool0Wrap">
-          <span class="balTag" id="balP0Tag">Bal: —</span>
+        <div class="input hasBal">
+          <span class="balIn" id="balPT0">Bal: —</span>
           <button class="tokenBtn" id="pT0Btn"><img id="pT0Img" src="" alt=""><span id="pT0Sym" data-address="">ETH</span></button>
           <input id="pAmt0" placeholder="0.0" type="number" min="0" step="any">
         </div>
 
         <div class="row" style="justify-content:center"><div class="flip" id="pFlip">⇅</div></div>
 
-        <div class="input hasBal" id="pool1Wrap">
-          <span class="balTag" id="balP1Tag">Bal: —</span>
+        <div class="input hasBal">
+          <span class="balIn" id="balPT1">Bal: —</span>
           <button class="tokenBtn" id="pT1Btn"><img id="pT1Img" src="" alt=""><span id="pT1Sym" data-address="">GLIP</span></button>
           <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any">
         </div>
@@ -812,9 +841,7 @@ h3::before{content:""; display:none;} /* remove gift emoji */
             <div>Share preview</div><div id="pShare">Initial GLIP-ETH pool on SushiSwap V2</div>
           </div>
           <div class="row" style="justify-content:flex-end;margin-top:6px">
-            <div id="pManualNote" style="font-size:12px;opacity:.78;text-align:right">
-              <!-- 수동 안내문 -->
-            </div>
+            <div id="pManualNote" style="font-size:12px;opacity:.78;text-align:right"></div>
           </div>
         </div>
 
@@ -826,9 +853,7 @@ h3::before{content:""; display:none;} /* remove gift emoji */
           </div>
         </div>
 
-        <p id="poolFooterNote" style="margin-top:12px;font-size:12px;opacity:.72">
-          <!-- Pool 섹션 하단 안내 -->
-        </p>
+        <p id="poolFooterNote" style="margin-top:12px;font-size:12px;opacity:.72"></p>
       </section>
 
       <!-- Recent -->
@@ -853,7 +878,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
         <h3>Notes</h3>
         <div class="card inner" style="background:rgba(255,255,255,.70);border:1px solid rgba(12,25,45,.14)">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
-          <!-- ✅ 여기: Router 표기용 문구만 업데이트 (기능 영향 없음) -->
           <p class="wrap" style="margin:.2rem 0">• Router: GDEXRouterV2 (via backend) — 0xcbAeD90D5eA36DB0F26499061A0f2E497879608f</p>
           <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are handled through your wallet when needed.</p>
         </div>
@@ -863,7 +887,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
       <!-- Analytics -->
       <section class="card analytics" id="analytics">
         <h3>Analytics — “Blockchain that gives back”</h3>
-        <!-- Analytics 안내문 (라이트 버전) -->
         <div style="
           margin-top:6px;
           margin-bottom:12px;
@@ -899,7 +922,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
         </div>
 
         <div class="anaGrid" style="margin-top:12px">
-          <!-- A) Returned Value sparkline -->
           <div class="vizCard">
             <div class="vizHead"><div class="title">Returned Value to Users — Cumulative</div><div class="hint" id="rvHint">—</div></div>
             <div class="sparkWrap"><canvas id="spark"></canvas></div>
@@ -909,7 +931,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
             </div>
           </div>
 
-          <!-- B) Rebate Split Donut -->
           <div class="vizCard">
             <div class="vizHead"><div class="title">Quarterly Rebate Split</div><div class="hint">Users / ESG / Treasury</div></div>
             <div class="donutWrap">
@@ -921,7 +942,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
             <div class="legend" id="donutLegend"></div>
           </div>
 
-          <!-- C) Green Impact Gauge -->
           <div class="vizCard">
             <div class="vizHead"><div class="title">Green Impact — Carbon Offset (est.)</div><div class="hint" id="giHint">—</div></div>
             <div class="gaugeWrap"><div class="gauge"><canvas id="gauge"></canvas></div></div>
@@ -969,16 +989,11 @@ h3::before{content:""; display:none;} /* remove gift emoji */
 
         <div class="amountBox">
           <div class="input input--stake hasBal" style="margin:0;">
-            <span class="balTag" id="balStakeTag">Bal: —</span>
+            <span class="balIn" id="balStake">Bal: —</span>
             <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any">
-            <button class="max" id="stakeMaxBtn" type="button">MAX</button>
+            <button class="max" id="stakeMax" type="button">MAX</button>
           </div>
-
           <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
-          <div style="margin-top:6px;opacity:.78;font-size:12px">
-            Wallet balance: <span id="stakeBalText">—</span>
-          </div>
-
           <div class="stake-actions">
             <button class="btn" id="btnConn">Connect Wallet</button>
             <button class="btn" id="btnStake">Stake GLIP</button>
@@ -1001,7 +1016,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
 <!-- Token Selector Modal -->
 <dialog id="tokModal">
   <header>
-    <!-- 토큰 검색 입력란 -->
     <input id="tokSearch" type="text" placeholder="Search token by name, symbol, or address" autocomplete="off">
     <button id="tokClose" title="Close">✕</button>
   </header>
@@ -1028,12 +1042,10 @@ const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
 /* ============================================================
    ✅ GDEX Router V2 (표기/백엔드 전달용)
-   - 프런트는 직접 컨트랙트 호출을 하지 않음
-   - /quote, /swap에 옵션 필드로 전달 (백엔드가 지원하면 적용)
    ============================================================ */
 const GDEX_ROUTER_V2_ADDRESS = "0xcbAeD90D5eA36DB0F26499061A0f2E497879608f";
 
-// 수기 메트릭 설정 읽기
+/* ===== Manual pool config ===== */
 let gdexPoolConfig = {};
 (function readGdexConfig(){
   const el = document.getElementById('gdexPoolConfig');
@@ -1060,32 +1072,28 @@ function applyManualPoolConfig(){
   if(footEl  && cfg.poolFooterNote)  footEl.textContent  = cfg.poolFooterNote;
 }
 
-// DApp host
+/* DApp host */
 const DAPP_HOST = 'gdex-app.com';
 
-// GLIP 토큰 (Ethereum 메인넷)
+/* GLIP token */
 const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
 
-// SushiSwap Ethereum 풀 베이스 URL
+/* SushiSwap Ethereum pool base */
 const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
 
-// 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
+/* 0x ETH sentinel */
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
-// ===== 공통 에러 팝업 =====
+/* ===== 공통 에러 팝업 ===== */
 function showErrorPopup(title, payload) {
   let msg = "";
-  if (payload instanceof Error) {
-    msg = payload.message || String(payload);
-  } else if (typeof payload === "string") {
-    msg = payload;
-  } else {
-    msg = JSON.stringify(payload, null, 2);
-  }
+  if (payload instanceof Error) msg = payload.message || String(payload);
+  else if (typeof payload === "string") msg = payload;
+  else msg = JSON.stringify(payload, null, 2);
   alert(title + "\n\n" + msg);
 }
 
-// ===== Backend helper =====
+/* ===== Backend helper ===== */
 async function postToBackend(path, body) {
   const url = `${BACKEND_URL}${path}`;
   console.log("[backend] req", path, body);
@@ -1109,11 +1117,7 @@ async function postToBackend(path, body) {
 
   if (!res.ok) {
     let payload;
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = text;
-    }
+    try { payload = JSON.parse(text); } catch { payload = text; }
     throw new Error(
       `Backend ${path} returned HTTP ${res.status}:\n` +
       (typeof payload === "string" ? payload : JSON.stringify(payload, null, 2))
@@ -1124,24 +1128,21 @@ async function postToBackend(path, body) {
     return JSON.parse(text);
   } catch (e) {
     console.error("[backend] JSON parse error", e);
-    throw new Error(
-      `Backend ${path} responded with non-JSON:\n` +
-      text.slice(0, 500)
-    );
+    throw new Error(`Backend ${path} responded with non-JSON:\n` + text.slice(0, 500));
   }
 }
 
-// 0x ETH sentinel wrapper
+/* 0x ETH sentinel wrapper */
 function toBackendTokenAddress(meta) {
   if (!meta) return "";
   if (meta.address === "ETH") return ETH_ADDRESS_0X;
   return meta.address;
 }
 
-// 모바일 판별
+/* 모바일 판별 */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-// 모바일에서 MetaMask 딥링크
+/* 모바일에서 MetaMask 딥링크 */
 function openMetaMaskDeepLink() {
   const dappUrl = `https://${DAPP_HOST}`;
   const target = dappUrl.replace(/^https?:\/\//, '');
@@ -1157,7 +1158,7 @@ const tokenList = [
   {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6, logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
   {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"},
   {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193"},
-  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8, logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png"},
+  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2CC599", decimals:8, logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png"},
   {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18, logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png"},
   {symbol:"BNB", name:"BNB", address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18, logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png"},
   {symbol:"XRP", name:"XRP (ERC20-wrap)", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6, logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png"},
@@ -1189,7 +1190,20 @@ const tokenList = [
   {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
 ];
 
-/* 기본 아이콘/심볼 적용 */
+/* ===== 잔액 표시 겹침 방지(자동 패딩) ===== */
+function refreshBalPadding(){
+  document.querySelectorAll('.input.hasBal').forEach(wrap=>{
+    const bal = wrap.querySelector('.balIn');
+    const inp = wrap.querySelector('input');
+    if(!bal || !inp) return;
+    const balW = Math.ceil(bal.getBoundingClientRect().width);
+    const pad = Math.max(110, Math.min(240, balW + 28)); // 최소/최대 제한
+    wrap.style.setProperty('--balPad', pad + 'px');
+  });
+}
+window.addEventListener('resize', refreshBalPadding);
+
+/* ===== 기본 아이콘/심볼 적용 ===== */
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
   const GLIP = tokenList.find(t=>t.symbol==="GLIP");
@@ -1199,6 +1213,14 @@ function initDefaults(){
   // Pool
   $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
   $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
+
+  // 초기 Bal 텍스트
+  setBalText('balSell', 'Bal: —');
+  setBalText('balBuy',  'Bal: —');
+  setBalText('balPT0',  'Bal: —');
+  setBalText('balPT1',  'Bal: —');
+  setBalText('balStake','Bal: —');
+  refreshBalPadding();
 }
 
 /* ===== 토큰 선택 모달 ===== */
@@ -1243,7 +1265,7 @@ function openFor(imgEl, symEl){
   setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); }, 10);
 }
 
-list.onclick = e=>{
+list.onclick = async e=>{
   const row = e.target.closest('.item'); if(!row||!target) return;
   const t = tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
   target.imgEl.src = t.logo;
@@ -1251,11 +1273,10 @@ list.onclick = e=>{
   target.symEl.dataset.address = t.address;
   dlg.close();
 
-  // ✅ 토큰 변경 시: 잔액 자동 갱신 + 스왑 프리뷰 갱신
-  updateBalancesUI();
-  setTimeout(updatePricePreview, 50);
+  // ✅ 토큰 변경 즉시: 잔액 + 가격프리뷰 갱신
+  await refreshAllBalances();
+  setTimeout(updatePricePreview, 30);
 };
-
 document.getElementById('tokClose').onclick = ()=>dlg.close();
 dlg.addEventListener('click',e=>{ if(e.target===dlg) dlg.close(); });
 
@@ -1280,234 +1301,24 @@ function flipTokenMeta(imgA, symA, imgB, symB){
   const a=symA.dataset.address, b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
 }
 function bindFlip(){
-  $('#flip').onclick  = ()=>{ 
-    flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS')); 
+  $('#flip').onclick  = async ()=>{
+    flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
+    await refreshAllBalances();
     setTimeout(updatePricePreview,50);
-    updateBalancesUI(); // ✅ 뒤집기 시 자동 갱신
   };
-  $('#pFlip').onclick  = ()=>{ 
+  $('#pFlip').onclick  = async ()=>{
     flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
-    updateBalancesUI(); // ✅ 뒤집기 시 자동 갱신
+    await refreshAllBalances();
   };
 }
 
 /* ===== Wallet Connect (MetaMask 전용) ===== */
 let userAddress = null;
 
-/* ============================================================
-   ✅ Balance helpers (ETH + ERC20)
-   - eth_getBalance + eth_call(balanceOf)
-   ============================================================ */
-const BAL_CACHE = new Map(); // key: `${addr}:${tokenAddr}`
-let balTimer = null;
-
-function hexToBigInt(hex){
-  if(!hex) return 0n;
-  return BigInt(hex);
-}
-function pad32(hexNo0x){
-  return hexNo0x.padStart(64,'0');
-}
-function addrTo32(addr){
-  return pad32(addr.toLowerCase().replace(/^0x/,''));
-}
-function fmtAmount(rawBig, decimals, maxDp=6){
-  try{
-    const d = BigInt(decimals);
-    const base = 10n ** d;
-    const whole = rawBig / base;
-    const frac  = rawBig % base;
-
-    if(decimals === 0) return whole.toString();
-
-    const fracStrFull = frac.toString().padStart(decimals,'0');
-    const fracStr = fracStrFull.slice(0, Math.min(decimals, maxDp)).replace(/0+$/,'');
-    return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
-  }catch(e){
-    return "—";
-  }
-}
-function safeNumStrToInput(str){
-  if(!str || str==="—") return "";
-  // 너무 길면 input 표시가 지저분해져서 적당히 컷
-  const [a,b] = String(str).split('.');
-  if(!b) return a;
-  return a + '.' + b.slice(0, 8);
-}
-
-async function fetchEthBalance(addr){
-  const key = `${addr}:ETH`;
-  try{
-    const hex = await ethereum.request({ method:'eth_getBalance', params:[addr,'latest'] });
-    const v = hexToBigInt(hex);
-    BAL_CACHE.set(key, v);
-    return v;
-  }catch(e){
-    console.warn('[balance] eth_getBalance failed', e);
-    return null;
-  }
-}
-
-async function fetchErc20Balance(addr, tokenAddr){
-  const key = `${addr}:${tokenAddr.toLowerCase()}`;
-  try{
-    // balanceOf(address) selector: 0x70a08231
-    const data = '0x70a08231' + addrTo32(addr);
-    const hex = await ethereum.request({
-      method:'eth_call',
-      params:[{ to: tokenAddr, data }, 'latest']
-    });
-    const v = hexToBigInt(hex);
-    BAL_CACHE.set(key, v);
-    return v;
-  }catch(e){
-    console.warn('[balance] eth_call balanceOf failed', tokenAddr, e);
-    return null;
-  }
-}
-
-function getTokenMetaBySymEl(symEl){
-  const sym = (symEl && symEl.textContent) ? symEl.textContent.trim() : "";
-  return tokenList.find(t=>t.symbol===sym) || null;
-}
-
-function setBalTag(el, text){
-  if(!el) return;
-  el.textContent = text;
-  if(userAddress){
-    el.classList.add('show');
-  }else{
-    el.classList.remove('show');
-  }
-}
-
-function showSwapMaxButton(show){
-  const b = document.getElementById('swapMaxBtn');
-  if(!b) return;
-  if(show) b.classList.add('show');
-  else b.classList.remove('show');
-}
-
-async function updateBalancesUI(){
-  // 연결 전엔 숨김
-  if(!userAddress || typeof window.ethereum === 'undefined'){
-    setBalTag(document.getElementById('balSellTag'), 'Bal: —');
-    setBalTag(document.getElementById('balBuyTag'),  'Bal: —');
-    setBalTag(document.getElementById('balP0Tag'),   'Bal: —');
-    setBalTag(document.getElementById('balP1Tag'),   'Bal: —');
-    setBalTag(document.getElementById('balStakeTag'),'Bal: —');
-    const stakeBalText = document.getElementById('stakeBalText');
-    if(stakeBalText) stakeBalText.textContent = '—';
-    showSwapMaxButton(false);
-    return;
-  }
-
-  // 1) Swap tokens
-  const sellMeta = getTokenMetaBySymEl(document.getElementById('sellS'));
-  const buyMeta  = getTokenMetaBySymEl(document.getElementById('buyS'));
-
-  // 2) Pool tokens
-  const p0Meta = getTokenMetaBySymEl(document.getElementById('pT0Sym'));
-  const p1Meta = getTokenMetaBySymEl(document.getElementById('pT1Sym'));
-
-  // 3) Stake token (GLIP fixed)
-  const glipMeta = tokenList.find(t=>t.symbol==='GLIP');
-
-  // fetch needed balances (ETH always useful)
-  const tasks = [];
-
-  // ETH
-  tasks.push(fetchEthBalance(userAddress));
-
-  // swap sell/buy ERC20
-  if(sellMeta && sellMeta.address !== 'ETH') tasks.push(fetchErc20Balance(userAddress, sellMeta.address));
-  if(buyMeta  && buyMeta.address  !== 'ETH') tasks.push(fetchErc20Balance(userAddress, buyMeta.address));
-
-  // pool
-  if(p0Meta && p0Meta.address !== 'ETH') tasks.push(fetchErc20Balance(userAddress, p0Meta.address));
-  if(p1Meta && p1Meta.address !== 'ETH') tasks.push(fetchErc20Balance(userAddress, p1Meta.address));
-
-  // stake (GLIP)
-  if(glipMeta && glipMeta.address) tasks.push(fetchErc20Balance(userAddress, glipMeta.address));
-
-  await Promise.all(tasks);
-
-  // read cache + format
-  const ethRaw = BAL_CACHE.get(`${userAddress}:ETH`) ?? 0n;
-  const ethStr = fmtAmount(ethRaw, 18, 6);
-
-  function balOf(meta){
-    if(!meta) return {raw:0n, str:'—'};
-    if(meta.address === 'ETH'){
-      return {raw: ethRaw, str: ethStr};
-    }
-    const k = `${userAddress}:${meta.address.toLowerCase()}`;
-    const raw = BAL_CACHE.get(k);
-    if(raw == null) return {raw:0n, str:'—'};
-    return {raw, str: fmtAmount(raw, meta.decimals, 6)};
-  }
-
-  const sellBal = balOf(sellMeta);
-  const buyBal  = balOf(buyMeta);
-  const p0Bal   = balOf(p0Meta);
-  const p1Bal   = balOf(p1Meta);
-  const glipBal = balOf(glipMeta);
-
-  // ✅ Swap input 내부 표시 (placeholder 옆)
-  setBalTag(document.getElementById('balSellTag'), `Bal: ${sellBal.str} ${sellMeta ? sellMeta.symbol : ''}`.trim());
-  setBalTag(document.getElementById('balBuyTag'),  `Bal: ${buyBal.str} ${buyMeta ? buyMeta.symbol : ''}`.trim());
-
-  // ✅ Pool input 내부 표시
-  setBalTag(document.getElementById('balP0Tag'), `Bal: ${p0Bal.str} ${p0Meta ? p0Meta.symbol : ''}`.trim());
-  setBalTag(document.getElementById('balP1Tag'), `Bal: ${p1Bal.str} ${p1Meta ? p1Meta.symbol : ''}`.trim());
-
-  // ✅ Stake input 내부 표시 + 아래 텍스트도 표시
-  setBalTag(document.getElementById('balStakeTag'), `Bal: ${glipBal.str} GLIP`);
-  const stakeBalText = document.getElementById('stakeBalText');
-  if(stakeBalText) stakeBalText.textContent = `${glipBal.str} GLIP`;
-
-  // ✅ Swap MAX 버튼 표시
-  showSwapMaxButton(true);
-}
-
-/* ✅ Swap MAX: 현재 sell 토큰 잔액으로 입력값 채움 */
-function bindSwapMax(){
-  const btn = document.getElementById('swapMaxBtn');
-  if(!btn) return;
-  btn.addEventListener('click', async ()=>{
-    if(!userAddress) { alert('Please connect your wallet first.'); return; }
-    const sellMeta = getTokenMetaBySymEl(document.getElementById('sellS'));
-    if(!sellMeta) return;
-
-    await updateBalancesUI();
-
-    let raw = 0n;
-    if(sellMeta.address === 'ETH'){
-      raw = BAL_CACHE.get(`${userAddress}:ETH`) ?? 0n;
-      // 가스 여유분 (0.0003 ETH) 남김
-      const buffer = 300000000000000n; // 0.0003 ETH in wei
-      raw = raw > buffer ? (raw - buffer) : 0n;
-      const v = fmtAmount(raw, 18, 6);
-      document.getElementById('sell').value = safeNumStrToInput(v);
-    }else{
-      raw = BAL_CACHE.get(`${userAddress}:${sellMeta.address.toLowerCase()}`) ?? 0n;
-      const v = fmtAmount(raw, sellMeta.decimals, 6);
-      document.getElementById('sell').value = safeNumStrToInput(v);
-    }
-
-    // MAX 반영 후 프리뷰 갱신
-    updatePricePreview();
-  });
-}
-
-/* ===== Wallet Connect ===== */
 async function connectWallet(){
   try{
     if (typeof window.ethereum === 'undefined') {
-      if (isMobile) {
-        openMetaMaskDeepLink();
-        return;
-      }
+      if (isMobile) { openMetaMaskDeepLink(); return; }
       alert(
         "No Ethereum wallet detected.\n\n" +
         "• Mobile: Open this site inside the MetaMask in-app browser.\n" +
@@ -1530,33 +1341,16 @@ async function connectWallet(){
       }
     });
 
-    // ✅ 연결 즉시 잔액 표시 시작
-    await updateBalancesUI();
-
-    // ✅ 주기적 갱신 (연결 유지 시)
-    if(balTimer) clearInterval(balTimer);
-    balTimer = setInterval(()=>{ updateBalancesUI(); }, 15000);
+    // ✅ 연결 즉시 잔액 표시
+    await refreshAllBalances();
 
     if (window.ethereum.on) {
       window.ethereum.on('accountsChanged', async acc=>{
         userAddress = acc && acc.length ? acc[0] : null;
         document.getElementById('wAddr').textContent = short(userAddress);
-
-        // 버튼 상태
-        if(!userAddress){
-          ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-            const el = document.getElementById(id);
-            if(el){
-              el.textContent = 'Connect Wallet';
-              el.classList.remove('ghost');
-            }
-          });
-        }
-        await updateBalancesUI();
+        await refreshAllBalances();
       });
-      window.ethereum.on('chainChanged', _=>{
-        location.reload();
-      });
+      window.ethereum.on('chainChanged', _=> location.reload());
     }
 
   }catch(e){
@@ -1571,21 +1365,21 @@ function bindConnect(){
     if(el) el.onclick = connectWallet;
   });
 
-  // ✅ Stake MAX: GLIP 잔액으로
-  const maxBtn = document.getElementById('stakeMaxBtn');
-  if(maxBtn) maxBtn.onclick = async ()=>{
-    if(!userAddress){ alert('Please connect your wallet first.'); return; }
-    await updateBalancesUI();
-    const glip = tokenList.find(t=>t.symbol==='GLIP');
-    const raw = BAL_CACHE.get(`${userAddress}:${glip.address.toLowerCase()}`) ?? 0n;
-    const v = fmtAmount(raw, glip.decimals, 6);
-    document.getElementById('stakeAmt').value = safeNumStrToInput(v);
-  };
+  // Stake MAX: GLIP 잔액으로
+  const stakeMax = document.getElementById('stakeMax');
+  if(stakeMax){
+    stakeMax.onclick = async ()=>{
+      const glip = tokenList.find(t=>t.symbol==="GLIP");
+      const v = await fetchBalanceFormatted(glip);
+      // 숫자만 추출
+      const num = parseFloat(String(v).replace(/[^0-9.]/g,'') || "0");
+      document.getElementById('stakeAmt').value = (num>0 ? trimFloat(num, 6) : "");
+    };
+  }
 }
 
-// Supply 버튼 → SushiSwap GLIP-ETH 풀 화면 (토큰 자동 선택 시도)
+/* Supply 버튼 → SushiSwap GLIP-ETH 풀 화면 */
 function openSushiGlipEthPool(){
-  // token0=NATIVE (ETH), token1=GLIP 주소
   const url = `${SUSHI_ETHEREUM_POOL_BASE}?token0=NATIVE&token1=${GLIP_TOKEN_ADDRESS}`;
   window.open(url, '_blank', 'noopener');
 }
@@ -1734,7 +1528,6 @@ function drawGauge(d){
   const r = Math.min(w*DPR*0.42, h*DPR*0.9);
   ctx.lineWidth = 16*DPR; ctx.lineCap = "round";
 
-  // base arc
   ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
   ctx.strokeStyle = "rgba(11,18,32,.16)"; ctx.stroke();
 
@@ -1764,16 +1557,158 @@ function updateRibbon(d){
 }
 
 /* ============================================================
-   ===== Backend-based Swap logic (routing handled server-side) =
+   ===== Wallet balance (ETH + ERC20) =====
+   - 입력창 안 잔액 표시 + 겹침 방지 자동 패딩
    ============================================================ */
 
-// 토큰 메타 조회
+function setBalText(id, txt){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = txt;
+}
+
+function trimFloat(num, decimals=6){
+  const s = num.toFixed(decimals);
+  return s.replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
+}
+
+function pad32(hexNo0x){
+  return hexNo0x.padStart(64,'0');
+}
+function addrTo32(addr){
+  return pad32(addr.toLowerCase().replace(/^0x/,''));
+}
+function hexToBigInt(hex){
+  try{ return BigInt(hex); } catch { return 0n; }
+}
+function formatUnits(bi, decimals){
+  // bigInt -> string with decimals
+  const d = BigInt(decimals);
+  const base = 10n ** d;
+  const whole = bi / base;
+  const frac  = bi % base;
+  if(frac === 0n) return whole.toString();
+  const fracStr = frac.toString().padStart(decimals,'0').replace(/0+$/,'');
+  return whole.toString() + "." + fracStr;
+}
+
+async function fetchEthBalanceWei(address){
+  const hex = await ethereum.request({ method:'eth_getBalance', params:[address, 'latest'] });
+  return hexToBigInt(hex);
+}
+
+async function fetchErc20BalanceRaw(tokenAddr, holder){
+  // balanceOf(address) selector: 0x70a08231
+  const data = "0x70a08231" + addrTo32(holder);
+  const hex = await ethereum.request({
+    method:'eth_call',
+    params:[{ to: tokenAddr, data }, 'latest']
+  });
+  return hexToBigInt(hex);
+}
+
+async function fetchBalanceFormatted(meta){
+  if(!userAddress || !window.ethereum) return "—";
+
+  try{
+    if(meta.address === "ETH"){
+      const wei = await fetchEthBalanceWei(userAddress);
+      const s = formatUnits(wei, 18);
+      const n = parseFloat(s || "0");
+      return trimFloat(n, 6) + " ETH";
+    }else{
+      const raw = await fetchErc20BalanceRaw(meta.address, userAddress);
+      const s = formatUnits(raw, meta.decimals);
+      const n = parseFloat(s || "0");
+      return trimFloat(n, 6) + " " + meta.symbol;
+    }
+  }catch(e){
+    console.warn('[balance] fetch failed', meta.symbol, e);
+    return "—";
+  }
+}
+
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
     t.symbol === symbolOrAddress ||
     t.address?.toLowerCase() === symbolOrAddress?.toLowerCase()
   );
 }
+
+async function refreshAllBalances(){
+  // 연결 전이면 표시만 초기화
+  if(!userAddress || !window.ethereum){
+    setBalText('balSell','Bal: —');
+    setBalText('balBuy','Bal: —');
+    setBalText('balPT0','Bal: —');
+    setBalText('balPT1','Bal: —');
+    setBalText('balStake','Bal: —');
+    refreshBalPadding();
+    return;
+  }
+
+  const sellSym = document.getElementById('sellS')?.textContent || "ETH";
+  const buySym  = document.getElementById('buyS')?.textContent  || "GLIP";
+  const p0Sym   = document.getElementById('pT0Sym')?.textContent || "ETH";
+  const p1Sym   = document.getElementById('pT1Sym')?.textContent || "GLIP";
+  const stakeMeta = tokenList.find(t=>t.symbol==="GLIP");
+
+  const sellMeta = getTokenMeta(sellSym);
+  const buyMeta  = getTokenMeta(buySym);
+  const p0Meta   = getTokenMeta(p0Sym);
+  const p1Meta   = getTokenMeta(p1Sym);
+
+  const [bSell, bBuy, bP0, bP1, bStake] = await Promise.all([
+    sellMeta ? fetchBalanceFormatted(sellMeta) : Promise.resolve("—"),
+    buyMeta  ? fetchBalanceFormatted(buyMeta)  : Promise.resolve("—"),
+    p0Meta   ? fetchBalanceFormatted(p0Meta)   : Promise.resolve("—"),
+    p1Meta   ? fetchBalanceFormatted(p1Meta)   : Promise.resolve("—"),
+    stakeMeta? fetchBalanceFormatted(stakeMeta): Promise.resolve("—"),
+  ]);
+
+  setBalText('balSell', 'Bal: ' + bSell);
+  setBalText('balBuy',  'Bal: ' + bBuy);
+  setBalText('balPT0',  'Bal: ' + bP0);
+  setBalText('balPT1',  'Bal: ' + bP1);
+  setBalText('balStake','Bal: ' + bStake);
+
+  refreshBalPadding();
+}
+
+/* Swap MAX: sell 토큰 기준 (ETH는 가스 여유분 제외) */
+async function handleSwapMax(){
+  if(!userAddress){
+    alert("Please connect your wallet first.");
+    return;
+  }
+  const sellSym = document.getElementById('sellS').textContent;
+  const sellMeta = getTokenMeta(sellSym);
+  if(!sellMeta) return;
+
+  try{
+    if(sellMeta.address === "ETH"){
+      const wei = await fetchEthBalanceWei(userAddress);
+      // 가스 여유분 0.003 ETH 제외(원하면 조정)
+      const bufferWei = 3000000000000000n; // 0.003 ETH
+      const usable = (wei > bufferWei) ? (wei - bufferWei) : 0n;
+      const s = formatUnits(usable, 18);
+      const n = parseFloat(s || "0");
+      document.getElementById('sell').value = (n>0 ? trimFloat(n, 6) : "");
+    }else{
+      const raw = await fetchErc20BalanceRaw(sellMeta.address, userAddress);
+      const s = formatUnits(raw, sellMeta.decimals);
+      const n = parseFloat(s || "0");
+      document.getElementById('sell').value = (n>0 ? trimFloat(n, 6) : "");
+    }
+    setTimeout(updatePricePreview, 30);
+  }catch(e){
+    console.warn('[swapMax]', e);
+  }
+}
+
+/* ============================================================
+   ===== Backend-based Swap logic (routing handled server-side)
+   ============================================================ */
 
 // 가격 미리보기 (sell → buy), /quote 사용
 async function updatePricePreview() {
@@ -1793,9 +1728,8 @@ async function updatePricePreview() {
   const buyMeta  = getTokenMeta(buySym);
   if (!sellMeta || !buyMeta) return;
 
-  const sellAmountRaw = BigInt(
-    Math.floor(sellVal * 10 ** sellMeta.decimals)
-  ).toString();
+  const mul = 10 ** sellMeta.decimals;
+  const sellAmountRaw = BigInt(Math.floor(sellVal * mul)).toString();
 
   const slipInput = document.getElementById("slip");
   const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
@@ -1806,8 +1740,6 @@ async function updatePricePreview() {
       buyToken:  toBackendTokenAddress(buyMeta),
       sellAmount: sellAmountRaw,
       slippagePercentage: slipPct,
-
-      /* ✅ 백엔드가 RouterV2를 지원할 경우 사용하도록 힌트 전달 (지원 안 하면 무시됨) */
       routerV2: GDEX_ROUTER_V2_ADDRESS
     });
 
@@ -1828,16 +1760,10 @@ async function updatePricePreview() {
 // 실제 스왑 실행, /swap 사용
 async function executeSwap() {
   try {
-    if (!userAddress) {
-      alert("Please connect your wallet first.");
-      return;
-    }
+    if (!userAddress) { alert("Please connect your wallet first."); return; }
 
     const sellVal = parseFloat(document.getElementById("sell").value || "0");
-    if (!sellVal || sellVal <= 0) {
-      alert("Enter an amount to swap.");
-      return;
-    }
+    if (!sellVal || sellVal <= 0) { alert("Enter an amount to swap."); return; }
 
     const sellSym = document.getElementById("sellS").textContent;
     const buySym  = document.getElementById("buyS").textContent;
@@ -1849,10 +1775,7 @@ async function executeSwap() {
       return;
     }
 
-    // 프런트에서 딱 한 번만 단위 변환: amount → wei 문자열
-    const sellAmountRaw = BigInt(
-      Math.floor(sellVal * 10 ** sellMeta.decimals)
-    ).toString();
+    const sellAmountRaw = BigInt(Math.floor(sellVal * (10 ** sellMeta.decimals))).toString();
 
     const slipInput = document.getElementById("slip");
     const slipPct   = slipInput ? Number(slipInput.value || "0") / 100 : undefined;
@@ -1863,8 +1786,6 @@ async function executeSwap() {
       sellAmount: sellAmountRaw,
       taker: userAddress,
       slippagePercentage: slipPct,
-
-      /* ✅ 백엔드가 RouterV2를 지원할 경우 사용하도록 힌트 전달 (지원 안 하면 무시됨) */
       routerV2: GDEX_ROUTER_V2_ADDRESS
     });
 
@@ -1886,11 +1807,8 @@ async function executeSwap() {
       return;
     }
 
-    // --- 금액 불일치 방지 로직 ---
-    // 1) ETH 스왑인지 확인 (0x ETH sentinel 사용)
     const isEthSell = toBackendTokenAddress(sellMeta) === ETH_ADDRESS_0X;
 
-    // 2) MetaMask로 보낼 value (16진수) 결정
     let valueHex = "0x0";
     if (isEthSell) {
       const vBig = BigInt(sellAmountRaw);
@@ -1898,34 +1816,21 @@ async function executeSwap() {
     } else if (txFromBackend.value != null) {
       try {
         const vBig = BigInt(txFromBackend.value);
-        if (vBig > 0n) {
-          valueHex = "0x" + vBig.toString(16);
-        }
+        if (vBig > 0n) valueHex = "0x" + vBig.toString(16);
       } catch (_) {}
     }
 
-    // 3) MetaMask에 넘길 tx 파라미터 (gas, gasPrice는 넘기지 않고 MetaMask가 추정하게 둠)
-    const txParams = {
-      from: userAddress,
-      to:   txFromBackend.to,
-      data: txFromBackend.data
-    };
-    if (valueHex !== "0x0") {
-      txParams.value = valueHex;
-    }
+    const txParams = { from: userAddress, to: txFromBackend.to, data: txFromBackend.data };
+    if (valueHex !== "0x0") txParams.value = valueHex;
 
     console.log("[swap-tx] params going to MetaMask:", txParams);
 
-    const txHash = await ethereum.request({
-      method: "eth_sendTransaction",
-      params: [txParams]
-    });
-
+    const txHash = await ethereum.request({ method: "eth_sendTransaction", params: [txParams] });
     console.log("[swap-tx] hash", txHash);
     alert("Swap transaction sent!\n\nTX Hash:\n" + txHash);
 
     // ✅ 스왑 후 잔액 갱신
-    setTimeout(()=>updateBalancesUI(), 1200);
+    setTimeout(refreshAllBalances, 1500);
 
   } catch (err) {
     console.error("executeSwap error:", err);
@@ -1937,18 +1842,15 @@ async function executeSwap() {
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
+  const maxBtn    = document.getElementById("swapMax");
 
   if (sellInput) {
     ["input", "change"].forEach(ev =>
-      sellInput.addEventListener(ev, () => {
-        updatePricePreview();
-      })
+      sellInput.addEventListener(ev, () => updatePricePreview())
     );
   }
-
-  if (swapBtn) {
-    swapBtn.addEventListener("click", executeSwap);
-  }
+  if (swapBtn) swapBtn.addEventListener("click", executeSwap);
+  if (maxBtn)  maxBtn.addEventListener("click", handleSwapMax);
 }
 
 /* ===== Boot ===== */
@@ -1958,7 +1860,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     bindTokenButtons();
     bindFlip();
     bindConnect();
-    bindSwapMax();          // ✅ Swap MAX 바인딩
     bindPoolSupplyButton();
     bindTop();
     document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick));
@@ -1985,14 +1886,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // 수기 메트릭 반영
     applyManualPoolConfig();
 
-    // 연결 전 UI 초기 상태
-    updateBalancesUI();
+    // 초기 패딩 보정
+    refreshBalPadding();
 
     window.addEventListener('resize', ()=>{
       drawSpark(demoAnalytics);
       drawDonut(demoAnalytics);
       drawGauge(demoAnalytics);
+      refreshBalPadding();
     });
+
   }catch(e){
     console.error('[init]', e);
     showErrorPopup('Initialization error — see console.', e);
@@ -2001,4 +1904,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-<br><br>
