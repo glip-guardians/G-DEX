@@ -47,6 +47,11 @@
   --line:rgba(12,25,45,.10);
   --line-2:rgba(12,25,45,.16);
 
+  /* ✅ 크리스마스 장식용 색상 */
+  --xmas-red:#ff4d5a;
+  --xmas-green:#19c37d;
+  --xmas-gold:#ffd36a;
+
   --shadow:0 18px 40px rgba(9,18,33,.12);
   --shadow-soft:0 12px 26px rgba(9,18,33,.10);
 
@@ -70,7 +75,11 @@ body{
   overflow-x:hidden;
 }
 
-/* Subtle snow grain (very light, not cartoon) */
+/* =========================================================
+   ✅ (1) 눈 효과 강화 + 텍스트 가림 최소화 (2-layer)
+   - 기존 grain은 유지하되, "작은 눈송이 레이어"를 추가
+   - opacity 낮게 / blur 거의 없음 / pointer-events none
+   ========================================================= */
 body::before,
 body::after{
   content:"";
@@ -93,9 +102,31 @@ body::after{
   background-size:460px 460px, 520px 520px, 420px 420px;
   opacity:.06;
 }
+
+/* ✅ 추가 눈송이 레이어 */
+body .snowLayer{
+  pointer-events:none;
+  position:fixed;
+  inset:-120px;
+  z-index:0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.55) 0, rgba(255,255,255,0) 58%),
+    radial-gradient(circle, rgba(255,255,255,.42) 0, rgba(255,255,255,0) 58%),
+    radial-gradient(circle, rgba(255,255,255,.50) 0, rgba(255,255,255,0) 58%),
+    radial-gradient(circle, rgba(255,255,255,.38) 0, rgba(255,255,255,0) 58%);
+  background-size:140px 140px, 180px 180px, 220px 220px, 260px 260px;
+  background-position: 10px -40px, 140px -120px, -80px -60px, 220px -160px;
+  animation:snowfall2 18s linear infinite;
+  opacity:.14;           /* ✅ 너무 강하지 않게 */
+  filter:blur(.15px);
+}
 @keyframes snowfall{
   0%{transform:translateY(-40px);}
   100%{transform:translateY(90px);}
+}
+@keyframes snowfall2{
+  0%{transform:translateY(-120px);}
+  100%{transform:translateY(160px);}
 }
 
 /* ===== HERO ===== */
@@ -108,11 +139,6 @@ body::after{
 }
 
 /* HERO 배경 – 눈 내리는 겨울밤의 미국 도시 & 크리스마스트리 */
-/* ✅ 하단 흰색(언덕) 제거 */
-.hero::before{
-  content:none !important;
-}
-  
 .hero::after{
   content:"";
   position:absolute;
@@ -135,31 +161,54 @@ body::after{
   pointer-events:none;
 }
 
-
-/* Frost line at bottom (clean) */
+/* ✅ 하단 "언덕" 느낌 제거(요청사항) → Frost line을 더 얇고 깔끔하게 */
 .hero::before{
   content:"";
   position:absolute;
   left:-10%;
   right:-10%;
-  bottom:-44px;
-  height:160px;
+  bottom:-26px;          /* ✅ 덜 올라오게 */
+  height:96px;           /* ✅ 더 낮게 */
   background:
-    radial-gradient(circle at 20% 0, rgba(255,255,255,1) 0, rgba(255,255,255,1) 58%, transparent 59%),
-    radial-gradient(circle at 50% 0, rgba(255,255,255,1) 0, rgba(255,255,255,1) 62%, transparent 63%),
-    radial-gradient(circle at 80% 0, rgba(255,255,255,1) 0, rgba(255,255,255,1) 58%, transparent 59%),
-    linear-gradient(180deg, rgba(255,255,255,.0), rgba(255,255,255,1) 85%);
-  background-repeat:no-repeat;
-  background-size:40% 120%, 46% 120%, 40% 110%, 100% 100%;
-  background-position:10% 20%, 50% 10%, 90% 25%, 0 0;
+    linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,1) 78%);
   filter:drop-shadow(0 -6px 18px rgba(9,18,33,.16));
   z-index:1;
 }
 
-/* Keep DOM but hide characters (layout/JS unaffected) */
-.heroCharacters{display:none !important;}
+/* =========================================================
+   ✅ (2) 산타/루돌프 노출 (DOM 유지 + display 되살림)
+   - 텍스트를 가리지 않도록 화면 모서리 배치
+   ========================================================= */
+.heroCharacters{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
+}
+.heroSanta,
+.heroRudolph{
+  position:absolute;
+  font-size: clamp(34px, 5vw, 64px);
+  filter: drop-shadow(0 14px 26px rgba(0,0,0,.35));
+  opacity:.92;
+  transform: translateZ(0);
+}
+.heroSanta{
+  left:16px;
+  bottom:22px;
+}
+.heroRudolph{
+  right:16px;
+  bottom:18px;
+}
+/* 모바일에서 너무 크면 가릴 수 있으니 살짝 축소 */
+@media (max-width:520px){
+  .heroSanta,.heroRudolph{font-size:40px; opacity:.88}
+  .heroSanta{left:10px; bottom:18px}
+  .heroRudolph{right:10px; bottom:16px}
+}
 
-/* Very subtle top sparkle */
+/* Very subtle top sparkle + hero 눈송이 */
 .heroOverlaySnow{
   position:absolute;
   inset:0;
@@ -167,8 +216,10 @@ body::after{
   z-index:2;
   background-image:
     radial-gradient(circle at 18% 18%, rgba(255,255,255,.55) 0, transparent 55%),
-    radial-gradient(circle at 78% 22%, rgba(255,255,255,.45) 0, transparent 58%);
-  opacity:.10;
+    radial-gradient(circle at 78% 22%, rgba(255,255,255,.45) 0, transparent 58%),
+    radial-gradient(circle, rgba(255,255,255,.32) 0, rgba(255,255,255,0) 60%);
+  background-size:auto, auto, 240px 240px;
+  opacity:.14;
 }
 
 /* Title */
@@ -177,7 +228,7 @@ body::after{
   inset:0;
   display:grid;
   place-items:center;
-  z-index:3;
+  z-index:4; /* ✅ 캐릭터보다 위로 오게 */
   text-align:center;
   padding:0 16px;
 }
@@ -211,12 +262,31 @@ body::after{
 
 /* ===== HERO link bar ===== */
 .heroLinks{
-  position:relative;z-index:4;
+  position:relative;z-index:5;
   background:rgba(255,255,255,.65);
   backdrop-filter:blur(14px);
   -webkit-backdrop-filter:blur(14px);
   border-bottom:1px solid var(--line);
   box-shadow:0 10px 30px rgba(9,18,33,.10);
+}
+
+/* =========================================================
+   ✅ (3) 빨강/초록 장식 추가
+   - heroLinks 상단에 얇은 "가랜드 스트립"
+   ========================================================= */
+.heroLinks::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; top:0;
+  height:6px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(25,195,125,.95) 0 18px,
+      rgba(255,77,90,.95) 18px 36px,
+      rgba(255,211,106,.95) 36px 54px
+    );
+  opacity:.85;
 }
 .heroLinks-inner{
   max-width:1280px;margin:0 auto;padding:10px 16px;
@@ -272,6 +342,24 @@ body::after{
   opacity:.8;
   pointer-events:none;
 }
+/* ✅ 크리스마스 장식(리본/홀리) */
+.nav::after{
+  content:"";
+  position:absolute;
+  left:14px; right:14px; top:10px;
+  height:10px;
+  border-radius:999px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(25,195,125,.85) 0 14px,
+      rgba(255,77,90,.85) 14px 28px
+    );
+  opacity:.55;
+  pointer-events:none;
+  filter: blur(.15px);
+}
+
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:12px; position:relative;}
 .brand img{
   width:34px;height:34px;border-radius:50%;object-fit:cover;
@@ -341,6 +429,25 @@ body::after{
   opacity:.85;
   pointer-events:none;
   z-index:0;
+}
+/* ✅ 카드 상단 얇은 크리스마스 장식 라인 */
+.card::after{
+  content:"";
+  position:absolute;
+  left:18px; right:18px; top:12px;
+  height:8px;
+  border-radius:999px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(25,195,125,.80) 0 12px,
+      rgba(255,77,90,.80) 12px 24px,
+      rgba(255,211,106,.78) 24px 36px
+    );
+  opacity:.35;
+  pointer-events:none;
+  z-index:0;
+  filter: blur(.1px);
 }
 .card > *{position:relative; z-index:1;}
 
@@ -542,7 +649,7 @@ h3::before{content:""; display:none;} /* remove gift emoji */
   .notes .inner{width:100%;margin:0 auto}
 }
 
-/* Notes: remove speech-bubble + pink; keep clean */
+/* Notes: keep clean */
 .notes .inner{
   max-width:100%;
   overflow:hidden;
@@ -578,7 +685,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   background:rgba(255,255,255,.82);
 }
-/* 상단 검색 입력창 */
 #tokSearch{
   flex:1;
   background:rgba(255,255,255,.92);
@@ -613,6 +719,9 @@ h3::before{content:""; display:none;} /* remove gift emoji */
 </style>
 </head>
 <body>
+
+<!-- ✅ 추가 눈 레이어 (layout 영향 없음) -->
+<div class="snowLayer" aria-hidden="true"></div>
 
 <!-- HERO -->
 <section class="hero">
@@ -814,7 +923,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
       <!-- Analytics -->
       <section class="card analytics" id="analytics">
         <h3>Analytics — “Blockchain that gives back”</h3>
-        <!-- Analytics 안내문 (라이트 버전) -->
         <div style="
           margin-top:6px;
           margin-bottom:12px;
@@ -850,7 +958,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
         </div>
 
         <div class="anaGrid" style="margin-top:12px">
-          <!-- A) Returned Value sparkline -->
           <div class="vizCard">
             <div class="vizHead"><div class="title">Returned Value to Users — Cumulative</div><div class="hint" id="rvHint">—</div></div>
             <div class="sparkWrap"><canvas id="spark"></canvas></div>
@@ -860,7 +967,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
             </div>
           </div>
 
-          <!-- B) Rebate Split Donut -->
           <div class="vizCard">
             <div class="vizHead"><div class="title">Quarterly Rebate Split</div><div class="hint">Users / ESG / Treasury</div></div>
             <div class="donutWrap">
@@ -872,7 +978,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
             <div class="legend" id="donutLegend"></div>
           </div>
 
-          <!-- C) Green Impact Gauge -->
           <div class="vizCard">
             <div class="vizHead"><div class="title">Green Impact — Carbon Offset (est.)</div><div class="hint" id="giHint">—</div></div>
             <div class="gaugeWrap"><div class="gauge"><canvas id="gauge"></canvas></div></div>
@@ -946,7 +1051,6 @@ h3::before{content:""; display:none;} /* remove gift emoji */
 <!-- Token Selector Modal -->
 <dialog id="tokModal">
   <header>
-    <!-- 토큰 검색 입력란 -->
     <input id="tokSearch" type="text" placeholder="Search token by name, symbol, or address" autocomplete="off">
     <button id="tokClose" title="Close">✕</button>
   </header>
@@ -973,12 +1077,9 @@ const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
 /* ============================================================
    ✅ GDEX Router V2 (표기/백엔드 전달용)
-   - 프런트는 직접 컨트랙트 호출을 하지 않음
-   - /quote, /swap에 옵션 필드로 전달 (백엔드가 지원하면 적용)
    ============================================================ */
 const GDEX_ROUTER_V2_ADDRESS = "0xcbAeD90D5eA36DB0F26499061A0f2E497879608f";
 
-// 수기 메트릭 설정 읽기
 let gdexPoolConfig = {};
 (function readGdexConfig(){
   const el = document.getElementById('gdexPoolConfig');
@@ -1005,19 +1106,11 @@ function applyManualPoolConfig(){
   if(footEl  && cfg.poolFooterNote)  footEl.textContent  = cfg.poolFooterNote;
 }
 
-// DApp host
 const DAPP_HOST = 'gdex-app.com';
-
-// GLIP 토큰 (Ethereum 메인넷)
 const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
-
-// SushiSwap Ethereum 풀 베이스 URL
 const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
-
-// 0x ETH sentinel (used by backend/0x; not a direct API call from frontend)
 const ETH_ADDRESS_0X = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
-// ===== 공통 에러 팝업 =====
 function showErrorPopup(title, payload) {
   let msg = "";
   if (payload instanceof Error) {
@@ -1030,7 +1123,6 @@ function showErrorPopup(title, payload) {
   alert(title + "\n\n" + msg);
 }
 
-// ===== Backend helper =====
 async function postToBackend(path, body) {
   const url = `${BACKEND_URL}${path}`;
   console.log("[backend] req", path, body);
@@ -1076,17 +1168,14 @@ async function postToBackend(path, body) {
   }
 }
 
-// 0x ETH sentinel wrapper
 function toBackendTokenAddress(meta) {
   if (!meta) return "";
   if (meta.address === "ETH") return ETH_ADDRESS_0X;
   return meta.address;
 }
-  
-// 모바일 판별
+
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-// 모바일에서 MetaMask 딥링크
 function openMetaMaskDeepLink() {
   const dappUrl = `https://${DAPP_HOST}`;
   const target = dappUrl.replace(/^https?:\/\//, '');
@@ -1134,25 +1223,20 @@ const tokenList = [
   {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
 ];
 
-/* 기본 아이콘/심볼 적용 */
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
   const GLIP = tokenList.find(t=>t.symbol==="GLIP");
-  // Swap
   $('#sellI').src = ETH.logo;  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
   $('#buyI').src  = GLIP.logo; $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP.address;
-  // Pool
   $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
   $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
 }
 
-/* ===== 토큰 선택 모달 ===== */
 const dlg  = document.getElementById('tokModal');
 const list = document.getElementById('tokList');
 const tokSearchInput = document.getElementById('tokSearch');
 let target = null;
 
-/* 검색어 기준으로 토큰 리스트 렌더링 */
 function renderTokenList(query=""){
   const q = query.trim().toLowerCase();
   const filtered = !q
@@ -1179,20 +1263,13 @@ function renderTokenList(query=""){
       }</span>
     </div>`).join('');
 }
-
 function openFor(imgEl, symEl){
   target = {imgEl, symEl};
-  if (tokSearchInput) {
-    tokSearchInput.value = "";
-  }
+  if (tokSearchInput) tokSearchInput.value = "";
   renderTokenList("");
   dlg.showModal();
-  // 자동 포커스
-  setTimeout(()=>{
-    tokSearchInput && tokSearchInput.focus();
-  }, 10);
+  setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); }, 10);
 }
-
 list.onclick = e=>{
   const row = e.target.closest('.item'); if(!row||!target) return;
   const t = tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
@@ -1210,15 +1287,12 @@ function bindTokenButtons(){
   $('#pT0Btn').onclick  = ()=>openFor($('#pT0Img'),$('#pT0Sym'));
   $('#pT1Btn').onclick  = ()=>openFor($('#pT1Img'),$('#pT1Sym'));
 }
-
-/* 검색 입력 이벤트 바인딩 */
 if (tokSearchInput) {
   tokSearchInput.addEventListener('input', e=>{
     renderTokenList(e.target.value);
   });
 }
 
-/* Flip */
 function flipTokenMeta(imgA, symA, imgB, symB){
   const s=imgA.src; imgA.src=imgB.src; imgB.src=s;
   const t=symA.textContent; symA.textContent=symB.textContent; symB.textContent=t;
@@ -1229,16 +1303,12 @@ function bindFlip(){
   $('#pFlip').onclick  = ()=>flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
 }
 
-/* ===== Wallet Connect (MetaMask 전용) ===== */
 let userAddress = null;
 
 async function connectWallet(){
   try{
     if (typeof window.ethereum === 'undefined') {
-      if (isMobile) {
-        openMetaMaskDeepLink();
-        return;
-      }
+      if (isMobile) { openMetaMaskDeepLink(); return; }
       alert(
         "No Ethereum wallet detected.\n\n" +
         "• Mobile: Open this site inside the MetaMask in-app browser.\n" +
@@ -1248,9 +1318,7 @@ async function connectWallet(){
     }
 
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts || !accounts.length) {
-      throw new Error('No accounts returned');
-    }
+    if (!accounts || !accounts.length) throw new Error('No accounts returned');
 
     userAddress = accounts[0];
     document.getElementById('wAddr').textContent = short(userAddress);
@@ -1289,9 +1357,7 @@ function bindConnect(){
   if(maxBtn) maxBtn.onclick = ()=>{ document.getElementById('stakeAmt').value='1000'; };
 }
 
-// Supply 버튼 → SushiSwap GLIP-ETH 풀 화면 (토큰 자동 선택 시도)
 function openSushiGlipEthPool(){
-  // token0=NATIVE (ETH), token1=GLIP 주소
   const url = `${SUSHI_ETHEREUM_POOL_BASE}?token0=NATIVE&token1=${GLIP_TOKEN_ADDRESS}`;
   window.open(url, '_blank', 'noopener');
 }
@@ -1301,7 +1367,6 @@ function bindPoolSupplyButton(){
   btn.addEventListener('click', openSushiGlipEthPool);
 }
 
-/* TOP */
 function bindTop(){
   const toTop=document.getElementById('toTop');
   function toggleTop(){
@@ -1311,7 +1376,6 @@ function bindTop(){
   toTop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
 }
 
-/* ===== PWA install ===== */
 let deferredPrompt=null;
 const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
 function isStandaloneMode(){
@@ -1440,7 +1504,6 @@ function drawGauge(d){
   const r = Math.min(w*DPR*0.42, h*DPR*0.9);
   ctx.lineWidth = 16*DPR; ctx.lineCap = "round";
 
-  // base arc
   ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
   ctx.strokeStyle = "rgba(11,18,32,.16)"; ctx.stroke();
 
@@ -1469,11 +1532,6 @@ function updateRibbon(d){
     `R%=${d.rebateRate} ⇒ Users ${pctUsers}%, ESG ${pctESG}%, Treasury ${pctTreas}%. Transparency ${d.transparency}%, Gov turnout ${d.turnout}%.`;
 }
 
-/* ============================================================
-   ===== Backend-based Swap logic (routing handled server-side) =
-   ============================================================ */
-
-// 토큰 메타 조회
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
     t.symbol === symbolOrAddress ||
@@ -1481,7 +1539,6 @@ function getTokenMeta(symbolOrAddress) {
   );
 }
 
-// 가격 미리보기 (sell → buy), /quote 사용
 async function updatePricePreview() {
   const sellInput = document.getElementById("sell");
   const buyInput  = document.getElementById("buy");
@@ -1512,8 +1569,6 @@ async function updatePricePreview() {
       buyToken:  toBackendTokenAddress(buyMeta),
       sellAmount: sellAmountRaw,
       slippagePercentage: slipPct,
-
-      /* ✅ 백엔드가 RouterV2를 지원할 경우 사용하도록 힌트 전달 (지원 안 하면 무시됨) */
       routerV2: GDEX_ROUTER_V2_ADDRESS
     });
 
@@ -1531,7 +1586,6 @@ async function updatePricePreview() {
   }
 }
 
-// 실제 스왑 실행, /swap 사용
 async function executeSwap() {
   try {
     if (!userAddress) {
@@ -1555,7 +1609,6 @@ async function executeSwap() {
       return;
     }
 
-    // 프런트에서 딱 한 번만 단위 변환: amount → wei 문자열
     const sellAmountRaw = BigInt(
       Math.floor(sellVal * 10 ** sellMeta.decimals)
     ).toString();
@@ -1569,8 +1622,6 @@ async function executeSwap() {
       sellAmount: sellAmountRaw,
       taker: userAddress,
       slippagePercentage: slipPct,
-
-      /* ✅ 백엔드가 RouterV2를 지원할 경우 사용하도록 힌트 전달 (지원 안 하면 무시됨) */
       routerV2: GDEX_ROUTER_V2_ADDRESS
     });
 
@@ -1592,11 +1643,8 @@ async function executeSwap() {
       return;
     }
 
-    // --- 금액 불일치 방지 로직 ---
-    // 1) ETH 스왑인지 확인 (0x ETH sentinel 사용)
     const isEthSell = toBackendTokenAddress(sellMeta) === ETH_ADDRESS_0X;
 
-    // 2) MetaMask로 보낼 value (16진수) 결정
     let valueHex = "0x0";
     if (isEthSell) {
       const vBig = BigInt(sellAmountRaw);
@@ -1604,23 +1652,16 @@ async function executeSwap() {
     } else if (txFromBackend.value != null) {
       try {
         const vBig = BigInt(txFromBackend.value);
-        if (vBig > 0n) {
-          valueHex = "0x" + vBig.toString(16);
-        }
-      } catch (_) {
-        // ignore
-      }
+        if (vBig > 0n) valueHex = "0x" + vBig.toString(16);
+      } catch (_) {}
     }
 
-    // 3) MetaMask에 넘길 tx 파라미터 (gas, gasPrice는 넘기지 않고 MetaMask가 추정하게 둠)
     const txParams = {
       from: userAddress,
       to:   txFromBackend.to,
       data: txFromBackend.data
     };
-    if (valueHex !== "0x0") {
-      txParams.value = valueHex;
-    }
+    if (valueHex !== "0x0") txParams.value = valueHex;
 
     console.log("[swap-tx] params going to MetaMask:", txParams);
 
@@ -1638,7 +1679,6 @@ async function executeSwap() {
   }
 }
 
-// 스왑 UI 이벤트 바인딩
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
@@ -1650,10 +1690,7 @@ function bindSwapLogic() {
       })
     );
   }
-
-  if (swapBtn) {
-    swapBtn.addEventListener("click", executeSwap);
-  }
+  if (swapBtn) swapBtn.addEventListener("click", executeSwap);
 }
 
 /* ===== Boot ===== */
@@ -1670,23 +1707,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
     }
 
-    // Stake demo numbers
     document.getElementById('apr').textContent="12.5%";
     document.getElementById('myStaked').textContent="1,250 GLIP";
     document.getElementById('earned').textContent="42.4 GLIP";
     document.getElementById('est30').textContent="≈ 12.8 GLIP";
 
-    // Analytics demo
     fillKpis(demoAnalytics);
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
     drawGauge(demoAnalytics);
     updateRibbon(demoAnalytics);
 
-    // Swap UI/logic (backend proxy)
     bindSwapLogic();
-
-    // 수기 메트릭 반영
     applyManualPoolConfig();
 
     window.addEventListener('resize', ()=>{
