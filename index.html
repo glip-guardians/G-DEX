@@ -27,60 +27,75 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<!-- 크리스마스 / 동화풍 타이틀용 폰트 -->
-<link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
 
 <style>
 :root{
-  --panel:#fffdfc;
-  --panel-2:#fffefe;
-  --text:#261320;
-  --accent:#ff3b6c;      /* 메인 레드 */
-  --accent-2:#2ecb5f;    /* 그린 */
-  --accent-green:#39d98a;
-  --border:rgba(149,116,84,.45); /* 나무 푯말 테두리 느낌 */
-  --inner:rgba(255,255,255,.6);
+  /* Elegant winter / frosted glass palette */
+  --bg0:#ffffff;
+  --bg1:#f6fbff;
+  --bg2:#f3f7fb;
+
+  --panel:rgba(255,255,255,.72);
+  --panel-2:rgba(255,255,255,.82);
+  --inner:rgba(255,255,255,.62);
+
+  --text:#0b1220;
+  --muted:rgba(11,18,32,.68);
+
+  --accent:#7bb7ff;     /* icy blue */
+  --accent-2:#9ad7ff;   /* soft cyan */
+  --line:rgba(12,25,45,.10);
+  --line-2:rgba(12,25,45,.16);
+
+  --shadow:0 18px 40px rgba(9,18,33,.12);
+  --shadow-soft:0 12px 26px rgba(9,18,33,.10);
+
+  --r:22px;
 }
+
 *{box-sizing:border-box}
+html,body{margin:0}
 html,body{
-  margin:0;
-  /* 밝은 화이트 크리스마스 하늘 배경 */
-  background:
-    radial-gradient(circle at 0% 0%, #fff5f7 0, #f7fdff 38%, #eef7ff 70%, #ffffff 100%);
   color:var(--text);
   font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
+  background:
+    radial-gradient(1200px 700px at 20% 0%, rgba(123,183,255,.18), transparent 60%),
+    radial-gradient(900px 600px at 80% 10%, rgba(154,215,255,.14), transparent 55%),
+    radial-gradient(900px 900px at 50% 110%, rgba(255,255,255,1), rgba(243,247,251,1) 55%, rgba(246,251,255,1) 100%);
 }
 img{max-width:100%;display:block}
 
-/* 눈 내리는 효과 – 강도 ↓ */
 body{
   position:relative;
   overflow-x:hidden;
 }
+
+/* Subtle snow grain (very light, not cartoon) */
 body::before,
 body::after{
   content:"";
   pointer-events:none;
   position:fixed;
-  inset:-40px;
+  inset:-60px;
   z-index:0;
   background-image:
-    radial-gradient(circle, rgba(255,255,255,.55) 0, rgba(255,255,255,0) 60%),
-    radial-gradient(circle, rgba(255,255,255,.35) 0, rgba(255,255,255,0) 55%),
-    radial-gradient(circle, rgba(255,255,255,.45) 0, rgba(255,255,255,0) 60%);
-  background-size:280px 280px, 320px 320px, 260px 260px;
-  background-position:0 -40px, 80px -120px, -60px 40px;
-  animation:snowfall 32s linear infinite;
-  opacity:.28; /* 눈 투명도 크게 줄임 */
+    radial-gradient(circle, rgba(255,255,255,.55) 0, rgba(255,255,255,0) 62%),
+    radial-gradient(circle, rgba(255,255,255,.38) 0, rgba(255,255,255,0) 60%),
+    radial-gradient(circle, rgba(255,255,255,.42) 0, rgba(255,255,255,0) 62%);
+  background-size:360px 360px, 420px 420px, 320px 320px;
+  background-position:0 -80px, 120px -140px, -80px 30px;
+  animation:snowfall 44s linear infinite;
+  opacity:.10;
+  filter:blur(.2px);
 }
 body::after{
-  animation-duration:46s;
-  background-size:340px 340px, 380px 380px, 300px 300px;
-  opacity:.16;
+  animation-duration:64s;
+  background-size:460px 460px, 520px 520px, 420px 420px;
+  opacity:.06;
 }
 @keyframes snowfall{
-  0%{transform:translateY(-30px);}
-  100%{transform:translateY(60px);}
+  0%{transform:translateY(-40px);}
+  100%{transform:translateY(90px);}
 }
 
 /* ===== HERO ===== */
@@ -88,80 +103,75 @@ body::after{
   position:relative;
   height:min(34vh,420px);
   overflow:hidden;
-  /* 밝은 하늘 */
   background:
-    linear-gradient(180deg,#cde8ff 0,#eaf6ff 55%,#ffffff 100%);
+    linear-gradient(180deg, rgba(123,183,255,.18) 0%, rgba(255,255,255,.92) 55%, rgba(255,255,255,1) 100%);
 }
 
-/* 뒷배경 – 눈 덮인 숲 / 마을 */
+/* HERO 배경 – 눈 내리는 겨울밤의 미국 도시 & 크리스마스트리 */
+/* ✅ 하단 흰색(언덕) 제거 */
+.hero::before{
+  content:none !important;
+}
+  
 .hero::after{
   content:"";
   position:absolute;
   inset:0;
   background:
-    linear-gradient(180deg,rgba(0,0,40,.02) 0,rgba(0,0,0,.16) 85%,rgba(0,0,0,.18) 100%),
-    url("https://images.pexels.com/photos/1303090/pexels-photo-1303090.jpeg?auto=compress&cs=tinysrgb&w=1600") center bottom/cover no-repeat;
-  filter:saturate(1.1) contrast(1.03);
-  opacity:.82;
+    linear-gradient(
+      180deg,
+      rgba(8,12,30,.35) 0%,
+      rgba(8,12,30,.55) 55%,
+      rgba(8,12,30,.75) 100%
+    ),
+    url("https://cdn.imweb.me/thumbnail/20251213/39a6c931679b8.png")
+      center center / cover no-repeat;
+  filter:
+    saturate(1.05)
+    contrast(1.08)
+    brightness(.92);
+  opacity:.95;
   z-index:0;
   pointer-events:none;
 }
 
-/* 눈 덮인 언덕 라인 */
+
+/* Frost line at bottom (clean) */
 .hero::before{
   content:"";
   position:absolute;
   left:-10%;
   right:-10%;
-  bottom:-35px;
-  height:140px;
+  bottom:-44px;
+  height:160px;
   background:
-    radial-gradient(circle at 20% 0, #ffffff 0, #ffffff 55%, transparent 56%),
-    radial-gradient(circle at 50% 0, #ffffff 0, #ffffff 60%, transparent 61%),
-    radial-gradient(circle at 80% 0, #ffffff 0, #ffffff 55%, transparent 56%);
+    radial-gradient(circle at 20% 0, rgba(255,255,255,1) 0, rgba(255,255,255,1) 58%, transparent 59%),
+    radial-gradient(circle at 50% 0, rgba(255,255,255,1) 0, rgba(255,255,255,1) 62%, transparent 63%),
+    radial-gradient(circle at 80% 0, rgba(255,255,255,1) 0, rgba(255,255,255,1) 58%, transparent 59%),
+    linear-gradient(180deg, rgba(255,255,255,.0), rgba(255,255,255,1) 85%);
   background-repeat:no-repeat;
-  background-size:40% 120%, 45% 120%, 40% 110%;
-  background-position:10% 20%, 50% 10%, 90% 25%;
-  filter:drop-shadow(0 -4px 12px rgba(0,0,0,.15));
+  background-size:40% 120%, 46% 120%, 40% 110%, 100% 100%;
+  background-position:10% 20%, 50% 10%, 90% 25%, 0 0;
+  filter:drop-shadow(0 -6px 18px rgba(9,18,33,.16));
   z-index:1;
 }
 
-/* 산타 & 루돌프 캐릭터 */
-.heroCharacters{
-  position:absolute;
-  inset:0;
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  padding:0 6% 18px;
-  z-index:2;
-  pointer-events:none;
-}
-.heroSanta,
-.heroRudolph{
-  font-size:clamp(52px,8vw,86px);
-  text-shadow:0 6px 18px rgba(0,0,0,.5);
-}
-.heroSanta{
-  transform:translateY(6px) rotate(-3deg);
-}
-.heroRudolph{
-  transform:translateY(4px) rotate(3deg);
-}
+/* Keep DOM but hide characters (layout/JS unaffected) */
+.heroCharacters{display:none !important;}
 
-/* 약한 눈날림 레이어 – 텍스트 위로는 거의 안 보이게 상단 중심만 */
+/* Very subtle top sparkle */
 .heroOverlaySnow{
   position:absolute;
   inset:0;
   pointer-events:none;
   z-index:2;
   background-image:
-    radial-gradient(circle at 10% 10%, rgba(255,255,255,.7) 0,transparent 50%),
-    radial-gradient(circle at 80% 18%, rgba(255,255,255,.65) 0,transparent 55%);
-  opacity:.16;
+    radial-gradient(circle at 18% 18%, rgba(255,255,255,.55) 0, transparent 55%),
+    radial-gradient(circle at 78% 22%, rgba(255,255,255,.45) 0, transparent 58%);
+  opacity:.10;
 }
 
-/* 타이틀 텍스트 */
+/* Title */
 .heroText{
   position:absolute;
   inset:0;
@@ -171,226 +181,125 @@ body::after{
   text-align:center;
   padding:0 16px;
 }
-
-/* 눈이 살짝 쌓인 타이틀 */
 .heroText h2{
-  margin:0 0 8px;
-  font:700 clamp(30px,4vw,54px)/1.06 "Mountains of Christmas","Sora",system-ui;
-  color:#ffffff;
-  letter-spacing:.14em;
+  margin:0 0 10px;
+  font:800 clamp(26px,3.6vw,50px)/1.06 "Sora",system-ui;
+  letter-spacing:.12em;
   text-transform:uppercase;
-  position:relative;
+  color:#ffffff;
   text-shadow:
-    0 4px 0 rgba(148,26,57,.9),
-    0 7px 14px rgba(0,0,0,.75),
-    0 0 38px rgba(255,255,255,.9);
+    0 14px 30px rgba(0,0,0,.45),
+    0 2px 10px rgba(0,0,0,.25);
+  position:relative;
 }
-.heroText h2::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  top:-14px;
-  width:118%;
-  height:24px;
-  background:
-    radial-gradient(circle at 10% 130%, rgba(0,0,0,.18) 0, transparent 55%),
-    radial-gradient(circle at 25% 0, #ffffff 0, #ffffff 60%, transparent 61%),
-    radial-gradient(circle at 50% 10%, #ffffff 0, #ffffff 60%, transparent 61%),
-    radial-gradient(circle at 75% 0, #ffffff 0, #ffffff 60%, transparent 61%),
-    radial-gradient(circle at 92% 10%, #ffffff 0, #ffffff 60%, transparent 61%);
-  background-repeat:no-repeat;
-  background-size:22px 18px, 28px 20px, 32px 22px, 28px 20px, 22px 18px;
-  background-position:50% 92%, 10% 0, 35% 0, 65% 0, 90% 0;
-  border-radius:999px;
-  filter:drop-shadow(0 4px 3px rgba(0,0,0,.25));
-  z-index:-1;
-}
-/* 빨강-초록 컬러 바 */
 .heroText h2::after{
   content:"";
   display:block;
-  width:160px;
-  height:6px;
+  width:168px;
+  height:4px;
   margin:18px auto 0;
   border-radius:999px;
-  background:linear-gradient(90deg,#ff3b6c,#ffd36e,#27c96f,#2ecbff);
-  box-shadow:
-    0 0 14px rgba(255,59,108,.8),
-    0 0 18px rgba(39,201,111,.75);
+  background:linear-gradient(90deg, rgba(255,255,255,.85), rgba(123,183,255,.75), rgba(255,255,255,.85));
+  box-shadow:0 0 18px rgba(123,183,255,.32);
 }
-
 .heroText p{
-  margin:10px 0 0;
-  color:#fefeff;
-  opacity:.98;
+  margin:6px 0 0;
+  color:rgba(255,255,255,.92);
   font-size:clamp(13px,1.7vw,16px);
-  text-shadow:0 2px 5px rgba(0,0,0,.55);
+  text-shadow:0 10px 24px rgba(0,0,0,.35);
 }
 
 /* ===== HERO link bar ===== */
 .heroLinks{
   position:relative;z-index:4;
-  background:
-    linear-gradient(90deg,rgba(255,255,255,0.98),rgba(244,252,255,0.99));
-  border-bottom:2px solid rgba(255,59,108,.25);
-  box-shadow:
-    0 10px 30px rgba(15,23,42,.08),
-    0 -3px 0 rgba(39,201,111,.22) inset;
+  background:rgba(255,255,255,.65);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 10px 30px rgba(9,18,33,.10);
 }
 .heroLinks-inner{
-  max-width:1280px;margin:0 auto;padding:8px 16px;
-  display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end
+  max-width:1280px;margin:0 auto;padding:10px 16px;
+  display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end
 }
 .heroBtn{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;
-  text-decoration:none;border:1px solid rgba(220,38,38,.35);
-  background:rgba(255,255,255,0.96);color:#050617;cursor:pointer;
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  box-shadow:0 4px 14px rgba(15,23,42,.08);
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;
+  text-decoration:none;
+  border:1px solid rgba(12,25,45,.14);
+  background:rgba(255,255,255,.75);
+  color:rgba(11,18,32,.92);
+  cursor:pointer;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 6px 16px rgba(9,18,33,.08);
   transition:background .18s ease,border-color .18s ease,
              transform .15s ease,box-shadow .15s ease;
-  position:relative;
 }
-.heroBtn::before{
-  content:"";
-  position:absolute;
-  inset:-1px;
-  border-radius:inherit;
-  border:1px dashed rgba(39,201,111,.4);
-  pointer-events:none;
-}
-.heroBtn .icon{font-size:13px;opacity:.9}
+.heroBtn .icon{font-size:13px;opacity:.82}
 .heroBtn:hover{
-  background:linear-gradient(120deg,#ffffff,#fff5f5);
-  border-color:rgba(220,38,38,.85);
+  background:rgba(255,255,255,.92);
+  border-color:rgba(123,183,255,.42);
   transform:translateY(-1px);
-  box-shadow:0 8px 18px rgba(15,23,42,.16);
-}
-.heroBtn-primary{
-  border-color:rgba(255,59,108,.9);
-  background:linear-gradient(135deg,#ff3b6c,#2ecb5f);
-  color:#ffffff;
-  box-shadow:
-    0 0 18px rgba(255,59,108,.7),
-    0 10px 26px rgba(46,203,255,.3),
-    inset 0 0 0 1px rgba(0,0,0,.22);
-}
-.heroBtn-primary:hover{
-  background:linear-gradient(135deg,#ff5f86,#3ed977);
+  box-shadow:0 10px 22px rgba(9,18,33,.12);
 }
 @media (max-width:768px){
   .heroLinks-inner{justify-content:center}
 }
 
 /* ===== LAYOUT ===== */
-.wrapper{width:100%;max-width:1280px;margin:0 auto;padding:0 16px}
+.wrapper{width:100%;max-width:1280px;margin:0 auto;padding:0 16px; position:relative; z-index:1;}
 .grid{display:grid;gap:24px;grid-template-columns:260px 1fr;align-items:start}
 
-/* LEFT NAV – 눈 쌓인 푯말 + 빨강·초록 장식 */
+/* LEFT NAV – frosted */
 .nav{
   position:relative;
-  background:
-    linear-gradient(145deg,#ffe9d0,#fff7de);
-  border-radius:22px;
+  background:rgba(255,255,255,.70);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-radius:var(--r);
   padding:16px;
-  border:2px solid var(--border);
-  box-shadow:
-    0 18px 0 rgba(166,116,74,.35),
-    0 24px 40px rgba(61,35,18,.36);
-  z-index:1;
+  border:1px solid var(--line-2);
+  box-shadow:var(--shadow);
   overflow:hidden;
 }
 .nav::before{
   content:"";
   position:absolute;
-  left:12px;right:12px;top:-14px;
-  height:28px;
+  inset:-2px;
   background:
-    radial-gradient(circle at 15% 130%, rgba(0,0,0,.18) 0, transparent 60%),
-    radial-gradient(circle at 12% 0, #ffffff 0, #ffffff 65%, transparent 66%),
-    radial-gradient(circle at 34% 0, #ffffff 0, #ffffff 65%, transparent 66%),
-    radial-gradient(circle at 60% 0, #ffffff 0, #ffffff 65%, transparent 66%),
-    radial-gradient(circle at 82% 0, #ffffff 0, #ffffff 65%, transparent 66%);
-  background-repeat:no-repeat;
-  background-size:26px 20px, 34px 24px, 32px 22px, 36px 24px, 30px 22px;
-  background-position:50% 90%, 6% 0, 30% 0, 58% 0, 88% 0;
-  border-radius:999px;
-  filter:drop-shadow(0 4px 3px rgba(0,0,0,.23));
-  z-index:-1;
+    radial-gradient(700px 240px at 30% 0%, rgba(123,183,255,.18), transparent 60%),
+    radial-gradient(700px 240px at 80% 10%, rgba(255,255,255,.28), transparent 55%);
+  opacity:.8;
+  pointer-events:none;
 }
-/* 좌측 상단 가랜드 */
-.nav::after{
-  content:"";
-  position:absolute;
-  left:-10px;right:-10px;top:6px;
-  height:10px;
-  background:
-    repeating-linear-gradient(
-      135deg,
-      rgba(220,38,38,.8) 0,
-      rgba(220,38,38,.8) 6px,
-      rgba(34,197,94,.9) 6px,
-      rgba(34,197,94,.9) 12px
-    );
-  opacity:.23;
-  border-radius:999px;
-}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px; position:relative;}
 .brand img{
   width:34px;height:34px;border-radius:50%;object-fit:cover;
-  box-shadow:0 0 0 3px rgba(255,255,255,.95);
+  box-shadow:0 0 0 3px rgba(255,255,255,.95), 0 10px 18px rgba(9,18,33,.12);
 }
 .brand h1{
-  margin:0;font:800 22px/1 "Sora",sans-serif;
-  color:#3b1e0d;letter-spacing:.16em;
+  margin:0;font:800 20px/1 "Sora",sans-serif;
+  letter-spacing:.18em;
 }
 .nav a{
   display:block;padding:12px 14px;border-radius:999px;margin-bottom:10px;
-  text-decoration:none;color:#3b1e0d;
-  background:
-    linear-gradient(120deg,#fffaf3,#fff),
-    radial-gradient(circle at 10% 0, rgba(255,59,108,.08) 0, transparent 55%),
-    radial-gradient(circle at 90% 0, rgba(34,197,94,.08) 0, transparent 55%);
-  background-blend-mode:screen;
-  border:1px solid rgba(149,116,84,.9);
+  text-decoration:none;color:rgba(11,18,32,.92);
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(12,25,45,.12);
   text-align:center;
-  font-weight:700;
-  box-shadow:0 6px 0 rgba(166,116,74,.45);
+  font-weight:800;
+  box-shadow:0 6px 16px rgba(9,18,33,.08);
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
   position:relative;
-  overflow:hidden;
 }
-.nav a::after{
-  content:"";
-  position:absolute;
-  inset:auto -40%;
-  top:-140%;
-  height:160%;
-  background:linear-gradient(110deg,rgba(255,255,255,0.42),rgba(255,255,255,0));
-  opacity:0;
-  transform:translateY(40%);
-  transition:opacity .2s ease,transform .2s ease;
-}
-.nav a span{position:relative;z-index:1}
 .nav a:is(:hover,:focus){
-  background:
-    linear-gradient(120deg,#fffef8,#fff3f5),
-    radial-gradient(circle at 0 0, rgba(255,59,108,.12) 0, transparent 55%),
-    radial-gradient(circle at 100% 0, rgba(34,197,94,.12) 0, transparent 55%);
-  border-color:rgba(222,147,106,.98);
+  background:rgba(255,255,255,.90);
+  border-color:rgba(123,183,255,.40);
   transform:translateY(-1px);
-  box-shadow:0 9px 0 rgba(166,116,74,.5);
-}
-.nav a:is(:hover,:focus)::after{
-  opacity:1;
-  transform:translateY(14%);
+  box-shadow:0 10px 22px rgba(9,18,33,.12);
 }
 .nav .note{
-  margin-top:8px;font-size:12px;line-height:1.35;color:#5b3920;opacity:.9
-}
-.nav .note::before{
-  content:"🎄 ";
+  margin-top:8px;font-size:12px;line-height:1.4;color:var(--muted)
 }
 
 /* install CTA */
@@ -399,7 +308,7 @@ body::after{
   padding:10px 12px;font-size:13px;justify-content:center
 }
 
-/* RIGHT CONTENT – 카드 푯말 & 초록·빨강 라인 */
+/* RIGHT CONTENT */
 .main{
   display:grid;gap:24px;
   grid-template-areas:
@@ -414,60 +323,38 @@ body::after{
 .card{
   position:relative;
   background:var(--panel-2);
-  border-radius:22px;
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-radius:var(--r);
   padding:16px;
-  color:var(--text);
-  border:2px solid var(--border);
-  box-shadow:
-    0 18px 0 rgba(166,116,74,.32),
-    0 24px 40px rgba(61,35,18,.25);
-  z-index:1;
+  border:1px solid var(--line-2);
+  box-shadow:var(--shadow);
   overflow:hidden;
 }
-/* 카드 상단 눈 + 빨강·그린 띠 */
 .card::before{
   content:"";
   position:absolute;
-  left:14px;right:14px;top:-14px;
-  height:28px;
+  inset:-2px;
   background:
-    radial-gradient(circle at 20% 130%, rgba(0,0,0,.18) 0, transparent 60%),
-    radial-gradient(circle at 10% 0, #ffffff 0, #ffffff 65%, transparent 66%),
-    radial-gradient(circle at 35% 0, #ffffff 0, #ffffff 65%, transparent 66%),
-    radial-gradient(circle at 65% 0, #ffffff 0, #ffffff 65%, transparent 66%),
-    radial-gradient(circle at 90% 0, #ffffff 0, #ffffff 65%, transparent 66%);
-  background-repeat:no-repeat;
-  background-size:24px 18px, 30px 22px, 32px 22px, 30px 22px, 26px 20px;
-  background-position:50% 90%, 8% 0, 32% 0, 64% 0, 90% 0;
-  border-radius:999px;
-  filter:drop-shadow(0 4px 3px rgba(0,0,0,.23));
-  z-index:-1;
+    radial-gradient(700px 240px at 20% 0%, rgba(123,183,255,.16), transparent 60%),
+    radial-gradient(700px 240px at 80% 10%, rgba(255,255,255,.24), transparent 55%);
+  opacity:.85;
+  pointer-events:none;
+  z-index:0;
 }
-.card::after{
-  content:"";
-  position:absolute;
-  left:18px;right:18px;top:10px;
-  height:3px;
-  border-radius:999px;
-  background:linear-gradient(90deg,#ff3b6c,#22c55e);
-  opacity:.18;
-}
+.card > *{position:relative; z-index:1;}
+
 h3{
   margin:0 0 12px;
-  font:800 22px/1.25 "Sora",sans-serif;
-  color:#b4233b;
-  display:flex;
-  align-items:center;
-  gap:8px;
+  font:900 20px/1.25 "Sora",sans-serif;
+  color:rgba(11,18,32,.92);
+  letter-spacing:.02em;
 }
-h3::before{
-  content:"🎁";
-  font-size:18px;
-}
+h3::before{content:""; display:none;} /* remove gift emoji */
 
 .metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
-.metric h4{margin:0 0 6px;font-weight:800;color:#a1223a}
-.metric .v{font-weight:800;font-size:18px;color:#261320;white-space:nowrap}
+.metric h4{margin:0 0 6px;font-weight:800;color:rgba(11,18,32,.78)}
+.metric .v{font-weight:900;font-size:18px;color:rgba(11,18,32,.92);white-space:nowrap}
 
 .pool{grid-area:pool}
 .swap{grid-area:swap}
@@ -476,78 +363,85 @@ h3::before{
 .analytics{grid-area:analytics}
 .stake{grid-area:stake}
 
-/* INPUTS & BUTTONS – 눈 덮인 박스 + 빨강·초록 장식 */
+/* INPUTS & BUTTONS – frosted */
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .input{
   flex:1;display:flex;align-items:center;gap:10px;
-  background:
-    linear-gradient(135deg,#fffdf7,#fff8fb),
-    radial-gradient(circle at 0 0, rgba(255,59,108,.09) 0, transparent 60%),
-    radial-gradient(circle at 100% 0, rgba(34,197,94,.09) 0, transparent 60%);
-  background-blend-mode:screen;
-  border:2px solid rgba(166,116,74,.7);
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(12,25,45,.16);
   border-radius:18px;padding:10px 12px;margin:10px 0;min-height:52px;
-  box-shadow:0 6px 0 rgba(166,116,74,.35);
+  box-shadow:0 10px 22px rgba(9,18,33,.08);
 }
 .input input{
-  flex:1;background:transparent;border:0;outline:0;color:#261320;
-  font-size:20px;font-weight:800;min-width:0
+  flex:1;background:transparent;border:0;outline:0;color:rgba(11,18,32,.92);
+  font-size:20px;font-weight:900;min-width:0
 }
 .tokenBtn{
   display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;cursor:pointer;
-  background:#ffffff;border:2px solid rgba(166,116,74,.85);
-  color:#261320;white-space:nowrap;
-  box-shadow:0 4px 0 rgba(166,116,74,.32);
-  font-weight:700;
+  background:rgba(255,255,255,.84);
+  border:1px solid rgba(12,25,45,.16);
+  color:rgba(11,18,32,.92);
+  white-space:nowrap;
+  box-shadow:0 8px 18px rgba(9,18,33,.08);
+  font-weight:800;
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.tokenBtn:hover{
+  transform:translateY(-1px);
+  background:rgba(255,255,255,.94);
+  border-color:rgba(123,183,255,.42);
+  box-shadow:0 12px 24px rgba(9,18,33,.12);
 }
 /* 토큰 로고: 버튼 + 드롭다운 모두 완전 원형 */
 .tokenBtn img,
 #tokList .item img{
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  object-fit:cover;
-  display:block;
+  width:24px;height:24px;border-radius:50%;object-fit:cover;display:block;
   background:#000;
-  box-shadow:0 0 0 2px rgba(255,255,255,.9);
+  box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 8px 14px rgba(9,18,33,.10);
 }
 .flip{
   width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
-  border:2px solid rgba(166,116,74,.85);color:#261320;opacity:.9;cursor:pointer;
-  background:
-    radial-gradient(circle at 30% 0%,#fff8fd,#f0f8ff),
-    radial-gradient(circle at 70% 100%,rgba(34,197,94,.14),transparent 60%);
-  box-shadow:0 4px 0 rgba(166,116,74,.32);
+  border:1px solid rgba(12,25,45,.18);
+  color:rgba(11,18,32,.85);
+  cursor:pointer;
+  background:rgba(255,255,255,.78);
+  box-shadow:0 10px 20px rgba(9,18,33,.10);
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.flip:hover{
+  transform:translateY(-1px);
+  border-color:rgba(123,183,255,.42);
+  box-shadow:0 14px 26px rgba(9,18,33,.12);
 }
 .helper{
   display:flex;gap:12px;align-items:center;justify-content:space-between;
   margin-top:8px;flex-wrap:wrap
 }
 .helper input{
-  width:78px;border:2px solid rgba(166,116,74,.9);background:#fffdf8;
-  color:#261320;border-radius:10px;padding:7px 8px
+  width:78px;border:1px solid rgba(12,25,45,.18);background:rgba(255,255,255,.86);
+  color:rgba(11,18,32,.92);border-radius:10px;padding:7px 8px
 }
 .btn{
   display:inline-block;min-width:140px;text-align:center;
   padding:14px 18px;border-radius:18px;border:0;cursor:pointer;
-  background:linear-gradient(135deg,#ff3b6c,#22c55e);
-  color:#ffffff;font-weight:900;font-family:"Sora",sans-serif;
-  box-shadow:
-    0 0 22px rgba(255,59,108,.4),
-    0 8px 0 rgba(166,116,74,.4);
-  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  background:linear-gradient(135deg, rgba(255,255,255,.92), rgba(123,183,255,.22));
+  color:rgba(11,18,32,.92);
+  font-weight:900;font-family:"Sora",sans-serif;
+  box-shadow:0 14px 28px rgba(9,18,33,.12);
+  border:1px solid rgba(12,25,45,.14);
+  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease, border-color .15s ease;
 }
 .btn:hover{
   transform:translateY(-1px);
-  filter:brightness(1.05);
-  box-shadow:
-    0 0 28px rgba(255,59,108,.55),
-    0 10px 0 rgba(166,116,74,.45);
+  filter:brightness(1.02);
+  border-color:rgba(123,183,255,.42);
+  box-shadow:0 18px 34px rgba(9,18,33,.14);
 }
 .btn.ghost{
-  background:#fffdf8;color:#b4233b;
-  border:2px solid rgba(220,38,38,.75);
-  box-shadow:0 4px 0 rgba(166,116,74,.35);
+  background:rgba(255,255,255,.70);
+  color:rgba(11,18,32,.88);
+  border:1px solid rgba(12,25,45,.16);
+  box-shadow:0 10px 22px rgba(9,18,33,.10);
 }
 
 /* stake: MAX 버튼 고정 */
@@ -556,40 +450,33 @@ h3::before{
 .input--stake .max{
   position:absolute;top:50%;right:8px;transform:translateY(-50%);
   height:40px;padding:0 16px;border:0;border-radius:999px;
-  font-weight:800;font-family:"Sora",sans-serif;color:#02121b;
-  background:linear-gradient(135deg,#ff3b6c,#22c55e);
-  box-shadow:0 8px 0 rgba(166,116,74,.45);
-  cursor:pointer;transition:transform .15s ease, box-shadow .15s ease
+  font-weight:900;font-family:"Sora",sans-serif;color:rgba(11,18,32,.92);
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(12,25,45,.16);
+  box-shadow:0 12px 22px rgba(9,18,33,.12);
+  cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease
 }
 .input--stake .max:hover{
   transform:translateY(-50%) translateY(-1px);
-  box-shadow:0 10px 0 rgba(166,116,74,.5);
+  border-color:rgba(123,183,255,.42);
+  box-shadow:0 16px 26px rgba(9,18,33,.14);
 }
 
 .stake .statGrid{
   display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px
 }
-.stake .stat{
-  border:2px solid rgba(166,116,74,.85);
-  border-radius:18px;padding:14px;
-  background:
-    linear-gradient(135deg,#fffdf7,#fff7f0),
-    radial-gradient(circle at 0 0, rgba(255,59,108,.08) 0, transparent 60%),
-    radial-gradient(circle at 100% 0, rgba(34,197,94,.08) 0, transparent 60%);
-  background-blend-mode:screen;
-  box-shadow:0 6px 0 rgba(166,116,74,.35);
+.stake .stat,
+.stake .amountBox,
+.kpi,
+.vizCard{
+  border:1px solid rgba(12,25,45,.16);
+  border-radius:18px;
+  background:rgba(255,255,255,.72);
+  box-shadow:0 12px 26px rgba(9,18,33,.10);
 }
+.stake .stat{padding:14px;}
 .stake .tabs{display:flex;gap:12px;margin:8px 0 10px}
-.stake .amountBox{
-  border:2px solid rgba(166,116,74,.9);
-  border-radius:18px;padding:14px;
-  background:
-    linear-gradient(135deg,#fffdf7,#fff7f1),
-    radial-gradient(circle at 0 0, rgba(255,59,108,.06) 0, transparent 60%),
-    radial-gradient(circle at 100% 0, rgba(34,197,94,.06) 0, transparent 60%);
-  background-blend-mode:screen;
-  box-shadow:0 6px 0 rgba(166,116,74,.35);
-}
+.stake .amountBox{padding:14px;}
 .stake .stake-actions{
   display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px
 }
@@ -602,59 +489,43 @@ h3::before{
 
 /* analytics */
 .kpiGrid{display:grid;gap:12px;grid-template-columns:repeat(6,1fr)}
-.kpi{
-  border:2px solid rgba(166,116,74,.85);
-  border-radius:18px;padding:12px;min-height:84px;
-  background:
-    linear-gradient(135deg,#fffdf5,#fff8f3),
-    radial-gradient(circle at 0 0, rgba(34,197,94,.1) 0, transparent 55%),
-    radial-gradient(circle at 100% 0, rgba(255,59,108,.1) 0, transparent 55%);
-  background-blend-mode:screen;
-  box-shadow:0 6px 0 rgba(166,116,74,.35);
-}
-.kpi .label{opacity:.9;font-weight:700;margin-bottom:6px;color:#a1223a}
-.kpi .val{font-weight:800;font-size:22px;color:#261320}
-.kpi .sub{opacity:.78;font-size:12px;margin-top:2px;color:#5b3920}
+.kpi{padding:12px;min-height:84px}
+.kpi .label{opacity:.88;font-weight:800;margin-bottom:6px;color:rgba(11,18,32,.72)}
+.kpi .val{font-weight:900;font-size:22px;color:rgba(11,18,32,.92)}
+.kpi .sub{opacity:.72;font-size:12px;margin-top:2px;color:rgba(11,18,32,.60)}
 @media (max-width:1000px){.kpiGrid{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:700px){.kpiGrid{grid-template-columns:1fr}}
 .anaGrid{display:grid;gap:16px;grid-template-columns:2fr 1fr 1fr}
 @media (max-width:1000px){.anaGrid{grid-template-columns:1fr}}
-.vizCard{
-  border:2px solid rgba(166,116,74,.85);
-  border-radius:18px;padding:14px;
-  background:
-    linear-gradient(135deg,#fffdf7,#fff7f1),
-    radial-gradient(circle at 0 0, rgba(255,59,108,.06) 0, transparent 60%),
-    radial-gradient(circle at 100% 0, rgba(34,197,94,.06) 0, transparent 60%);
-  background-blend-mode:screen;
-  box-shadow:0 6px 0 rgba(166,116,74,.35);
-}
+.vizCard{padding:14px}
 .vizHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
-.vizHead .title{font-weight:800;color:#a1223a}
-.vizHead .hint{opacity:.8;font-size:12px;color:#5b3920}
+.vizHead .title{font-weight:900;color:rgba(11,18,32,.90)}
+.vizHead .hint{opacity:.72;font-size:12px;color:rgba(11,18,32,.62)}
 .sparkWrap{
   height:180px;border-radius:12px;position:relative;overflow:hidden;
-  background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,240,248,.65))
+  background:linear-gradient(180deg, rgba(255,255,255,.86), rgba(123,183,255,.10));
+  border:1px solid rgba(12,25,45,.10);
 }
 .sparkWrap canvas{width:100%;height:100%}
 .donutWrap,.gaugeWrap{height:220px;display:grid;place-items:center;position:relative}
 .centerStat{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
-.centerStat .big{font:800 26px/1 "Sora",sans-serif;color:#261320}
-.centerStat .cap{opacity:.85;font-size:12px;margin-top:4px;color:#5b3920}
+.centerStat .big{font:900 26px/1 "Sora",sans-serif;color:rgba(11,18,32,.92)}
+.centerStat .cap{opacity:.75;font-size:12px;margin-top:4px;color:rgba(11,18,32,.62)}
 .ring{position:relative;width:200px;height:200px}
 .ring canvas{width:100%;height:100%}
 .gauge{position:relative;width:220px;height:120px}
 .gauge canvas{width:100%;height:100%}
 .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
 .legend .dot{width:10px;height:10px;border-radius:50%}
-.legend .item{display:flex;align-items:center;gap:6px;opacity:.9;color:#261320}
+.legend .item{display:flex;align-items:center;gap:6px;opacity:.88;color:rgba(11,18,32,.78)}
 .ribbon{
   margin-top:12px;
   border-radius:16px;
   padding:12px 14px;
-  background:linear-gradient(135deg,#fff6fb,#f0f9ff);
-  color:#3b1e0d;
-  border:1px dashed rgba(255,59,108,.75);
+  background:rgba(255,255,255,.72);
+  color:rgba(11,18,32,.84);
+  border:1px solid rgba(12,25,45,.14);
+  box-shadow:0 12px 22px rgba(9,18,33,.10);
 }
 
 /* 모바일 중앙 고정 */
@@ -671,89 +542,74 @@ h3::before{
   .notes .inner{width:100%;margin:0 auto}
 }
 
-/* Notes 줄바꿈 + 말풍선 꼬리 */
+/* Notes: remove speech-bubble + pink; keep clean */
 .notes .inner{
   max-width:100%;
   overflow:hidden;
   position:relative;
-  background:linear-gradient(135deg,#fff5fb,#f0f8ff) !important;
+  background:rgba(255,255,255,.74) !important;
   border-radius:18px !important;
-  border:1px dashed rgba(255,59,108,.75) !important;
-  box-shadow:0 12px 26px rgba(255,59,108,.16);
+  border:1px solid rgba(12,25,45,.14) !important;
+  box-shadow:0 12px 22px rgba(9,18,33,.10);
 }
-.notes .inner::after{
-  content:"";
-  position:absolute;
-  left:42px;
-  bottom:-10px;
-  width:0;height:0;
-  border-width:10px 10px 0 10px;
-  border-style:solid;
-  border-color:rgba(255,59,108,.75) transparent transparent transparent;
-}
-.notes .inner::before{
-  content:"";
-  position:absolute;
-  left:44px;
-  bottom:-8px;
-  width:0;height:0;
-  border-width:9px 8px 0 8px;
-  border-style:solid;
-  border-color:#fff7fc transparent transparent transparent;
-}
+.notes .inner::after,
+.notes .inner::before{display:none !important;}
 .notes .inner p{
   word-break:break-all;overflow-wrap:anywhere;white-space:normal
 }
 
 /* Token modal */
 #tokModal{
-  border:2px solid rgba(166,116,74,.9);
+  border:1px solid rgba(12,25,45,.18);
   border-radius:20px;
-  background:#fffdf7;
-  color:#261320;max-width:min(560px,92vw);padding:0;
-  box-shadow:0 22px 55px rgba(15,23,42,.45);
+  background:rgba(255,255,255,.86);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  color:rgba(11,18,32,.92);
+  max-width:min(560px,92vw);
+  padding:0;
+  box-shadow:0 24px 70px rgba(9,18,33,.40);
 }
-#tokModal::backdrop{background:rgba(15,23,42,.55)}
+#tokModal::backdrop{background:rgba(9,18,33,.55)}
 #tokModal header{
-  padding:14px 16px;border-bottom:1px solid rgba(166,116,74,.85);font-weight:800;
+  padding:14px 16px;
+  border-bottom:1px solid rgba(12,25,45,.12);
+  font-weight:900;
   display:flex;align-items:center;justify-content:space-between;gap:8px;
-  background:linear-gradient(135deg,#fffdf7,#fff5f0);
+  background:rgba(255,255,255,.82);
 }
 /* 상단 검색 입력창 */
 #tokSearch{
   flex:1;
-  background:#ffffff;
+  background:rgba(255,255,255,.92);
   border-radius:999px;
-  border:1px solid rgba(166,116,74,.9);
-  color:#261320;
+  border:1px solid rgba(12,25,45,.16);
+  color:rgba(11,18,32,.92);
   padding:7px 12px;
   font-size:14px;
 }
-#tokSearch::placeholder{
-  color:rgba(107,114,128,.8);
-}
+#tokSearch::placeholder{color:rgba(11,18,32,.45)}
 #tokClose{
-  background:transparent;border:0;color:#261320;opacity:.85;cursor:pointer;
-  font-size:16px;padding:6px 10px;border-radius:8px
+  background:transparent;border:0;color:rgba(11,18,32,.86);cursor:pointer;
+  font-size:16px;padding:6px 10px;border-radius:10px
 }
-#tokClose:hover{opacity:1;background:rgba(166,116,74,.12)}
-#tokList .item:hover{background:rgba(255,248,241,.97)}
+#tokClose:hover{background:rgba(123,183,255,.12)}
+#tokList .item:hover{background:rgba(123,183,255,.08)}
 
 /* TOP 버튼 */
 #toTop{
   position:fixed;right:14px;bottom:18px;z-index:9999;width:44px;height:44px;
   border-radius:50%;display:grid;place-items:center;
-  background:
-    radial-gradient(circle at 30% 0%,#fff8fd,#eff6ff),
-    radial-gradient(circle at 100% 100%,rgba(34,197,94,.16),transparent 60%);
-  border:2px solid rgba(166,116,74,.85);
-  backdrop-filter:blur(10px);cursor:pointer;opacity:0;pointer-events:none;
-  box-shadow:0 10px 0 rgba(166,116,74,.4);
-  transition:opacity .25s ease,transform .25s ease
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(12,25,45,.16);
+  backdrop-filter:blur(14px);
+  cursor:pointer;opacity:0;pointer-events:none;
+  box-shadow:0 16px 26px rgba(9,18,33,.14);
+  transition:opacity .25s ease,transform .25s ease, border-color .25s ease
 }
-#toTop svg{width:20px;height:20px;fill:#b4233b;opacity:.95}
-#toTop.show{opacity:.9;pointer-events:auto}
-#toTop:hover{opacity:1;transform:translateY(-3px)}
+#toTop svg{width:20px;height:20px;fill:rgba(11,18,32,.86)}
+#toTop.show{opacity:.92;pointer-events:auto}
+#toTop:hover{opacity:1;transform:translateY(-3px); border-color:rgba(123,183,255,.42)}
 </style>
 </head>
 <body>
@@ -767,8 +623,8 @@ h3::before{
   <div class="heroOverlaySnow"></div>
   <div class="heroText">
     <div>
-      <h2>G-DEX CHRISTMAS EDITION</h2>
-      <p>Swap, stake & sparkle this winter ❄️</p>
+      <h2>G-DEX WINTER EDITION</h2>
+      <p>Elegant swaps and staking in a frosted, transparent interface.</p>
     </div>
   </div>
 </section>
@@ -830,6 +686,7 @@ h3::before{
           <div class="v" id="metricGlipPrice">$ —</div>
         </div>
       </section>
+
       <!-- Swap -->
       <section class="card swap" id="swap">
         <h3>Swap</h3>
@@ -852,24 +709,26 @@ h3::before{
         <div style="height:10px"></div>
         <button class="btn" id="swapBtn" style="width:100%">Swap</button>
       </section>
+
       <!-- Pool -->
       <section class="card pool" id="pool">
         <h3>Pool</h3>
         <!-- Pool v1 Guide -->
         <div style="
-          background:#fff7f0;
+          background:rgba(255,255,255,.72);
           padding:10px 14px;
           border-radius:12px;
           margin-bottom:12px;
           font-size:13px;
           line-height:1.5;
-          color:#3b1e0d;
-          border:1px solid rgba(166,116,74,0.45);
+          color:rgba(11,18,32,.78);
+          border:1px solid rgba(12,25,45,.14);
+          box-shadow:0 12px 22px rgba(9,18,33,.08);
         ">
-          <strong style="font-weight:800;">G-DEX Pool v1 — SushiSwap-Based</strong><br>
+          <strong style="font-weight:900;color:rgba(11,18,32,.90);">G-DEX Pool v1 — SushiSwap-Based</strong><br>
           Liquidity for GLIP currently operates through the GLIP–ETH pool on SushiSwap V2.
           The <b>Supply</b> button will redirect you to SushiSwap to add or remove liquidity.
-          Pool metrics are manually updated during the early launch phase.  
+          Pool metrics are manually updated during the early launch phase.
           Regular users typically only need the <b>Swap</b> function.
         </div>
 
@@ -891,7 +750,12 @@ h3::before{
           <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any">
         </div>
 
-        <div class="card" style="background:#fffaf4;margin-top:6px;border-color:rgba(166,116,74,.6);box-shadow:0 6px 0 rgba(166,116,74,.35)">
+        <div class="card" style="
+          background:rgba(255,255,255,.72);
+          margin-top:6px;
+          border:1px solid rgba(12,25,45,.14);
+          box-shadow:0 12px 22px rgba(9,18,33,.10)
+        ">
           <div class="row" style="justify-content:space-between">
             <div>Price (T1 per T0)</div><div id="pPrice">1 GLIP ≈ 0.0000170 ETH</div>
           </div>
@@ -899,7 +763,7 @@ h3::before{
             <div>Share preview</div><div id="pShare">Initial GLIP-ETH pool on SushiSwap V2</div>
           </div>
           <div class="row" style="justify-content:flex-end;margin-top:6px">
-            <div id="pManualNote" style="font-size:12px;opacity:.8;text-align:right">
+            <div id="pManualNote" style="font-size:12px;opacity:.78;text-align:right">
               <!-- 수동 안내문 -->
             </div>
           </div>
@@ -913,7 +777,7 @@ h3::before{
           </div>
         </div>
 
-        <p id="poolFooterNote" style="margin-top:12px;font-size:12px;opacity:.8">
+        <p id="poolFooterNote" style="margin-top:12px;font-size:12px;opacity:.72">
           <!-- Pool 섹션 하단 안내 -->
         </p>
       </section>
@@ -921,24 +785,24 @@ h3::before{
       <!-- Recent -->
       <section class="card recent">
         <h3>Recent Transactions</h3>
-   <div style="opacity:.85">0x03825f2f678d.....5755e28602e8d257</div>
-   <div style="opacity:.85">0x308ab1ba4b5a.....a1532b7bbf172edd</div>
-   <div style="opacity:.85">0x3cc5be0bd8e8.....1d6a34c2b3e282cc</div>
-   <div style="opacity:.85">0xe6bfde2a7d42.....54950092e3de9787</div>
-   <div style="opacity:.85">0x5bdaa8f914a1.....6efe8a163d0608d7</div>
-   <div style="opacity:.85">0x3a0f05d0fc07.....f3875308cb2d82ca</div>
-   <div style="opacity:.85">0xec4e4990ad95.....68c539cf4cd44342</div>
-   <div style="opacity:.85">0x4bf06b7389d6.....80b2e9eb092631ac</div>
-   <div style="opacity:.85">0x737d636298ff.....e90e337d4918503e</div>
-   <div style="opacity:.85">0x5b3e049c25fa.....df96feb4605a5abb</div>
-   <div style="opacity:.85">0xc880687ea668.....287b9acd74ace79e</div>
-   <div style="opacity:.85">0xa75873bf60f3.....b2105a100d7cf828</div>
+   <div style="opacity:.78">0x03825f2f678d.....5755e28602e8d257</div>
+   <div style="opacity:.78">0x308ab1ba4b5a.....a1532b7bbf172edd</div>
+   <div style="opacity:.78">0x3cc5be0bd8e8.....1d6a34c2b3e282cc</div>
+   <div style="opacity:.78">0xe6bfde2a7d42.....54950092e3de9787</div>
+   <div style="opacity:.78">0x5bdaa8f914a1.....6efe8a163d0608d7</div>
+   <div style="opacity:.78">0x3a0f05d0fc07.....f3875308cb2d82ca</div>
+   <div style="opacity:.78">0xec4e4990ad95.....68c539cf4cd44342</div>
+   <div style="opacity:.78">0x4bf06b7389d6.....80b2e9eb092631ac</div>
+   <div style="opacity:.78">0x737d636298ff.....e90e337d4918503e</div>
+   <div style="opacity:.78">0x5b3e049c25fa.....df96feb4605a5abb</div>
+   <div style="opacity:.78">0xc880687ea668.....287b9acd74ace79e</div>
+   <div style="opacity:.78">0xa75873bf60f3.....b2105a100d7cf828</div>
       </section>
 
       <!-- Notes -->
       <section class="card notes">
         <h3>Notes</h3>
-        <div class="card inner" style="background:#fafafa;border:1px dashed var(--border)">
+        <div class="card inner" style="background:rgba(255,255,255,.70);border:1px solid rgba(12,25,45,.14)">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
           <!-- ✅ 여기: Router 표기용 문구만 업데이트 (기능 영향 없음) -->
           <p class="wrap" style="margin:.2rem 0">• Router: GDEXRouterV2 (via backend) — 0xcbAeD90D5eA36DB0F26499061A0f2E497879608f</p>
@@ -956,13 +820,14 @@ h3::before{
           margin-bottom:12px;
           padding:10px 14px;
           border-radius:12px;
-          border:1px solid rgba(166,116,74,0.5);
-          background:linear-gradient(180deg, rgba(255,248,241,1), rgba(255,255,255,1));
+          border:1px solid rgba(12,25,45,0.14);
+          background:rgba(255,255,255,.72);
           font-size:13px;
           line-height:1.5;
-          color:#3b1e0d;
+          color:rgba(11,18,32,.74);
+          box-shadow:0 12px 22px rgba(9,18,33,.08);
         ">
-          <strong style="font-weight:800;">G-DEX Analytics — Early Preview</strong><br>
+          <strong style="font-weight:900;color:rgba(11,18,32,.90);">G-DEX Analytics — Early Preview</strong><br>
           G-DEX Analytics is in an early preview stage. The metrics shown (rebate rate, ESG allocation, user
           returns, transparency score, CO₂ offsets) are demonstration values for UI and concept preview only.<br>
           In upcoming versions, these indicators will automatically pull live data from:
@@ -1025,26 +890,27 @@ h3::before{
       <section class="card stake" id="stake">
         <h3>Stake</h3>
         <div style="
-          background:#fff7f0;
+          background:rgba(255,255,255,.72);
           padding: 10px 14px;
           border-radius: 12px;
           margin-bottom: 14px;
           font-size: 14px;
           line-height: 1.45;
-          color: #3b1e0d;
-          border: 1px solid rgba(166,116,74,0.45);
+          color: rgba(11,18,32,.74);
+          border: 1px solid rgba(12,25,45,0.14);
+          box-shadow:0 12px 22px rgba(9,18,33,.08);
         ">
-          <b>Staking (v1 Preview)</b><br>
+          <b style="color:rgba(11,18,32,.90)">Staking (v1 Preview)</b><br>
           GLIP staking and reward distribution will be activated in G-DEX v2 after
           the core liquidity pool and swap routing are fully stabilized.<br>
           This section currently displays demonstration values only.
         </div>
 
         <div class="statGrid">
-          <div class="stat"><div style="opacity:.85;font-weight:700">APR</div><div id="apr" style="font-weight:800;font-size:22px;margin-top:4px">—</div></div>
-          <div class="stat"><div style="opacity:.85;font-weight:700">My Staked</div><div id="myStaked" style="font-weight:800;font-size:22px;margin-top:4px">—</div></div>
-          <div class="stat"><div style="opacity:.85;font-weight:700">Earned</div><div id="earned" style="font-weight:800;font-size:22px;margin-top:4px">—</div></div>
-          <div class="stat"><div style="opacity:.85;font-weight:700">Lock</div><div style="font-weight:800;font-size:22px;margin-top:4px">Flexible</div></div>
+          <div class="stat"><div style="opacity:.78;font-weight:800">APR</div><div id="apr" style="font-weight:900;font-size:22px;margin-top:4px">—</div></div>
+          <div class="stat"><div style="opacity:.78;font-weight:800">My Staked</div><div id="myStaked" style="font-weight:900;font-size:22px;margin-top:4px">—</div></div>
+          <div class="stat"><div style="opacity:.78;font-weight:800">Earned</div><div id="earned" style="font-weight:900;font-size:22px;margin-top:4px">—</div></div>
+          <div class="stat"><div style="opacity:.78;font-weight:800">Lock</div><div style="font-weight:900;font-size:22px;margin-top:4px">Flexible</div></div>
         </div>
 
         <div class="tabs">
@@ -1066,7 +932,7 @@ h3::before{
         </div>
 
         <div class="claimRow"><button class="btn ghost" id="btnClaim">Claim Rewards</button></div>
-        <div style="margin-top:12px;opacity:.85">Note: Rewards stream per block. Claim triggers transfer from RewardsVault. (Demo data)</div>
+        <div style="margin-top:12px;opacity:.76">Note: Rewards stream per block. Claim triggers transfer from RewardsVault. (Demo data)</div>
       </section>
     </main>
   </div>
@@ -1516,8 +1382,8 @@ function drawSpark(d){
   const y = v => { const t=(v-min)/(max-min || 1); return h - padY - t*(h - padY*2); };
 
   const grad = ctx.createLinearGradient(0, y(max), 0, h-padY);
-  grad.addColorStop(0, "rgba(255,59,108,.45)");
-  grad.addColorStop(1, "rgba(46,203,255,.08)");
+  grad.addColorStop(0, "rgba(123,183,255,.40)");
+  grad.addColorStop(1, "rgba(255,255,255,.10)");
 
   ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
   data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
@@ -1526,10 +1392,10 @@ function drawSpark(d){
 
   ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
   data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
-  ctx.lineWidth = 2.5 * DPR; ctx.strokeStyle = "#ff3b6c"; ctx.stroke();
+  ctx.lineWidth = 2.5 * DPR; ctx.strokeStyle = "#7bb7ff"; ctx.stroke();
 
   const last = data[data.length-1];
-  ctx.fillStyle="#261320";
+  ctx.fillStyle="rgba(11,18,32,.88)";
   ctx.font = `${12*DPR}px Sora, sans-serif`;
   ctx.fillText("$ " + last.toLocaleString(), x(data.length-1)-40*DPR, y(last)-8*DPR);
 }
@@ -1544,9 +1410,9 @@ function drawDonut(d){
   const rOuter = (dim*DPR)/2 - 6*DPR;
   const rInner = rOuter * 0.62;
   const parts = [
-    {key:"Users",    val:d.split.users,    color:"#ff3b6c"},
+    {key:"Users",    val:d.split.users,    color:"#7bb7ff"},
     {key:"ESG",      val:d.split.esg,      color:"#39d98a"},
-    {key:"Treasury", val:d.split.treasury, color:"rgba(139,86,50,.85)"}
+    {key:"Treasury", val:d.split.treasury, color:"rgba(11,18,32,.55)"}
   ];
   let start = -Math.PI/2;
   parts.forEach(p=>{
@@ -1576,13 +1442,13 @@ function drawGauge(d){
 
   // base arc
   ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
-  ctx.strokeStyle = "rgba(61,35,18,.18)"; ctx.stroke();
+  ctx.strokeStyle = "rgba(11,18,32,.16)"; ctx.stroke();
 
   const pct = Math.max(0, Math.min(1, d.co2.current / d.co2.target));
   ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI);
-  ctx.strokeStyle = "#2ecbff"; ctx.stroke();
+  ctx.strokeStyle = "#7bb7ff"; ctx.stroke();
 
-  ctx.lineWidth = 2*DPR; ctx.strokeStyle = "rgba(61,35,18,.35)";
+  ctx.lineWidth = 2*DPR; ctx.strokeStyle = "rgba(11,18,32,.28)";
   for(let i=0;i<=4;i++){
     const a = Math.PI + i*(Math.PI/4);
     const x1 = cx + Math.cos(a)*r*0.86, y1 = cy + Math.sin(a)*r*0.86;
@@ -1590,7 +1456,7 @@ function drawGauge(d){
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
   }
 
-  ctx.fillStyle="#261320";
+  ctx.fillStyle="rgba(11,18,32,.86)";
   ctx.font = `${12*DPR}px Sora, sans-serif`;
   ctx.textAlign="center";
   ctx.fillText(`${d.co2.current.toFixed(0)} / ${d.co2.target.toFixed(0)} tCO₂e`, cx, cy - r*0.35);
