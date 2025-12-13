@@ -808,9 +808,10 @@ h3::before{content:""; display:none;}
         <h3>Notes</h3>
         <div class="card inner" style="background:rgba(255,255,255,.70);border:1px solid rgba(12,25,45,.14)">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
-          <p class="wrap" style="margin:.2rem 0">• Router: SushiSwap V2 Router (direct) — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
-          <p class="wrap" style="margin:.2rem 0">• Fee: collected in ETH via a separate transfer before the swap.</p>
-          <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are handled through your wallet when needed.</p>
+          <p class="wrap" style="margin:.2rem 0">• Proxy Router (G-DEX): 0xcCFd95108E3c576Faf1190A4D911dB49d3fD61E2</p>
+          <p class="wrap" style="margin:.2rem 0">• Underlying Router: SushiSwap V2 — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
+          <p class="wrap" style="margin:.2rem 0">• Fees are collected in ETH inside the Proxy Router (1 transaction swap).</p>
+          <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are requested by your wallet when needed (spender = Proxy Router).</p>
         </div>
         <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
       </section>
@@ -1005,21 +1006,13 @@ const DAPP_HOST = 'gdex-app.com';
 const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
 const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
 
-/* ✅ Direct SushiSwap Router (Ethereum mainnet) */
+/* ✅ Underlying SushiSwap Router (Ethereum mainnet) */
 const SUSHI_ROUTER_V2 = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
 const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
-/* ============================================================
-   ✅ G-DEX Fee (ETH) 설정
-   - 수수료는 "별도 ETH 전송"으로 처리됩니다.
-   - 아래 값만 바꾸면 수수료 정책 변경 가능
-   ============================================================ */
-const GDEX_FEE_WALLET = "0x932Bf0A8746c041c00131640123fA6C847835d6F"; // 수수료 지갑(ETH 수령)
-const GDEX_FEE_BPS = 50;                       // 50 bps = 0.50%
-const GDEX_FEE_MIN_ETH = "0.00005";            // 최소 수수료 (ETH)
-const GDEX_FEE_MAX_ETH = "0.02";               // 안전 상한 (ETH) - 너무 큰 수수료 방지
-const GDEX_FEE_ENABLE = true;                  // false로 하면 수수료 비활성화
+/* ✅ G-DEX Proxy Router (Verified) */
+const GDEX_PROXY_ROUTER = "0xcCFd95108E3c576Faf1190A4D911dB49d3fD61E2";
 
 /* 모바일 판별 */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -1214,23 +1207,34 @@ function bindFlip(){
 let userAddress = null;
 let provider = null;
 let signer = null;
-let router = null;
+
+/* read/quote router (Sushi) */
+let sushiRouterRO = null;
 let factory = null;
 
-const ROUTER_ABI = [
-  "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)",
-  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)",
-  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)",
-  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)"
+/* swap router (Proxy) */
+let proxyRouter = null;
+
+/* fee cache (from Proxy) */
+let __proxyFeeLoaded = false;
+let __proxyFeeBps = 0;        // uint16 -> BigNumber -> number
+let __proxyFlatFeeWei = null; // BigNumber
+let __proxyFeeWallet = null;
+
+const SUSHI_ROUTER_RO_ABI = [
+  "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
 ];
+
 const FACTORY_ABI = [
   "function getPair(address tokenA, address tokenB) view returns (address pair)"
 ];
+
 const PAIR_ABI = [
   "function token0() view returns (address)",
   "function token1() view returns (address)",
   "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
 ];
+
 const ERC20_ABI = [
   "function decimals() view returns (uint8)",
   "function symbol() view returns (string)",
@@ -1238,13 +1242,49 @@ const ERC20_ABI = [
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
+/* Proxy ABI (minimal) */
+const PROXY_ABI = [
+  "function feeWallet() view returns (address)",
+  "function feeBps() view returns (uint16)",
+  "function flatFeeWei() view returns (uint256)",
+  "function swapExactETHForTokensWithFee(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
+  "function swapExactTokensForTokensWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
+  "function swapExactTokensForETHWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable"
+];
+
 function ensureWeb3(){
   if (!window.ethereum) throw new Error("No wallet detected.");
   if (!window.ethers) throw new Error("ethers.js failed to load.");
+
   if (!provider) provider = new ethers.providers.Web3Provider(window.ethereum, "any");
   if (!signer) signer = provider.getSigner();
-  if (!router) router = new ethers.Contract(SUSHI_ROUTER_V2, ROUTER_ABI, signer);
+
+  if (!sushiRouterRO) sushiRouterRO = new ethers.Contract(SUSHI_ROUTER_V2, SUSHI_ROUTER_RO_ABI, provider);
   if (!factory) factory = new ethers.Contract(SUSHI_FACTORY_V2, FACTORY_ABI, provider);
+
+  if (!proxyRouter) proxyRouter = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, signer);
+}
+
+async function loadProxyFeeParams(){
+  try{
+    if (__proxyFeeLoaded) return;
+    ensureWeb3();
+    // read with provider (not signer) is fine too; signer inherits provider anyway
+    const feeWallet = await proxyRouter.feeWallet();
+    const feeBpsBN  = await proxyRouter.feeBps();
+    const flatFee   = await proxyRouter.flatFeeWei();
+
+    __proxyFeeWallet = feeWallet;
+    __proxyFeeBps = Number(feeBpsBN.toString());
+    __proxyFlatFeeWei = flatFee;
+    __proxyFeeLoaded = true;
+  }catch(e){
+    console.warn('[proxy fee params] failed', e);
+    // safe fallbacks (won't break UI; swap may revert if wrong, but we still attempt to load again later)
+    __proxyFeeBps = (__proxyFeeBps || 30);
+    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+    __proxyFeeLoaded = false;
+  }
 }
 
 async function connectWallet(){
@@ -1270,12 +1310,16 @@ async function connectWallet(){
       }
     });
 
+    await loadProxyFeeParams();
     await refreshAllBalances();
+    updatePricePreview();
 
     if (window.ethereum.on) {
       window.ethereum.on('accountsChanged', async acc=>{
         userAddress = acc && acc.length ? acc[0] : null;
         document.getElementById('wAddr').textContent = short(userAddress);
+        __proxyFeeLoaded = false;
+        await loadProxyFeeParams();
         await refreshAllBalances();
         updatePricePreview();
       });
@@ -1574,45 +1618,6 @@ function bnFromInput(valStr, decimals){
   return ethers.utils.parseUnits(String(valStr), decimals);
 }
 
-/* ============================================================
-   ✅ Fee helpers (ETH fee)
-   ============================================================ */
-function clampEthFeeBN(feeBN){
-  const min = ethers.utils.parseEther(GDEX_FEE_MIN_ETH);
-  const max = ethers.utils.parseEther(GDEX_FEE_MAX_ETH);
-  if (feeBN.lt(min)) return min;
-  if (feeBN.gt(max)) return max;
-  return feeBN;
-}
-
-async function estimateEthValueBN(sellMeta, amountInBN){
-  // ETH sell: 그대로
-  if (metaIsETH(sellMeta)) return amountInBN;
-
-  // Token sell: token -> WETH 경로로 "대략 ETH 가치" 추정
-  try{
-    const tokenIn = addrForPath(sellMeta);
-    const tokenOut = WETH_MAINNET;
-    const path = await pickBestPath(tokenIn, tokenOut);
-    const amts = await router.getAmountsOut(amountInBN, path);
-    const wethOut = amts[amts.length - 1]; // WETH 18dec
-    return wethOut;
-  }catch(e){
-    return ethers.constants.Zero;
-  }
-}
-
-async function computeGdexFeeBN(sellMeta, amountInBN){
-  if (!GDEX_FEE_ENABLE) return ethers.constants.Zero;
-  // 1) trade ETH value 추정
-  const ethValueBN = await estimateEthValueBN(sellMeta, amountInBN);
-  // 2) bps 적용
-  let fee = ethValueBN.mul(GDEX_FEE_BPS).div(10000);
-  // 3) min/max clamp
-  fee = clampEthFeeBN(fee);
-  return fee;
-}
-
 function formatEthBN(bn){
   try{
     const s = ethers.utils.formatUnits(bn, 18);
@@ -1628,11 +1633,12 @@ function formatEthBN(bn){
 }
 
 /* ============================================================
-   ✅ Direct quote (router.getAmountsOut) + Fee 반영
+   ✅ Quote + Fee hint (Proxy 기준)
+   - ETH sell: feeBps 기반으로 amountForSwap = in - fee
+   - Token sell: msg.value = flatFeeWei (swap amount은 그대로)
    ============================================================ */
 let __quoteTimer = null;
 async function updatePricePreview() {
-  // debounce to reduce rpc spam
   if (__quoteTimer) clearTimeout(__quoteTimer);
   __quoteTimer = setTimeout(async ()=>{
     const sellInput = document.getElementById("sell");
@@ -1654,6 +1660,7 @@ async function updatePricePreview() {
 
     try{
       ensureWeb3();
+      await loadProxyFeeParams();
 
       const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
       if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
@@ -1662,35 +1669,47 @@ async function updatePricePreview() {
       const tokenOut = addrForPath(buyMeta);
       const path = await pickBestPath(tokenIn, tokenOut);
 
-      // 슬리피지 추천(표시만)
+      // slippage 추천(표시만)
       const ethReserve = await getEthReserveIfWethInvolved(path);
       const rec = recommendedSlippagePctByEthReserve(ethReserve);
 
-      // ✅ Fee 계산 (ETH)
-      const feeBN = await computeGdexFeeBN(sellMeta, amountInBN_raw);
+      const sellIsEth = metaIsETH(sellMeta);
+      const buyIsEth  = metaIsETH(buyMeta);
 
-      // Preview: ETH sell이면 fee 차감 후 스왑 금액
+      if (sellIsEth && buyIsEth) {
+        buyInput.value = "";
+        if (hint) hint.textContent = "ETH → ETH not supported";
+        return;
+      }
+
+      // Fee 표시(프리뷰)
+      let feeTxt = "";
       let amountForSwapBN = amountInBN_raw;
-      if (GDEX_FEE_ENABLE && metaIsETH(sellMeta)) {
+
+      if (sellIsEth) {
+        const feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
         if (amountInBN_raw.lte(feeBN)) {
           buyInput.value = "";
-          if (hint){
-            const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-            hint.textContent = `${recTxt}${recTxt ? " · " : ""}Fee ~ ${formatEthBN(feeBN)} ETH`;
-          }
+          feeTxt = `Fee ~ ${formatEthBN(feeBN)} ETH`;
+          const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
+          if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
           return;
         }
         amountForSwapBN = amountInBN_raw.sub(feeBN);
+        feeTxt = `Fee ~ ${formatEthBN(feeBN)} ETH`;
+      } else {
+        // token sell: flat fee
+        feeTxt = __proxyFlatFeeWei ? `Fee ~ ${formatEthBN(__proxyFlatFeeWei)} ETH` : "";
       }
 
-      const amounts = await router.getAmountsOut(amountForSwapBN, path);
+      // Quote는 "실제로 스왑에 들어갈 금액" 기준(ETH sell이면 net)
+      const amounts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
       const out = amounts[amounts.length - 1];
       const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
       buyInput.value = Number(outStr).toFixed(6);
 
       if (hint){
         const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-        const feeTxt = GDEX_FEE_ENABLE ? `Fee ~ ${formatEthBN(feeBN)} ETH` : "";
         hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
       }
     }catch(err){
@@ -1702,20 +1721,20 @@ async function updatePricePreview() {
 }
 
 /* ============================================================
-   ✅ Swap with ETH fee:
-   - callStatic preflight (스왑 가능성 확인)
-   - Fee ETH transfer (Tx#1)
-   - Swap (Tx#2)
+   ✅ Swap via Proxy Router (1 TX)
+   - Approve spender = Proxy Router
+   - ETH sell: value = amountIn (Proxy 내부에서 fee 차감 후 스왑)
+   - Token sell: value = flatFeeWei (Proxy 내부에서 fee 수령)
    ============================================================ */
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
   if (!userAddress) throw new Error("Wallet not connected");
 
   const token = new ethers.Contract(tokenMeta.address, ERC20_ABI, signer);
-  const allowance = await token.allowance(userAddress, SUSHI_ROUTER_V2);
+  const allowance = await token.allowance(userAddress, GDEX_PROXY_ROUTER);
   if (allowance.gte(amountInBN)) return;
 
-  const tx = await token.approve(SUSHI_ROUTER_V2, ethers.constants.MaxUint256);
+  const tx = await token.approve(GDEX_PROXY_ROUTER, ethers.constants.MaxUint256);
   alert("Approval sent.\n\nPlease confirm in MetaMask and wait for confirmation.");
   await tx.wait(1);
 }
@@ -1737,28 +1756,11 @@ function setSwapBusy(isBusy){
   if(conn) conn.disabled = !!isBusy;
 }
 
-async function sendFeeTxIfNeeded(feeBN){
-  if (!GDEX_FEE_ENABLE) return null;
-  if (feeBN.lte(0)) return null;
-
-  // 사용자 ETH 잔액 체크 (fee만 최소 체크)
-  const bal = await provider.getBalance(userAddress);
-  if (bal.lt(feeBN)) {
-    throw new Error(`Insufficient ETH for fee.\n\nNeed fee: ${formatEthBN(feeBN)} ETH`);
-  }
-
-  // Fee transfer
-  const feeTx = await signer.sendTransaction({
-    to: GDEX_FEE_WALLET,
-    value: feeBN
-  });
-  return feeTx;
-}
-
 async function executeSwap() {
   try {
     if (!userAddress) { alert("Please connect your wallet first."); return; }
     ensureWeb3();
+    await loadProxyFeeParams();
 
     const sellValStr = String(document.getElementById("sell").value || "").trim();
     if (!sellValStr || Number(sellValStr) <= 0) { alert("Enter an amount to swap."); return; }
@@ -1783,89 +1785,89 @@ async function executeSwap() {
     const sellIsEth = metaIsETH(sellMeta);
     const buyIsEth  = metaIsETH(buyMeta);
 
-    // ✅ fee 계산 (ETH)
-    const feeBN = await computeGdexFeeBN(sellMeta, amountInBN_raw);
+    if (sellIsEth && buyIsEth) {
+      alert("ETH → ETH swap is not supported.");
+      return;
+    }
 
-    // ETH sell이면 swap 금액에서 fee 차감
+    // ETH sell이면 "스왑에 실제 들어갈 net" 계산 (Proxy가 feeBps로 차감하므로 outMin도 net 기준으로 계산)
     let amountForSwapBN = amountInBN_raw;
-    if (GDEX_FEE_ENABLE && sellIsEth) {
+    let feeBN = ethers.constants.Zero;
+    let callValue = ethers.constants.Zero;
+
+    if (sellIsEth) {
+      feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
       if (amountInBN_raw.lte(feeBN)) {
         alert(`Amount is too small.\n\nFee: ${formatEthBN(feeBN)} ETH\nPlease increase your amount.`);
         return;
       }
       amountForSwapBN = amountInBN_raw.sub(feeBN);
+      callValue = amountInBN_raw; // ✅ Proxy에는 총액을 보내고, Proxy가 fee 차감 후 스왑
+    } else {
+      // token sell: flatFeeWei를 msg.value로
+      callValue = __proxyFlatFeeWei || ethers.constants.Zero;
     }
 
-    // quote for minOut (fee 반영된 amountForSwapBN 기준)
-    const amts = await router.getAmountsOut(amountForSwapBN, path);
+    // quote for minOut (ETH sell이면 net 기준)
+    const amts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
     const outBN = amts[amts.length - 1];
     const outMinBN = outBN.mul(10000 - Math.floor(slipPct * 100)).div(10000);
 
-    // Preflight (callStatic) 먼저 돌려서 스왑 가능성 확인
+    // Preflight (callStatic) - Proxy 기준
     if (sellIsEth && !buyIsEth) {
-      await router.callStatic.swapExactETHForTokens(outMinBN, path, to, deadline, { value: amountForSwapBN });
+      await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
     } else if (!sellIsEth && buyIsEth) {
       await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-      await router.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
+      await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     } else if (!sellIsEth && !buyIsEth) {
       await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-      await router.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-    } else {
-      alert("ETH → ETH swap is not supported.");
-      return;
+      await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     }
 
-    // 사용자 안내: 2개의 컨펌
-    const feeText = (GDEX_FEE_ENABLE ? `${formatEthBN(feeBN)} ETH` : "0");
+    // 사용자 안내(1개 컨펌)
+    let feeText = "";
+    if (sellIsEth) feeText = `Fee (bps): ~ ${formatEthBN(feeBN)} ETH`;
+    else feeText = `Flat Fee: ${formatEthBN(callValue)} ETH`;
+
     const proceed = confirm(
-      `This swap requires 2 confirmations in MetaMask:\n\n` +
-      `1) Fee transfer: ${feeText} ETH\n` +
-      `2) Swap execution\n\n` +
+      `This swap will be executed via G-DEX Proxy Router (1 confirmation).\n\n` +
+      `${feeText}\n\n` +
       `Continue?`
     );
     if (!proceed) return;
 
     setSwapBusy(true);
 
-    // 1) Fee tx
-    let feeTx = null;
-    if (GDEX_FEE_ENABLE && feeBN.gt(0)) {
-      feeTx = await sendFeeTxIfNeeded(feeBN);
-      alert("Fee transaction sent!\n\nTX Hash:\n" + feeTx.hash + "\n\nNow confirm the Swap transaction.");
-      // 굳이 wait 안해도 되지만, UX 안정성을 위해 1컨펌 대기(원하면 주석처리)
-      await feeTx.wait(1);
-    }
-
-    // 2) Swap tx
+    // Swap tx (Proxy)
     let swapTx = null;
 
     if (sellIsEth && !buyIsEth) {
-      const gas = await router.estimateGas.swapExactETHForTokens(outMinBN, path, to, deadline, { value: amountForSwapBN });
-      swapTx = await router.swapExactETHForTokens(outMinBN, path, to, deadline, {
-        value: amountForSwapBN,
+      const gas = await proxyRouter.estimateGas.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
+      swapTx = await proxyRouter.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, {
+        value: callValue,
         gasLimit: gas.mul(125).div(100)
       });
 
     } else if (!sellIsEth && buyIsEth) {
-      const gas = await router.estimateGas.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-      swapTx = await router.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, {
+      const gas = await proxyRouter.estimateGas.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+      swapTx = await proxyRouter.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, {
+        value: callValue,
         gasLimit: gas.mul(125).div(100)
       });
 
     } else if (!sellIsEth && !buyIsEth) {
-      const gas = await router.estimateGas.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-      swapTx = await router.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, {
+      const gas = await proxyRouter.estimateGas.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+      swapTx = await proxyRouter.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, {
+        value: callValue,
         gasLimit: gas.mul(125).div(100)
       });
     }
 
     alert(
       "Swap transaction sent!\n\n" +
-      (feeTx ? ("Fee TX:\n" + feeTx.hash + "\n\n") : "") +
-      "Swap TX:\n" + swapTx.hash
+      "TX:\n" + swapTx.hash
     );
 
-    // refresh
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
   } catch (err) {
@@ -1959,4 +1961,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-<br><br>
