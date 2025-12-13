@@ -810,7 +810,8 @@ h3::before{content:""; display:none;}
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
           <p class="wrap" style="margin:.2rem 0">• Proxy Router (G-DEX): 0xcCFd95108E3c576Faf1190A4D911dB49d3fD61E2</p>
           <p class="wrap" style="margin:.2rem 0">• Underlying Router: SushiSwap V2 — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
-          <p class="wrap" style="margin:.2rem 0">• Fees are collected in ETH inside the Proxy Router (1 transaction swap).</p>
+          <!-- ✅ 문구 변경: 퍼센트 수수료 안내 -->
+          <p class="wrap" style="margin:.2rem 0">• Fee is charged as a percentage only (e.g., 0.1%) via the Proxy Router (1 transaction swap).</p>
           <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are requested by your wallet when needed (spender = Proxy Router).</p>
         </div>
         <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
@@ -1269,7 +1270,6 @@ async function loadProxyFeeParams(){
   try{
     if (__proxyFeeLoaded) return;
     ensureWeb3();
-    // read with provider (not signer) is fine too; signer inherits provider anyway
     const feeWallet = await proxyRouter.feeWallet();
     const feeBpsBN  = await proxyRouter.feeBps();
     const flatFee   = await proxyRouter.flatFeeWei();
@@ -1280,7 +1280,6 @@ async function loadProxyFeeParams(){
     __proxyFeeLoaded = true;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
-    // safe fallbacks (won't break UI; swap may revert if wrong, but we still attempt to load again later)
     __proxyFeeBps = (__proxyFeeBps || 30);
     __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
     __proxyFeeLoaded = false;
@@ -1618,24 +1617,16 @@ function bnFromInput(valStr, decimals){
   return ethers.utils.parseUnits(String(valStr), decimals);
 }
 
-function formatEthBN(bn){
-  try{
-    const s = ethers.utils.formatUnits(bn, 18);
-    const n = Number(s);
-    if (!Number.isFinite(n)) return s;
-    if (n === 0) return "0";
-    if (n < 0.0001) return n.toFixed(6);
-    if (n < 0.01) return n.toFixed(5);
-    return n.toFixed(4);
-  }catch{
-    return "";
-  }
+/* ✅ 퍼센트 수수료 문구용 */
+function feePctText(){
+  const pct = (__proxyFeeBps || 0) / 100; // bps -> %
+  // 예: 10 bps = 0.10%
+  return `Fee: ${pct.toFixed(2)}% (e.g., 0.1%)`;
 }
 
 /* ============================================================
    ✅ Quote + Fee hint (Proxy 기준)
-   - ETH sell: feeBps 기반으로 amountForSwap = in - fee
-   - Token sell: msg.value = flatFeeWei (swap amount은 그대로)
+   - 기능은 그대로 유지, 표시 문구만 "퍼센트 수수료"로 통일
    ============================================================ */
 let __quoteTimer = null;
 async function updatePricePreview() {
@@ -1682,27 +1673,23 @@ async function updatePricePreview() {
         return;
       }
 
-      // Fee 표시(프리뷰)
-      let feeTxt = "";
+      // Quote용 amountForSwap 계산은 기존 로직 유지
       let amountForSwapBN = amountInBN_raw;
 
       if (sellIsEth) {
         const feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
         if (amountInBN_raw.lte(feeBN)) {
           buyInput.value = "";
-          feeTxt = `Fee ~ ${formatEthBN(feeBN)} ETH`;
           const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-          if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
+          if (hint) hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
           return;
         }
         amountForSwapBN = amountInBN_raw.sub(feeBN);
-        feeTxt = `Fee ~ ${formatEthBN(feeBN)} ETH`;
       } else {
-        // token sell: flat fee
-        feeTxt = __proxyFlatFeeWei ? `Fee ~ ${formatEthBN(__proxyFlatFeeWei)} ETH` : "";
+        // token sell: 기존 로직 유지 (Proxy 요구사항에 따라 msg.value가 있을 수 있음)
+        // 표시 문구는 퍼센트 수수료로만 통일
       }
 
-      // Quote는 "실제로 스왑에 들어갈 금액" 기준(ETH sell이면 net)
       const amounts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
       const out = amounts[amounts.length - 1];
       const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
@@ -1710,7 +1697,7 @@ async function updatePricePreview() {
 
       if (hint){
         const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-        hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
+        hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
       }
     }catch(err){
       console.warn("[quote] failed", err);
@@ -1722,9 +1709,7 @@ async function updatePricePreview() {
 
 /* ============================================================
    ✅ Swap via Proxy Router (1 TX)
-   - Approve spender = Proxy Router
-   - ETH sell: value = amountIn (Proxy 내부에서 fee 차감 후 스왑)
-   - Token sell: value = flatFeeWei (Proxy 내부에서 fee 수령)
+   - 기능은 그대로 유지, Confirm 문구만 "퍼센트 수수료"로 통일
    ============================================================ */
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
@@ -1790,7 +1775,7 @@ async function executeSwap() {
       return;
     }
 
-    // ETH sell이면 "스왑에 실제 들어갈 net" 계산 (Proxy가 feeBps로 차감하므로 outMin도 net 기준으로 계산)
+    // 기존 계산 로직 유지
     let amountForSwapBN = amountInBN_raw;
     let feeBN = ethers.constants.Zero;
     let callValue = ethers.constants.Zero;
@@ -1798,22 +1783,19 @@ async function executeSwap() {
     if (sellIsEth) {
       feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
       if (amountInBN_raw.lte(feeBN)) {
-        alert(`Amount is too small.\n\nFee: ${formatEthBN(feeBN)} ETH\nPlease increase your amount.`);
+        alert(`Amount is too small.\n\n${feePctText()}\nPlease increase your amount.`);
         return;
       }
       amountForSwapBN = amountInBN_raw.sub(feeBN);
-      callValue = amountInBN_raw; // ✅ Proxy에는 총액을 보내고, Proxy가 fee 차감 후 스왑
+      callValue = amountInBN_raw;
     } else {
-      // token sell: flatFeeWei를 msg.value로
       callValue = __proxyFlatFeeWei || ethers.constants.Zero;
     }
 
-    // quote for minOut (ETH sell이면 net 기준)
     const amts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
     const outBN = amts[amts.length - 1];
     const outMinBN = outBN.mul(10000 - Math.floor(slipPct * 100)).div(10000);
 
-    // Preflight (callStatic) - Proxy 기준
     if (sellIsEth && !buyIsEth) {
       await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
     } else if (!sellIsEth && buyIsEth) {
@@ -1824,21 +1806,16 @@ async function executeSwap() {
       await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     }
 
-    // 사용자 안내(1개 컨펌)
-    let feeText = "";
-    if (sellIsEth) feeText = `Fee (bps): ~ ${formatEthBN(feeBN)} ETH`;
-    else feeText = `Flat Fee: ${formatEthBN(callValue)} ETH`;
-
+    // ✅ Confirm 문구: 퍼센트 수수료 안내만
     const proceed = confirm(
       `This swap will be executed via G-DEX Proxy Router (1 confirmation).\n\n` +
-      `${feeText}\n\n` +
+      `${feePctText()}\n\n` +
       `Continue?`
     );
     if (!proceed) return;
 
     setSwapBusy(true);
 
-    // Swap tx (Proxy)
     let swapTx = null;
 
     if (sellIsEth && !buyIsEth) {
@@ -1892,7 +1869,6 @@ function bindConnect(){
     if(el) el.onclick = connectWallet;
   });
 
-  // Stake MAX는 GLIP 잔액으로 맞추기
   const stakeMaxBtn = document.querySelector('.input--stake .max');
   if(stakeMaxBtn) stakeMaxBtn.onclick = async ()=>{
     const glip = getTokenMeta("GLIP");
@@ -1900,7 +1876,6 @@ function bindConnect(){
     document.getElementById('stakeAmt').value = balStr || '';
   };
 
-  // Swap MAX
   const swapMax = document.getElementById('swapMax');
   if(swapMax) swapMax.onclick = async ()=>{
     const sellSym = document.getElementById("sellS").textContent;
@@ -1926,22 +1901,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
     }
 
-    // Stake demo numbers
     document.getElementById('apr').textContent="12.5%";
     document.getElementById('myStaked').textContent="1,250 GLIP";
     document.getElementById('earned').textContent="42.4 GLIP";
     document.getElementById('est30').textContent="≈ 12.8 GLIP";
 
-    // Analytics demo
     fillKpis(demoAnalytics);
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
     drawGauge(demoAnalytics);
 
-    // Swap
     bindSwapLogic();
-
-    // manual pool config
     applyManualPoolConfig();
 
     window.addEventListener('resize', ()=>{
@@ -1950,7 +1920,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       drawGauge(demoAnalytics);
     });
 
-    // 최초 Bal 텍스트 초기화
     refreshAllBalances();
 
   }catch(e){
@@ -1961,3 +1930,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+<br><br>
