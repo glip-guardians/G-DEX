@@ -669,7 +669,6 @@ h3::before{content:""; display:none;}
       <a href="#pool"><span>Pool</span></a>
       <a href="#analytics"><span>Analytics</span></a>
       <a href="#stake"><span>Stake</span></a>
-      <!-- ✅ 문구만 수정 (레이아웃 유지) -->
       <div class="note">Direct routing via SushiSwap V2 Router. DYOR — not financial advice.</div>
       <button class="btn install-cta" id="installSide" type="button">Install G-DEX App</button>
     </aside>
@@ -810,6 +809,7 @@ h3::before{content:""; display:none;}
         <div class="card inner" style="background:rgba(255,255,255,.70);border:1px solid rgba(12,25,45,.14)">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
           <p class="wrap" style="margin:.2rem 0">• Router: SushiSwap V2 Router (direct) — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
+          <p class="wrap" style="margin:.2rem 0">• Fee: collected in ETH via a separate transfer before the swap.</p>
           <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are handled through your wallet when needed.</p>
         </div>
         <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
@@ -963,7 +963,15 @@ h3::before{content:""; display:none;}
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
-/* 수기 메트릭 설정 읽기 */
+function showErrorPopup(title, payload) {
+  let msg = "";
+  if (payload instanceof Error) msg = payload.message || String(payload);
+  else if (typeof payload === "string") msg = payload;
+  else msg = JSON.stringify(payload, null, 2);
+  alert(title + "\n\n" + msg);
+}
+
+/* ===== Manual Pool Config ===== */
 let gdexPoolConfig = {};
 (function readGdexConfig(){
   const el = document.getElementById('gdexPoolConfig');
@@ -992,9 +1000,9 @@ function applyManualPoolConfig(){
 
 /* DApp host */
 const DAPP_HOST = 'gdex-app.com';
+
 /* GLIP token */
 const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
-/* Sushi pool base */
 const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
 
 /* ✅ Direct SushiSwap Router (Ethereum mainnet) */
@@ -1002,14 +1010,16 @@ const SUSHI_ROUTER_V2 = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
 const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
-/* 공통 에러 팝업 */
-function showErrorPopup(title, payload) {
-  let msg = "";
-  if (payload instanceof Error) msg = payload.message || String(payload);
-  else if (typeof payload === "string") msg = payload;
-  else msg = JSON.stringify(payload, null, 2);
-  alert(title + "\n\n" + msg);
-}
+/* ============================================================
+   ✅ G-DEX Fee (ETH) 설정
+   - 수수료는 "별도 ETH 전송"으로 처리됩니다.
+   - 아래 값만 바꾸면 수수료 정책 변경 가능
+   ============================================================ */
+const GDEX_FEE_WALLET = "0x932Bf0A8746c041c00131640123fA6C847835d6F"; // 수수료 지갑(ETH 수령)
+const GDEX_FEE_BPS = 50;                       // 50 bps = 0.50%
+const GDEX_FEE_MIN_ETH = "0.00005";            // 최소 수수료 (ETH)
+const GDEX_FEE_MAX_ETH = "0.02";               // 안전 상한 (ETH) - 너무 큰 수수료 방지
+const GDEX_FEE_ENABLE = true;                  // false로 하면 수수료 비활성화
 
 /* 모바일 판별 */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -1104,7 +1114,6 @@ const tokenList = [
    logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png", priority:60}
 ];
 
-/* 토큰 메타 */
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
     t.symbol === symbolOrAddress ||
@@ -1171,7 +1180,6 @@ list.onclick = async e=>{
   target.symEl.dataset.address = t.address;
   dlg.close();
 
-  // ✅ 토큰 변경 즉시: 가격/잔액 갱신
   setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); }, 50);
 };
 document.getElementById('tokClose').onclick = ()=>dlg.close();
@@ -1278,32 +1286,6 @@ async function connectWallet(){
     console.error('[connectWallet]', e);
     alert('Wallet connection failed.\n\nPlease check MetaMask and try again.');
   }
-}
-
-function bindConnect(){
-  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.onclick = connectWallet;
-  });
-
-  // Stake MAX는 GLIP 잔액으로 맞추기
-  const stakeMaxBtn = document.querySelector('.input--stake .max');
-  if(stakeMaxBtn) stakeMaxBtn.onclick = async ()=>{
-    const glip = getTokenMeta("GLIP");
-    const balStr = await fetchTokenBalanceString(glip);
-    document.getElementById('stakeAmt').value = balStr || '';
-  };
-
-  // Swap MAX
-  const swapMax = document.getElementById('swapMax');
-  if(swapMax) swapMax.onclick = async ()=>{
-    const sellSym = document.getElementById("sellS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
-    const balStr = await fetchTokenBalanceString(sellMeta);
-    if (!balStr) return;
-    document.getElementById('sell').value = balStr;
-    updatePricePreview();
-  };
 }
 
 /* Supply → SushiSwap */
@@ -1547,13 +1529,11 @@ function addrForPath(meta){
 }
 
 async function pickBestPath(tokenIn, tokenOut){
-  // 기본: direct pair 있으면 direct, 없으면 WETH 경유
   if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return [tokenIn, tokenOut];
   try{
     const directPair = await factory.getPair(tokenIn, tokenOut);
     if (directPair && directPair !== ethers.constants.AddressZero) return [tokenIn, tokenOut];
   }catch{}
-  // WETH가 이미 포함이면 중복 방지
   if (tokenIn.toLowerCase() === WETH_MAINNET.toLowerCase() || tokenOut.toLowerCase() === WETH_MAINNET.toLowerCase()){
     return [tokenIn, tokenOut];
   }
@@ -1562,7 +1542,6 @@ async function pickBestPath(tokenIn, tokenOut){
 
 async function getEthReserveIfWethInvolved(path){
   try{
-    // path가 WETH 포함 시, WETH-상대토큰 첫 구간 pair reserves로 ETH 유동성 크기 추정
     const idx = path.findIndex(a => a.toLowerCase() === WETH_MAINNET.toLowerCase());
     if (idx < 0) return null;
     const other = (idx === 0) ? path[1] : path[idx-1];
@@ -1591,61 +1570,142 @@ function recommendedSlippagePctByEthReserve(ethReserve){
 }
 
 function bnFromInput(valStr, decimals){
-  // 숫자 입력이 ""/NaN이면 0
   if(!valStr || Number(valStr) <= 0) return ethers.constants.Zero;
   return ethers.utils.parseUnits(String(valStr), decimals);
 }
 
 /* ============================================================
-   ✅ Direct quote (router.getAmountsOut)
+   ✅ Fee helpers (ETH fee)
    ============================================================ */
-async function updatePricePreview() {
-  const sellInput = document.getElementById("sell");
-  const buyInput  = document.getElementById("buy");
-  const sellValStr = (sellInput.value || "").trim();
+function clampEthFeeBN(feeBN){
+  const min = ethers.utils.parseEther(GDEX_FEE_MIN_ETH);
+  const max = ethers.utils.parseEther(GDEX_FEE_MAX_ETH);
+  if (feeBN.lt(min)) return min;
+  if (feeBN.gt(max)) return max;
+  return feeBN;
+}
 
-  if (!sellValStr || Number(sellValStr) <= 0) { buyInput.value = ""; return; }
+async function estimateEthValueBN(sellMeta, amountInBN){
+  // ETH sell: 그대로
+  if (metaIsETH(sellMeta)) return amountInBN;
 
-  const sellSym = document.getElementById("sellS").textContent;
-  const buySym  = document.getElementById("buyS").textContent;
-  const sellMeta = getTokenMeta(sellSym);
-  const buyMeta  = getTokenMeta(buySym);
-  if (!sellMeta || !buyMeta) return;
-
+  // Token sell: token -> WETH 경로로 "대략 ETH 가치" 추정
   try{
-    ensureWeb3();
-
-    const tokenIn  = addrForPath(sellMeta);
-    const tokenOut = addrForPath(buyMeta);
+    const tokenIn = addrForPath(sellMeta);
+    const tokenOut = WETH_MAINNET;
     const path = await pickBestPath(tokenIn, tokenOut);
+    const amts = await router.getAmountsOut(amountInBN, path);
+    const wethOut = amts[amts.length - 1]; // WETH 18dec
+    return wethOut;
+  }catch(e){
+    return ethers.constants.Zero;
+  }
+}
 
-    // 슬리피지 추천(표시만)
-    const ethReserve = await getEthReserveIfWethInvolved(path);
-    const rec = recommendedSlippagePctByEthReserve(ethReserve);
-    const hint = document.getElementById('slipHint');
-    if (hint){
-      if (rec != null) hint.textContent = `(Recommended ~ ${rec}%)`;
-      else hint.textContent = "";
-    }
+async function computeGdexFeeBN(sellMeta, amountInBN){
+  if (!GDEX_FEE_ENABLE) return ethers.constants.Zero;
+  // 1) trade ETH value 추정
+  const ethValueBN = await estimateEthValueBN(sellMeta, amountInBN);
+  // 2) bps 적용
+  let fee = ethValueBN.mul(GDEX_FEE_BPS).div(10000);
+  // 3) min/max clamp
+  fee = clampEthFeeBN(fee);
+  return fee;
+}
 
-    const amountIn = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if (amountIn.lte(0)) { buyInput.value = ""; return; }
-
-    const amounts = await router.getAmountsOut(amountIn, path);
-    const out = amounts[amounts.length - 1];
-    const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
-    buyInput.value = Number(outStr).toFixed(6);
-  }catch(err){
-    console.warn("[quote] failed", err);
-    buyInput.value = "";
+function formatEthBN(bn){
+  try{
+    const s = ethers.utils.formatUnits(bn, 18);
+    const n = Number(s);
+    if (!Number.isFinite(n)) return s;
+    if (n === 0) return "0";
+    if (n < 0.0001) return n.toFixed(6);
+    if (n < 0.01) return n.toFixed(5);
+    return n.toFixed(4);
+  }catch{
+    return "";
   }
 }
 
 /* ============================================================
-   ✅ Direct swap with:
-   - auto approve (ERC20)
-   - callStatic simulation (prevent failed TX)
-   - estimateGas + 1.25 buffer
+   ✅ Direct quote (router.getAmountsOut) + Fee 반영
+   ============================================================ */
+let __quoteTimer = null;
+async function updatePricePreview() {
+  // debounce to reduce rpc spam
+  if (__quoteTimer) clearTimeout(__quoteTimer);
+  __quoteTimer = setTimeout(async ()=>{
+    const sellInput = document.getElementById("sell");
+    const buyInput  = document.getElementById("buy");
+    const sellValStr = (sellInput.value || "").trim();
+    const hint = document.getElementById('slipHint');
+
+    if (!sellValStr || Number(sellValStr) <= 0) {
+      buyInput.value = "";
+      if (hint) hint.textContent = "";
+      return;
+    }
+
+    const sellSym = document.getElementById("sellS").textContent;
+    const buySym  = document.getElementById("buyS").textContent;
+    const sellMeta = getTokenMeta(sellSym);
+    const buyMeta  = getTokenMeta(buySym);
+    if (!sellMeta || !buyMeta) return;
+
+    try{
+      ensureWeb3();
+
+      const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
+      if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
+
+      const tokenIn  = addrForPath(sellMeta);
+      const tokenOut = addrForPath(buyMeta);
+      const path = await pickBestPath(tokenIn, tokenOut);
+
+      // 슬리피지 추천(표시만)
+      const ethReserve = await getEthReserveIfWethInvolved(path);
+      const rec = recommendedSlippagePctByEthReserve(ethReserve);
+
+      // ✅ Fee 계산 (ETH)
+      const feeBN = await computeGdexFeeBN(sellMeta, amountInBN_raw);
+
+      // Preview: ETH sell이면 fee 차감 후 스왑 금액
+      let amountForSwapBN = amountInBN_raw;
+      if (GDEX_FEE_ENABLE && metaIsETH(sellMeta)) {
+        if (amountInBN_raw.lte(feeBN)) {
+          buyInput.value = "";
+          if (hint){
+            const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
+            hint.textContent = `${recTxt}${recTxt ? " · " : ""}Fee ~ ${formatEthBN(feeBN)} ETH`;
+          }
+          return;
+        }
+        amountForSwapBN = amountInBN_raw.sub(feeBN);
+      }
+
+      const amounts = await router.getAmountsOut(amountForSwapBN, path);
+      const out = amounts[amounts.length - 1];
+      const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
+      buyInput.value = Number(outStr).toFixed(6);
+
+      if (hint){
+        const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
+        const feeTxt = GDEX_FEE_ENABLE ? `Fee ~ ${formatEthBN(feeBN)} ETH` : "";
+        hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
+      }
+    }catch(err){
+      console.warn("[quote] failed", err);
+      buyInput.value = "";
+      if (hint) hint.textContent = "";
+    }
+  }, 120);
+}
+
+/* ============================================================
+   ✅ Swap with ETH fee:
+   - callStatic preflight (스왑 가능성 확인)
+   - Fee ETH transfer (Tx#1)
+   - Swap (Tx#2)
    ============================================================ */
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
@@ -1655,7 +1715,6 @@ async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   const allowance = await token.allowance(userAddress, SUSHI_ROUTER_V2);
   if (allowance.gte(amountInBN)) return;
 
-  // approve MaxUint256 for convenience
   const tx = await token.approve(SUSHI_ROUTER_V2, ethers.constants.MaxUint256);
   alert("Approval sent.\n\nPlease confirm in MetaMask and wait for confirmation.");
   await tx.wait(1);
@@ -1665,6 +1724,35 @@ function getSlipPct(){
   const slipInput = document.getElementById("slip");
   const v = slipInput ? Number(slipInput.value || "0") : 0;
   return Math.max(0, Math.min(99, v));
+}
+
+function setSwapBusy(isBusy){
+  const btn = document.getElementById("swapBtn");
+  const conn = document.getElementById("swapConnect");
+  if(btn){
+    btn.disabled = !!isBusy;
+    btn.style.opacity = isBusy ? ".75" : "1";
+    btn.textContent = isBusy ? "Processing…" : "Swap";
+  }
+  if(conn) conn.disabled = !!isBusy;
+}
+
+async function sendFeeTxIfNeeded(feeBN){
+  if (!GDEX_FEE_ENABLE) return null;
+  if (feeBN.lte(0)) return null;
+
+  // 사용자 ETH 잔액 체크 (fee만 최소 체크)
+  const bal = await provider.getBalance(userAddress);
+  if (bal.lt(feeBN)) {
+    throw new Error(`Insufficient ETH for fee.\n\nNeed fee: ${formatEthBN(feeBN)} ETH`);
+  }
+
+  // Fee transfer
+  const feeTx = await signer.sendTransaction({
+    to: GDEX_FEE_WALLET,
+    value: feeBN
+  });
+  return feeTx;
 }
 
 async function executeSwap() {
@@ -1681,75 +1769,110 @@ async function executeSwap() {
     const buyMeta  = getTokenMeta(buySym);
     if (!sellMeta || !buyMeta) { alert("Token metadata not found."); return; }
 
-    const amountInBN = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if (amountInBN.lte(0)) { alert("Invalid amount."); return; }
+    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
+    if (amountInBN_raw.lte(0)) { alert("Invalid amount."); return; }
 
     const tokenIn  = addrForPath(sellMeta);
     const tokenOut = addrForPath(buyMeta);
     const path = await pickBestPath(tokenIn, tokenOut);
 
-    // quote for minOut
-    const amounts = await router.getAmountsOut(amountInBN, path);
-    const outBN = amounts[amounts.length - 1];
-
     const slipPct = getSlipPct();
-    const outMinBN = outBN.mul(10000 - Math.floor(slipPct * 100)).div(10000); // bps
-
     const deadline = Math.floor(Date.now()/1000) + 1200; // 20 minutes
     const to = userAddress;
 
-    // Branch by direction
     const sellIsEth = metaIsETH(sellMeta);
     const buyIsEth  = metaIsETH(buyMeta);
 
-    let tx;
+    // ✅ fee 계산 (ETH)
+    const feeBN = await computeGdexFeeBN(sellMeta, amountInBN_raw);
 
+    // ETH sell이면 swap 금액에서 fee 차감
+    let amountForSwapBN = amountInBN_raw;
+    if (GDEX_FEE_ENABLE && sellIsEth) {
+      if (amountInBN_raw.lte(feeBN)) {
+        alert(`Amount is too small.\n\nFee: ${formatEthBN(feeBN)} ETH\nPlease increase your amount.`);
+        return;
+      }
+      amountForSwapBN = amountInBN_raw.sub(feeBN);
+    }
+
+    // quote for minOut (fee 반영된 amountForSwapBN 기준)
+    const amts = await router.getAmountsOut(amountForSwapBN, path);
+    const outBN = amts[amts.length - 1];
+    const outMinBN = outBN.mul(10000 - Math.floor(slipPct * 100)).div(10000);
+
+    // Preflight (callStatic) 먼저 돌려서 스왑 가능성 확인
     if (sellIsEth && !buyIsEth) {
-      // ETH -> Token (standard)
-      // callStatic preflight
-      await router.callStatic.swapExactETHForTokens(outMinBN, path, to, deadline, { value: amountInBN });
-
-      // estimateGas + buffer
-      const gas = await router.estimateGas.swapExactETHForTokens(outMinBN, path, to, deadline, { value: amountInBN });
-      tx = await router.swapExactETHForTokens(outMinBN, path, to, deadline, {
-        value: amountInBN,
-        gasLimit: gas.mul(125).div(100)
-      });
-
+      await router.callStatic.swapExactETHForTokens(outMinBN, path, to, deadline, { value: amountForSwapBN });
     } else if (!sellIsEth && buyIsEth) {
-      // Token -> ETH (supporting fee-on-transfer)
-      await ensureAllowanceIfNeeded(sellMeta, amountInBN);
-
-      await router.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN, outMinBN, path, to, deadline);
-      const gas = await router.estimateGas.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN, outMinBN, path, to, deadline);
-      tx = await router.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN, outMinBN, path, to, deadline, {
-        gasLimit: gas.mul(125).div(100)
-      });
-
+      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
+      await router.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
     } else if (!sellIsEth && !buyIsEth) {
-      // Token -> Token (supporting fee-on-transfer)
-      await ensureAllowanceIfNeeded(sellMeta, amountInBN);
-
-      await router.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN, outMinBN, path, to, deadline);
-      const gas = await router.estimateGas.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN, outMinBN, path, to, deadline);
-      tx = await router.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN, outMinBN, path, to, deadline, {
-        gasLimit: gas.mul(125).div(100)
-      });
-
+      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
+      await router.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
     } else {
-      // ETH -> ETH (not meaningful)
       alert("ETH → ETH swap is not supported.");
       return;
     }
 
-    alert("Swap transaction sent!\n\nTX Hash:\n" + tx.hash);
+    // 사용자 안내: 2개의 컨펌
+    const feeText = (GDEX_FEE_ENABLE ? `${formatEthBN(feeBN)} ETH` : "0");
+    const proceed = confirm(
+      `This swap requires 2 confirmations in MetaMask:\n\n` +
+      `1) Fee transfer: ${feeText} ETH\n` +
+      `2) Swap execution\n\n` +
+      `Continue?`
+    );
+    if (!proceed) return;
 
-    // refresh balances after a short delay
-    setTimeout(()=>{ refreshAllBalances(); }, 1500);
+    setSwapBusy(true);
+
+    // 1) Fee tx
+    let feeTx = null;
+    if (GDEX_FEE_ENABLE && feeBN.gt(0)) {
+      feeTx = await sendFeeTxIfNeeded(feeBN);
+      alert("Fee transaction sent!\n\nTX Hash:\n" + feeTx.hash + "\n\nNow confirm the Swap transaction.");
+      // 굳이 wait 안해도 되지만, UX 안정성을 위해 1컨펌 대기(원하면 주석처리)
+      await feeTx.wait(1);
+    }
+
+    // 2) Swap tx
+    let swapTx = null;
+
+    if (sellIsEth && !buyIsEth) {
+      const gas = await router.estimateGas.swapExactETHForTokens(outMinBN, path, to, deadline, { value: amountForSwapBN });
+      swapTx = await router.swapExactETHForTokens(outMinBN, path, to, deadline, {
+        value: amountForSwapBN,
+        gasLimit: gas.mul(125).div(100)
+      });
+
+    } else if (!sellIsEth && buyIsEth) {
+      const gas = await router.estimateGas.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
+      swapTx = await router.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, {
+        gasLimit: gas.mul(125).div(100)
+      });
+
+    } else if (!sellIsEth && !buyIsEth) {
+      const gas = await router.estimateGas.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
+      swapTx = await router.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, {
+        gasLimit: gas.mul(125).div(100)
+      });
+    }
+
+    alert(
+      "Swap transaction sent!\n\n" +
+      (feeTx ? ("Fee TX:\n" + feeTx.hash + "\n\n") : "") +
+      "Swap TX:\n" + swapTx.hash
+    );
+
+    // refresh
+    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
   } catch (err) {
     console.error("executeSwap error:", err);
     showErrorPopup("Swap failed", err);
+  } finally {
+    setSwapBusy(false);
   }
 }
 
@@ -1758,6 +1881,33 @@ function bindSwapLogic() {
   const swapBtn   = document.getElementById("swapBtn");
   if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
   if (swapBtn) swapBtn.addEventListener("click", executeSwap);
+}
+
+/* ===== Bind Connect ===== */
+function bindConnect(){
+  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.onclick = connectWallet;
+  });
+
+  // Stake MAX는 GLIP 잔액으로 맞추기
+  const stakeMaxBtn = document.querySelector('.input--stake .max');
+  if(stakeMaxBtn) stakeMaxBtn.onclick = async ()=>{
+    const glip = getTokenMeta("GLIP");
+    const balStr = await fetchTokenBalanceString(glip);
+    document.getElementById('stakeAmt').value = balStr || '';
+  };
+
+  // Swap MAX
+  const swapMax = document.getElementById('swapMax');
+  if(swapMax) swapMax.onclick = async ()=>{
+    const sellSym = document.getElementById("sellS").textContent;
+    const sellMeta = getTokenMeta(sellSym);
+    const balStr = await fetchTokenBalanceString(sellMeta);
+    if (!balStr) return;
+    document.getElementById('sell').value = balStr;
+    updatePricePreview();
+  };
 }
 
 /* ===== Boot ===== */
@@ -1810,4 +1960,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
-
