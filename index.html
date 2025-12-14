@@ -620,6 +620,47 @@ h3::before{content:""; display:none;}
 #toTop svg{width:20px;height:20px;fill:rgba(11,18,32,.86)}
 #toTop.show{opacity:.92;pointer-events:auto}
 #toTop:hover{opacity:1;transform:translateY(-3px); border-color:rgba(123,183,255,.42)}
+
+/* ============================================================
+   ✅ Sushi Pools Ticker (Recently Created Pools)
+   - 레이아웃 유지(기존 metric 카드 내부만)
+   ============================================================ */
+.metric .v #poolsTicker,
+.metric .v .poolsTicker{white-space:normal;}
+.poolsTicker{
+  position:relative;
+  overflow:hidden;
+  border-radius:14px;
+  border:1px solid rgba(12,25,45,.12);
+  background:rgba(255,255,255,.62);
+  padding:10px 12px;
+  box-shadow:0 10px 22px rgba(9,18,33,.08);
+  min-height:44px;
+}
+.poolsItem{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  text-decoration:none;
+  color:rgba(11,18,32,.92);
+  font-weight:900;
+}
+.poolsItem .pair{
+  flex:1 1 auto;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.poolsItem .meta{
+  flex:0 0 auto;
+  opacity:.78;
+  font-weight:800;
+  font-size:12px;
+  white-space:nowrap;
+}
+.poolsTicker.fadeOut{opacity:0; transform:translateY(4px); transition:opacity .22s ease, transform .22s ease;}
+.poolsTicker.fadeIn {opacity:1; transform:translateY(0);  transition:opacity .22s ease, transform .22s ease;}
 </style>
 </head>
 
@@ -679,8 +720,18 @@ h3::before{content:""; display:none;}
       <section class="metrics">
         <div class="card metric">
           <h4>Recently Created Pools</h4>
-          <div class="v" id="metricPoolsText">—</div>
+
+          <!-- ✅ 롤링 UI (id 유지) -->
+          <div class="v" id="metricPoolsText">
+            <div class="poolsTicker" id="poolsTicker" aria-label="Sushi pools ticker">
+              <a class="poolsItem" id="poolsTickerLink" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">
+                <span class="pair" id="poolsTickerPair">—</span>
+                <span class="meta" id="poolsTickerMeta"></span>
+              </a>
+            </div>
+          </div>
         </div>
+
         <div class="card metric">
           <h4>24h Volume</h4>
           <div class="v" id="metricVolumeText">$ —</div>
@@ -986,6 +1037,7 @@ let gdexPoolConfig = {};
     console.warn('[G-DEX] invalid gdexPoolConfig JSON', e);
   }
 })();
+
 function applyManualPoolConfig(){
   const cfg = gdexPoolConfig || {};
   const poolsEl  = document.getElementById('metricPoolsText');
@@ -993,11 +1045,115 @@ function applyManualPoolConfig(){
   const priceEl  = document.getElementById('metricGlipPrice');
   const noteEl   = document.getElementById('pManualNote');
   const footEl   = document.getElementById('poolFooterNote');
-  if(poolsEl && cfg.recentPoolsText) poolsEl.textContent = cfg.recentPoolsText;
+
+  // ✅ ticker가 있으면 manual text로 덮어쓰지 않음(레이아웃/기능 유지)
+  const hasTicker = !!document.getElementById('poolsTicker');
+  if(poolsEl && cfg.recentPoolsText && !hasTicker) poolsEl.textContent = cfg.recentPoolsText;
+
   if(volEl   && cfg.volume24hUsd)    volEl.textContent   = cfg.volume24hUsd;
   if(priceEl && cfg.glipPriceUsd)    priceEl.textContent = '$ ' + cfg.glipPriceUsd;
   if(noteEl  && cfg.poolManualNote)  noteEl.textContent  = cfg.poolManualNote;
   if(footEl  && cfg.poolFooterNote)  footEl.textContent  = cfg.poolFooterNote;
+}
+
+/* ============================================================
+   ✅ Sushi Pools Ticker (backend: /sushi/pools)
+   - 5개 풀 롤링 표시(3.5초)
+   - 60초마다 목록 새로고침
+   ============================================================ */
+let __sushiPools = [];
+let __sushiTickerIdx = 0;
+let __sushiTickerTimer = null;
+
+function setPoolsTicker(item){
+  const wrap = document.getElementById('poolsTicker');
+  const link = document.getElementById('poolsTickerLink');
+  const pair = document.getElementById('poolsTickerPair');
+  const meta = document.getElementById('poolsTickerMeta');
+  if(!wrap || !link || !pair || !meta) return;
+
+  const feeTxt = (item && item.feePct != null) ? ` · ${Number(item.feePct).toFixed(1)}%` : "";
+  const tvlTxt = (item && item.tvlText) ? `TVL ${item.tvlText}` : "";
+
+  link.href = (item && item.url) ? item.url : "https://www.sushi.com/ethereum/explore/pools";
+  pair.textContent = (item && item.name) ? item.name : "—";
+  meta.textContent = (tvlTxt + feeTxt).trim();
+}
+
+function setPoolsTickerFallbackFromManual(){
+  try{
+    const cfg = gdexPoolConfig || {};
+    const name = cfg.recentPoolsText || "GLIP–ETH - SushiSwap V2";
+    setPoolsTicker({
+      name,
+      tvlText: "$—",
+      feePct: 0.3,
+      url: "https://www.sushi.com/ethereum/explore/pools"
+    });
+  }catch{
+    setPoolsTicker({ name:"—", tvlText:"", feePct:null, url:"https://www.sushi.com/ethereum/explore/pools" });
+  }
+}
+
+async function fetchSushiPools(limit=5){
+  const url = `${BACKEND_URL}/sushi/pools?chain=ethereum&limit=${encodeURIComponent(limit)}`;
+  const r = await fetch(url, { method:'GET' });
+  const j = await r.json().catch(()=> ({}));
+  const items = j && Array.isArray(j.items) ? j.items : [];
+  return items.slice(0, limit);
+}
+
+function rotateSushiPools(){
+  if(!__sushiPools.length) return;
+  const wrap = document.getElementById('poolsTicker');
+  if(!wrap) return;
+
+  wrap.classList.remove('fadeIn');
+  wrap.classList.add('fadeOut');
+
+  setTimeout(()=>{
+    __sushiTickerIdx = (__sushiTickerIdx + 1) % __sushiPools.length;
+    setPoolsTicker(__sushiPools[__sushiTickerIdx]);
+    wrap.classList.remove('fadeOut');
+    wrap.classList.add('fadeIn');
+  }, 220);
+}
+
+async function bootSushiPoolsTicker(){
+  const wrap = document.getElementById('poolsTicker');
+  if(!wrap) return;
+
+  try{
+    __sushiPools = await fetchSushiPools(5);
+    if(!__sushiPools.length){
+      setPoolsTickerFallbackFromManual();
+      return;
+    }
+
+    __sushiTickerIdx = 0;
+    setPoolsTicker(__sushiPools[0]);
+
+    if(__sushiTickerTimer) clearInterval(__sushiTickerTimer);
+    __sushiTickerTimer = setInterval(rotateSushiPools, 3500);
+
+    // 60초마다 갱신
+    setInterval(async ()=>{
+      try{
+        const fresh = await fetchSushiPools(5);
+        if(Array.isArray(fresh) && fresh.length){
+          __sushiPools = fresh;
+          __sushiTickerIdx = 0;
+          setPoolsTicker(__sushiPools[0]);
+        }
+      }catch(e){
+        console.warn('[sushi ticker refresh] failed', e);
+      }
+    }, 60000);
+
+  }catch(e){
+    console.warn('[bootSushiPoolsTicker] failed', e);
+    setPoolsTickerFallbackFromManual();
+  }
 }
 
 /* DApp host */
@@ -1620,13 +1776,11 @@ function bnFromInput(valStr, decimals){
 /* ✅ 퍼센트 수수료 문구용 */
 function feePctText(){
   const pct = (__proxyFeeBps || 0) / 100; // bps -> %
-  // 예: 10 bps = 0.10%
   return `Fee: ${pct.toFixed(2)}% (e.g., 0.1%)`;
 }
 
 /* ============================================================
    ✅ Quote + Fee hint (Proxy 기준)
-   - 기능은 그대로 유지, 표시 문구만 "퍼센트 수수료"로 통일
    ============================================================ */
 let __quoteTimer = null;
 async function updatePricePreview() {
@@ -1660,7 +1814,6 @@ async function updatePricePreview() {
       const tokenOut = addrForPath(buyMeta);
       const path = await pickBestPath(tokenIn, tokenOut);
 
-      // slippage 추천(표시만)
       const ethReserve = await getEthReserveIfWethInvolved(path);
       const rec = recommendedSlippagePctByEthReserve(ethReserve);
 
@@ -1673,7 +1826,6 @@ async function updatePricePreview() {
         return;
       }
 
-      // Quote용 amountForSwap 계산은 기존 로직 유지
       let amountForSwapBN = amountInBN_raw;
 
       if (sellIsEth) {
@@ -1685,9 +1837,6 @@ async function updatePricePreview() {
           return;
         }
         amountForSwapBN = amountInBN_raw.sub(feeBN);
-      } else {
-        // token sell: 기존 로직 유지 (Proxy 요구사항에 따라 msg.value가 있을 수 있음)
-        // 표시 문구는 퍼센트 수수료로만 통일
       }
 
       const amounts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
@@ -1709,7 +1858,6 @@ async function updatePricePreview() {
 
 /* ============================================================
    ✅ Swap via Proxy Router (1 TX)
-   - 기능은 그대로 유지, Confirm 문구만 "퍼센트 수수료"로 통일
    ============================================================ */
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
@@ -1764,7 +1912,7 @@ async function executeSwap() {
     const path = await pickBestPath(tokenIn, tokenOut);
 
     const slipPct = getSlipPct();
-    const deadline = Math.floor(Date.now()/1000) + 1200; // 20 minutes
+    const deadline = Math.floor(Date.now()/1000) + 1200;
     const to = userAddress;
 
     const sellIsEth = metaIsETH(sellMeta);
@@ -1775,13 +1923,11 @@ async function executeSwap() {
       return;
     }
 
-    // 기존 계산 로직 유지
     let amountForSwapBN = amountInBN_raw;
-    let feeBN = ethers.constants.Zero;
     let callValue = ethers.constants.Zero;
 
     if (sellIsEth) {
-      feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
+      const feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
       if (amountInBN_raw.lte(feeBN)) {
         alert(`Amount is too small.\n\n${feePctText()}\nPlease increase your amount.`);
         return;
@@ -1806,7 +1952,6 @@ async function executeSwap() {
       await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     }
 
-    // ✅ Confirm 문구: 퍼센트 수수료 안내만
     const proceed = confirm(
       `This swap will be executed via G-DEX Proxy Router (1 confirmation).\n\n` +
       `${feePctText()}\n\n` +
@@ -1840,10 +1985,7 @@ async function executeSwap() {
       });
     }
 
-    alert(
-      "Swap transaction sent!\n\n" +
-      "TX:\n" + swapTx.hash
-    );
+    alert("Swap transaction sent!\n\nTX:\n" + swapTx.hash);
 
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
@@ -1913,6 +2055,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     bindSwapLogic();
     applyManualPoolConfig();
+
+    // ✅ Sushi Pools 롤링 부팅(백엔드 /sushi/pools 사용)
+    bootSushiPoolsTicker();
 
     window.addEventListener('resize', ()=>{
       drawSpark(demoAnalytics);
