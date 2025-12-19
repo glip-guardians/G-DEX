@@ -686,6 +686,41 @@ h3::before{content:""; display:none;}
 @media (max-width:420px){
   #metricGlipPrice iframe{height:300px;}
 }
+/* =========================
+   Desktop card spacing fix
+   ========================= */
+@media (min-width: 1024px) {
+
+  /* 카드들이 같은 높이로 늘어나는 현상 방지 */
+  .metrics-row,
+  .stats-row,
+  .dashboard-row {
+    align-items: flex-start;
+  }
+
+  /* 카드 높이를 콘텐츠 기준으로 */
+  .metric-card,
+  .stats-card,
+  .panel-card {
+    height: auto;
+    min-height: unset;
+  }
+
+  /* 너무 납작해 보이지 않게 최소 높이만 가볍게 */
+  .metric-card,
+  .stats-card,
+  .panel-card {
+    min-height: 160px;
+  }
+
+  /* 하단 여백만 미세 조정 (디자인 체감 거의 없음) */
+  .metric-card,
+  .stats-card,
+  .panel-card {
+    padding-bottom: 12px;
+  }
+}
+  
 </style>
 </head>
 
@@ -2115,3 +2150,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
