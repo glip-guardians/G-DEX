@@ -661,6 +661,31 @@ h3::before{content:""; display:none;}
 }
 .poolsTicker.fadeOut{opacity:0; transform:translateY(4px); transition:opacity .22s ease, transform .22s ease;}
 .poolsTicker.fadeIn {opacity:1; transform:translateY(0);  transition:opacity .22s ease, transform .22s ease;}
+
+/* ============================================================
+   ✅ DEXTools Chart embed (GLIP Price card)
+   - 기존 레이아웃 유지 + 모바일 반응형
+   ============================================================ */
+#metricGlipPrice{white-space:normal;}
+#metricGlipPrice .chartFrame{
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid rgba(12,25,45,.12);
+  background:rgba(255,255,255,.62);
+  box-shadow:0 10px 22px rgba(9,18,33,.08);
+}
+#metricGlipPrice iframe{
+  width:100% !important;
+  height:340px;
+  border:0;
+  display:block;
+}
+@media (max-width:768px){
+  #metricGlipPrice iframe{height:320px;}
+}
+@media (max-width:420px){
+  #metricGlipPrice iframe{height:300px;}
+}
 </style>
 </head>
 
@@ -736,9 +761,19 @@ h3::before{content:""; display:none;}
           <h4>24h Volume</h4>
           <div class="v" id="metricVolumeText">$ —</div>
         </div>
+
+        <!-- ✅ GLIP Price: 달러 텍스트 대신 DEXTools 위젯 삽입 (ID 유지) -->
         <div class="card metric">
           <h4>GLIP Price</h4>
-          <div class="v" id="metricGlipPrice">$ —</div>
+          <div class="v" id="metricGlipPrice">
+            <div class="chartFrame">
+              <iframe id="dextools-widget"
+                title="DEXTools Trading Chart"
+                width="500" height="400"
+                loading="lazy"
+                src="https://www.dextools.io/widget-chart/en/ether/pe-light/0xd304b9c49f389f27c5e75e1469e903da5320d3b4?theme=light&chartType=2&chartResolution=30&drawingToolbars=false"></iframe>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1051,7 +1086,11 @@ function applyManualPoolConfig(){
   if(poolsEl && cfg.recentPoolsText && !hasTicker) poolsEl.textContent = cfg.recentPoolsText;
 
   if(volEl   && cfg.volume24hUsd)    volEl.textContent   = cfg.volume24hUsd;
-  if(priceEl && cfg.glipPriceUsd)    priceEl.textContent = '$ ' + cfg.glipPriceUsd;
+
+  // ✅ GLIP Price 카드가 iframe(DEXTools)일 때는 텍스트로 덮어쓰지 않음
+  const hasDexTools = !!(priceEl && priceEl.querySelector('#dextools-widget'));
+  if(priceEl && cfg.glipPriceUsd && !hasDexTools) priceEl.textContent = '$ ' + cfg.glipPriceUsd;
+
   if(noteEl  && cfg.poolManualNote)  noteEl.textContent  = cfg.poolManualNote;
   if(footEl  && cfg.poolFooterNote)  footEl.textContent  = cfg.poolFooterNote;
 }
@@ -2076,6 +2115,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
-
-
-
