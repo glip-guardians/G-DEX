@@ -781,7 +781,8 @@ h3::before{content:""; display:none;}
 
         <div class="input" id="swapSellWrap">
           <div class="balTag" id="sellBal">Bal: —</div>
-          <input id="sell" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
+          <!-- ✅ 모바일 입력 안정화: number -> text (외형 동일) -->
+          <input id="sell" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
           <button class="maxBtn" id="swapMax" type="button">MAX</button>
           <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS" data-address="">ETH</span></button>
         </div>
@@ -790,7 +791,8 @@ h3::before{content:""; display:none;}
 
         <div class="input" id="swapBuyWrap">
           <div class="balTag" id="buyBal">Bal: —</div>
-          <input id="buy" placeholder="0.0" type="number" disabled>
+          <!-- ✅ buy는 계산값 표시용 -->
+          <input id="buy" placeholder="0.0" type="text" inputmode="decimal" disabled>
           <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS" data-address="">GLIP</span></button>
         </div>
 
@@ -831,7 +833,8 @@ h3::before{content:""; display:none;}
         <div class="input leftToken" id="pool0Wrap">
           <div class="balTag" id="pBal0">Bal: —</div>
           <button class="tokenBtn" id="pT0Btn"><img id="pT0Img" src="" alt=""><span id="pT0Sym" data-address="">ETH</span></button>
-          <input id="pAmt0" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
+          <!-- ✅ 모바일 입력 안정화 -->
+          <input id="pAmt0" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
 
         <div class="row" style="justify-content:center"><div class="flip" id="pFlip">⇅</div></div>
@@ -839,7 +842,8 @@ h3::before{content:""; display:none;}
         <div class="input leftToken" id="pool1Wrap">
           <div class="balTag" id="pBal1">Bal: —</div>
           <button class="tokenBtn" id="pT1Btn"><img id="pT1Img" src="" alt=""><span id="pT1Sym" data-address="">GLIP</span></button>
-          <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
+          <!-- ✅ 모바일 입력 안정화 -->
+          <input id="pAmt1" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
 
         <div class="card" style="
@@ -993,7 +997,8 @@ h3::before{content:""; display:none;}
 
         <div class="amountBox">
           <div class="input input--stake" style="margin:0;">
-            <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
+            <!-- ✅ 모바일 입력 안정화 -->
+            <input id="stakeAmt" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
             <button class="max" type="button">MAX</button>
           </div>
           <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
@@ -1044,6 +1049,26 @@ h3::before{content:""; display:none;}
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <script>
+/* ======================================================================
+   ✅ CONFIG (여기만 바꾸면 됨)
+   ====================================================================== */
+const DAPP_HOST = 'gdex-app.com';
+const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
+const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
+
+/* ✅ Underlying SushiSwap Router (Ethereum mainnet) */
+const SUSHI_ROUTER_V2  = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
+const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
+const WETH_MAINNET     = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+
+/* ✅ G-DEX Proxy Router Lite */
+const GDEX_PROXY_ROUTER = "0xec4faf9f862ca704f008841cca30eca7913b98f9";
+
+/* fallback fee (컨트랙트 조회 실패 시) */
+const FALLBACK_FEE_BPS = 30;                      // 0.30%
+const FALLBACK_FLAT_FEE_ETH = "0.00003";          // ETH
+/* ====================================================================== */
+
 /* ===== utils ===== */
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
@@ -1054,6 +1079,21 @@ function showErrorPopup(title, payload) {
   else if (typeof payload === "string") msg = payload;
   else msg = JSON.stringify(payload, null, 2);
   alert(title + "\n\n" + msg);
+}
+
+/* ✅ amount string sanitizer (모바일/로케일 안정화) */
+function cleanAmountStr(v){
+  return String(v ?? "")
+    .replace(/,/g,'')
+    .replace(/[^\d.]/g,'')
+    .replace(/^(\.)+/, '0.')
+    .trim();
+}
+function isPositiveAmountStr(v){
+  const s = cleanAmountStr(v);
+  if (!s) return false;
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0;
 }
 
 /* ===== Manual Pool Config ===== */
@@ -1187,21 +1227,6 @@ async function bootSushiPoolsTicker(){
   }
 }
 
-/* DApp host */
-const DAPP_HOST = 'gdex-app.com';
-
-/* GLIP token */
-const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
-const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
-
-/* ✅ Underlying SushiSwap Router (Ethereum mainnet) */
-const SUSHI_ROUTER_V2 = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
-const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
-const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-
-/* ✅ G-DEX Proxy Router */
-const GDEX_PROXY_ROUTER = "0xec4faf9f862ca704f008841cca30eca7913b98f9";
-
 /* 모바일 판별 */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -1267,7 +1292,8 @@ const tokenList = [
    logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png", priority:73},
   {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18,
    logo:"https://assets.coingecko.com/coins/images/16547/large/arb.jpg", priority:72},
-  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
+  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18,
+   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
   {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18,
    logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg", priority:70},
   {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18,
@@ -1400,6 +1426,7 @@ let __proxyFeeLoaded = false;
 let __proxyFeeBps = 0;
 let __proxyFlatFeeWei = null;
 let __proxyFeeWallet = null;
+let __proxyFeeLastLoadAt = 0;
 
 const SUSHI_ROUTER_RO_ABI = [
   "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
@@ -1422,7 +1449,7 @@ const ERC20_ABI = [
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
-/* Proxy ABI */
+/* Proxy ABI (GDEXProxyRouterLite) */
 const PROXY_ABI = [
   "function feeWallet() view returns (address)",
   "function feeBps() view returns (uint16)",
@@ -1453,7 +1480,10 @@ function ensureWeb3(){
   if (!proxyRouter) proxyRouter = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, signer);
 }
 
-async function loadProxyFeeParams(){
+async function loadProxyFeeParams(force=false){
+  const now = Date.now();
+  if (!force && __proxyFeeLoaded && (now - __proxyFeeLastLoadAt) < 60_000) return; // 60s cache
+
   try{
     ensureWeb3();
     const feeWallet = await proxyRouter.feeWallet();
@@ -1464,11 +1494,13 @@ async function loadProxyFeeParams(){
     __proxyFeeBps = Number(feeBpsBN.toString());
     __proxyFlatFeeWei = flatFee;
     __proxyFeeLoaded = true;
+    __proxyFeeLastLoadAt = now;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
-    __proxyFeeBps = (__proxyFeeBps || 30);
-    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+    __proxyFeeBps = (__proxyFeeBps || FALLBACK_FEE_BPS);
+    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther(FALLBACK_FLAT_FEE_ETH));
     __proxyFeeLoaded = false;
+    __proxyFeeLastLoadAt = now;
   }
 }
 
@@ -1496,7 +1528,7 @@ async function connectWallet(){
     });
 
     await ensureMainnet();
-    await loadProxyFeeParams();
+    await loadProxyFeeParams(true);
     await refreshAllBalances();
     updatePricePreview();
 
@@ -1505,7 +1537,7 @@ async function connectWallet(){
         userAddress = acc && acc.length ? acc[0] : null;
         document.getElementById('wAddr').textContent = short(userAddress);
         __proxyFeeLoaded = false;
-        await loadProxyFeeParams();
+        await loadProxyFeeParams(true);
         await refreshAllBalances();
         updatePricePreview();
       });
@@ -1800,8 +1832,9 @@ function recommendedSlippagePctByEthReserve(ethReserve){
 }
 
 function bnFromInput(valStr, decimals){
-  if(!valStr || Number(valStr) <= 0) return ethers.constants.Zero;
-  return ethers.utils.parseUnits(String(valStr), decimals);
+  const s = cleanAmountStr(valStr);
+  if(!s || Number(s) <= 0) return ethers.constants.Zero;
+  return ethers.utils.parseUnits(String(s), decimals);
 }
 
 /* ✅ 퍼센트 수수료 문구용 */
@@ -1844,9 +1877,9 @@ async function updatePricePreview() {
   __quoteTimer = setTimeout(async ()=>{
     const sellInput = document.getElementById("sell");
     const buyInput  = document.getElementById("buy");
-    const sellValStr = (sellInput.value || "").trim();
     const hint = document.getElementById('slipHint');
 
+    const sellValStr = cleanAmountStr(sellInput.value || "");
     if (!sellValStr || Number(sellValStr) <= 0) {
       buyInput.value = "";
       if (hint) hint.textContent = "";
@@ -1895,7 +1928,9 @@ async function updatePricePreview() {
       const amounts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
       const out = amounts[amounts.length - 1];
       const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
-      buyInput.value = Number(outStr).toFixed(6);
+
+      // 표시용 (UI)
+      buyInput.value = (Number(outStr) ? Number(outStr).toFixed(6) : "");
 
       if (hint){
         const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
@@ -1912,7 +1947,6 @@ async function updatePricePreview() {
 
 /* ============================================================
    ✅ Swap via Proxy Router Lite (컨트랙트 조건에 "정확히" 맞춤)
-   - value/path 후보 탐색 제거 (Lite 컨트랙트는 규칙이 고정)
    ============================================================ */
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
@@ -1986,12 +2020,13 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, basePa
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
-  // ✅ 컨트랙트 규칙: ETH→Token은 value=amountInRaw, Token→*는 value>=flatFeeWei
-  const callValue = sellIsEth ? amountInBN_raw : (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+  // ✅ 컨트랙트 규칙:
+  // - ETH→Token: value=사용자입력 ETH 그대로
+  // - Token→*:  value=flatFeeWei "정확히" 전송 (컨트랙트는 >= 허용하지만 프런트는 정확히만)
+  const flatWei = (__proxyFlatFeeWei || ethers.utils.parseEther(FALLBACK_FLAT_FEE_ETH));
+  const callValue = sellIsEth ? amountInBN_raw : flatWei;
 
-  // ✅ outMin 계산은 컨트랙트의 실제 router 투입량 기준
-  // - ETH→Token: msg.value에서 % fee를 떼고 router에 전달 => quote는 (amountIn - fee)
-  // - Token→*: flat fee 별도 => quote는 amountIn 그대로
+  // ✅ outMin/quote는 실제 Sushi로 들어가는 amount 기준
   const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
   if (amountForQuoteBN.lte(0)) throw new Error("Amount too small.");
 
@@ -2002,20 +2037,13 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, basePa
   const slipCandidates = [
     userSlip,
     (rec != null ? Math.max(userSlip, rec) : userSlip),
-    10,
-    25,
-    35,
-    50
+    10, 25, 35, 50
   ].map(x => Math.max(0, Math.min(95, Number(x||0))))
    .filter((v,i,arr)=>arr.indexOf(v)===i);
 
-  // ✅ path는 Lite 컨트랙트 규칙에 고정 (탐색/변형하지 않음)
   const tokenInParam = addrForPath(sellMeta); // ETH면 WETH, 토큰이면 token address
 
-  // ✅ 컨트랙트 추가 규칙:
-  // - ETH→Token: path[0] must be WETH
-  // - Token→*: path[0] must be tokenIn
-  // - Token→ETH: path[last] must be WETH (buyIsEth면 tokenOut = WETH라 basePath가 보통 만족)
+  // ✅ 컨트랙트 path 규칙 체크
   if (sellIsEth){
     if (basePath[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) {
       throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
@@ -2062,9 +2090,9 @@ async function executeSwap() {
     if (!userAddress) { alert("Please connect your wallet first."); return; }
     ensureWeb3();
     await ensureMainnet();
-    await loadProxyFeeParams();
+    await loadProxyFeeParams(true);
 
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
+    const sellValStr = cleanAmountStr(document.getElementById("sell").value || "");
     if (!sellValStr || Number(sellValStr) <= 0) { alert("Enter an amount to swap."); return; }
 
     const sellSym = document.getElementById("sellS").textContent;
@@ -2092,7 +2120,7 @@ async function executeSwap() {
       await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
     }
 
-    // ✅ Lite 컨트랙트 규칙에 맞춘 "고정 plan" + slippage만 자동 완화
+    // ✅ Lite 컨트랙트 규칙에 맞춘 plan
     const plan = await resolveWorkingPlanLite({
       sellMeta, buyMeta,
       amountInBN_raw,
@@ -2158,7 +2186,8 @@ async function executeSwap() {
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
-  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
+
+  if (sellInput) ["input","change","keyup"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
   if (swapBtn) swapBtn.addEventListener("click", executeSwap);
 }
 
@@ -2223,6 +2252,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
 
     refreshAllBalances();
+    updatePricePreview();
 
   }catch(e){
     console.error('[init]', e);
