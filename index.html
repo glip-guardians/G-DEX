@@ -1199,7 +1199,7 @@ const SUSHI_ROUTER_V2 = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
 const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
-/* ✅ G-DEX Proxy Router (Verified) */
+/* ✅ G-DEX Proxy Router */
 const GDEX_PROXY_ROUTER = "0xcCFd95108E3c576Faf1190A4D911dB49d3fD61E2";
 
 /* 모바일 판별 */
@@ -1267,8 +1267,7 @@ const tokenList = [
    logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png", priority:73},
   {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18,
    logo:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg", priority:72},
-  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18,
-   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
+  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
   {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18,
    logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg", priority:70},
   {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18,
@@ -1309,7 +1308,6 @@ function initDefaults(){
   const GLIP = tokenList.find(t=>t.symbol==="GLIP");
   $('#sellI').src = ETH.logo;  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
   $('#buyI').src  = GLIP.logo; $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP.address;
-
   $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
   $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
 }
@@ -1393,13 +1391,9 @@ let userAddress = null;
 let provider = null;
 let signer = null;
 
-/* read/quote router (Sushi) */
 let sushiRouterRO = null;
 let factory = null;
-
-/* proxy (read + write) */
-let proxyRouterRO = null;   // ✅ read-only (provider)
-let proxyRouter = null;     // ✅ write (signer)
+let proxyRouter = null;
 
 /* fee cache */
 let __proxyFeeLoaded = false;
@@ -1428,6 +1422,7 @@ const ERC20_ABI = [
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
+/* Proxy ABI */
 const PROXY_ABI = [
   "function feeWallet() view returns (address)",
   "function feeBps() view returns (uint16)",
@@ -1437,11 +1432,11 @@ const PROXY_ABI = [
   "function swapExactTokensForETHWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable"
 ];
 
-async function ensureCorrectChain(){
-  if(!provider) return;
+async function ensureMainnet(){
+  ensureWeb3();
   const net = await provider.getNetwork();
-  if (net && net.chainId !== 1) {
-    throw new Error("Wrong network. Please switch MetaMask to Ethereum Mainnet.");
+  if (!net || net.chainId !== 1){
+    throw new Error(`Wrong network detected (chainId=${net?.chainId}). Please switch to Ethereum Mainnet.`);
   }
 }
 
@@ -1455,54 +1450,29 @@ function ensureWeb3(){
   if (!sushiRouterRO) sushiRouterRO = new ethers.Contract(SUSHI_ROUTER_V2, SUSHI_ROUTER_RO_ABI, provider);
   if (!factory) factory = new ethers.Contract(SUSHI_FACTORY_V2, FACTORY_ABI, provider);
 
-  // ✅ 가장 확실한 포인트:
-  // - fee 조회는 provider(RO)로 읽고
-  // - swap은 signer로 실행
-  if (!proxyRouterRO) proxyRouterRO = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, provider);
   if (!proxyRouter) proxyRouter = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, signer);
 }
 
-/* ✅ 가장 확실한 방식: 폴백으로 fee를 "추정"하지 않음.
-   - fee 읽기 실패 시 swap을 막아서 msg.value mismatch revert를 원천 차단 */
-async function loadProxyFeeParams(opts={ force:false, strict:false }){
+async function loadProxyFeeParams(){
   try{
+    if (__proxyFeeLoaded) return;
     ensureWeb3();
-    await ensureCorrectChain();
-
-    if(__proxyFeeLoaded && !opts.force) return true;
-
-    const feeWallet = await proxyRouterRO.feeWallet();
-    const feeBpsBN  = await proxyRouterRO.feeBps();
-    const flatFee   = await proxyRouterRO.flatFeeWei();
+    const feeWallet = await proxyRouter.feeWallet();
+    const feeBpsBN  = await proxyRouter.feeBps();
+    const flatFee   = await proxyRouter.flatFeeWei();
 
     __proxyFeeWallet = feeWallet;
     __proxyFeeBps = Number(feeBpsBN.toString());
     __proxyFlatFeeWei = flatFee;
     __proxyFeeLoaded = true;
-    return true;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
+    __proxyFeeBps = (__proxyFeeBps || 30);
+    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
     __proxyFeeLoaded = false;
-
-    if(opts.strict){
-      throw new Error(
-        "Proxy fee data could not be loaded from chain.\n\n" +
-        "To prevent swap failure (msg.value mismatch), swap is blocked.\n\n" +
-        "Please refresh, reconnect wallet, and try again."
-      );
-    }
-    return false;
   }
 }
 
-/* ===== Fee text ===== */
-function feePctText(){
-  if(!__proxyFeeLoaded) return "Fee: — (loading)";
-  const pct = (__proxyFeeBps || 0) / 100; // bps -> %
-  return `Fee: ${pct.toFixed(2)}%`;
-}
-
-/* ===== Connect ===== */
 async function connectWallet(){
   try{
     if (typeof window.ethereum === 'undefined') {
@@ -1518,8 +1488,6 @@ async function connectWallet(){
     userAddress = accounts[0];
     document.getElementById('wAddr').textContent = short(userAddress);
 
-    await ensureCorrectChain();
-
     ['poolConnect','btnConn','swapConnect'].forEach(id=>{
       const el = document.getElementById(id);
       if(el){
@@ -1528,9 +1496,8 @@ async function connectWallet(){
       }
     });
 
-    // ✅ fee는 반드시 온체인에서 읽는다 (실패하면 loaded=false)
-    await loadProxyFeeParams({ force:true, strict:false });
-
+    await ensureMainnet();
+    await loadProxyFeeParams();
     await refreshAllBalances();
     updatePricePreview();
 
@@ -1539,7 +1506,7 @@ async function connectWallet(){
         userAddress = acc && acc.length ? acc[0] : null;
         document.getElementById('wAddr').textContent = short(userAddress);
         __proxyFeeLoaded = false;
-        await loadProxyFeeParams({ force:true, strict:false });
+        await loadProxyFeeParams();
         await refreshAllBalances();
         updatePricePreview();
       });
@@ -1548,7 +1515,7 @@ async function connectWallet(){
 
   }catch(e){
     console.error('[connectWallet]', e);
-    alert('Wallet connection failed.\n\nPlease check MetaMask and try again.');
+    alert('Wallet connection failed.\n\n' + (e?.message || 'Please check MetaMask and try again.'));
   }
 }
 
@@ -1697,7 +1664,7 @@ function drawGauge(d){
 }
 
 /* ============================================================
-   ✅ 잔액 표시
+   ✅ Balance
    ============================================================ */
 function hexToBigInt(hex){ return (!hex) ? 0n : BigInt(hex); }
 function formatUnitsBigInt(bn, decimals){
@@ -1786,7 +1753,7 @@ async function refreshAllBalances(){
 }
 
 /* ============================================================
-   ✅ Direct Router helpers
+   ✅ Router helpers
    ============================================================ */
 function addrForPath(meta){
   return metaIsETH(meta) ? WETH_MAINNET : meta.address;
@@ -1838,8 +1805,47 @@ function bnFromInput(valStr, decimals){
   return ethers.utils.parseUnits(String(valStr), decimals);
 }
 
+/* ✅ 퍼센트 수수료 문구용 */
+function feePctText(){
+  const pct = (__proxyFeeBps || 0) / 100;
+  return `Fee: ${pct.toFixed(2)}%`;
+}
+
+/* ✅ 공통: Proxy fee 적용 후 실제 스왑에 들어갈 "순수 amountIn" (보수적으로 계산) */
+function applyPctFeeToAmount(amountInBN){
+  const bps = Math.max(0, Number(__proxyFeeBps || 0));
+  if (!bps) return amountInBN;
+  const feeBN = amountInBN.mul(bps).div(10000);
+  if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
+  return amountInBN.sub(feeBN);
+}
+
+/* ✅ Proxy path/value 자동탐색을 위한 후보 생성 */
+function buildPathCandidates(basePath){
+  const uniq = [];
+  const push = (p)=>{
+    if(!p || !Array.isArray(p) || p.length < 1) return;
+    const key = p.map(x=>String(x).toLowerCase()).join(">");
+    if(uniq.some(u=>u.key===key)) return;
+    uniq.push({ key, path: p });
+  };
+
+  push(basePath);
+  if(basePath.length >= 2) push(basePath.slice(1));      // tokenIn 제거형
+  if(basePath.length === 2) push([basePath[1]]);         // 단일(토큰아웃만)
+  if(basePath.length === 3) push([basePath[1], basePath[2]]); // 2개(중간+아웃)
+
+  return uniq.map(x=>x.path);
+}
+
+function getSlipPct(){
+  const slipInput = document.getElementById("slip");
+  const v = slipInput ? Number(slipInput.value || "0") : 0;
+  return Math.max(0, Math.min(95, v));
+}
+
 /* ============================================================
-   ✅ Quote + Fee hint
+   ✅ Quote (Preview) — fee를 보수적으로 반영
    ============================================================ */
 let __quoteTimer = null;
 async function updatePricePreview() {
@@ -1864,19 +1870,16 @@ async function updatePricePreview() {
 
     try{
       ensureWeb3();
-      await ensureCorrectChain();
-
-      // ✅ quote 단계에서는 strict=false (UI만)
-      await loadProxyFeeParams({ force:false, strict:false });
+      await loadProxyFeeParams();
 
       const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
       if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
 
       const tokenIn  = addrForPath(sellMeta);
       const tokenOut = addrForPath(buyMeta);
-      const path = await pickBestPath(tokenIn, tokenOut);
+      const basePath = await pickBestPath(tokenIn, tokenOut);
 
-      const ethReserve = await getEthReserveIfWethInvolved(path);
+      const ethReserve = await getEthReserveIfWethInvolved(basePath);
       const rec = recommendedSlippagePctByEthReserve(ethReserve);
 
       const sellIsEth = metaIsETH(sellMeta);
@@ -1888,30 +1891,23 @@ async function updatePricePreview() {
         return;
       }
 
-      let amountForSwapBN = amountInBN_raw;
-
-      // ✅ feeBps 로딩된 경우에만 ETH 입력에서 fee 공제 반영
-      if (sellIsEth && __proxyFeeLoaded) {
-        const feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
-        if (amountInBN_raw.lte(feeBN)) {
-          buyInput.value = "";
-          const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-          const feeTxt = __proxyFeeLoaded ? feePctText() : "Fee: —";
-          if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
-          return;
-        }
-        amountForSwapBN = amountInBN_raw.sub(feeBN);
+      // ✅ 보수적: 퍼센트 수수료 적용 후 실제 스왑 투입량으로 quote
+      const amountForQuoteBN = applyPctFeeToAmount(amountInBN_raw);
+      if (amountForQuoteBN.lte(0)) {
+        buyInput.value = "";
+        const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
+        if (hint) hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
+        return;
       }
 
-      const amounts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
+      const amounts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
       const out = amounts[amounts.length - 1];
       const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
       buyInput.value = Number(outStr).toFixed(6);
 
       if (hint){
         const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-        const feeTxt = __proxyFeeLoaded ? feePctText() : "Fee: — (connect wallet)";
-        hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
+        hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
       }
     }catch(err){
       console.warn("[quote] failed", err);
@@ -1922,10 +1918,8 @@ async function updatePricePreview() {
 }
 
 /* ============================================================
-   ✅ Swap via Proxy Router (가장 확실한 버전)
-   - fee 로딩 실패하면 swap을 아예 막음
-   - token swap: msg.value = flatFeeWei (온체인 읽은 값)
-   - ETH swap: msg.value = amountIn (원금 포함)
+   ✅ Swap via Proxy Router (가장 확실한 방식)
+   - path/value/slippage를 callStatic으로 "성공하는 조합" 자동 선택
    ============================================================ */
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
@@ -1940,12 +1934,6 @@ async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   await tx.wait(1);
 }
 
-function getSlipPct(){
-  const slipInput = document.getElementById("slip");
-  const v = slipInput ? Number(slipInput.value || "0") : 0;
-  return Math.max(0, Math.min(99, v));
-}
-
 function setSwapBusy(isBusy){
   const btn = document.getElementById("swapBtn");
   const conn = document.getElementById("swapConnect");
@@ -1957,14 +1945,123 @@ function setSwapBusy(isBusy){
   if(conn) conn.disabled = !!isBusy;
 }
 
+function calcOutMin(outBN, slipPct){
+  const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100))); // 0~95%
+  return outBN.mul(10000 - bp).div(10000);
+}
+
+function buildValueCandidates(sellIsEth, amountInBN_raw){
+  const flat = __proxyFlatFeeWei || ethers.constants.Zero;
+
+  if (sellIsEth){
+    // 어떤 구현은 amountIn만 받고, 어떤 구현은 amountIn+flat을 요구할 수도 있어 둘 다 시도
+    const a = amountInBN_raw;
+    const b = flat.gt(0) ? amountInBN_raw.add(flat) : amountInBN_raw;
+    const c = ethers.constants.Zero; // 혹시라도(비정상) 0 요구 구현
+    return [a, b, c].filter((v,i,arr)=>arr.findIndex(x=>x.eq(v))===i);
+  }
+
+  // ERC20 판매일 때: flatFee 요구/미요구 둘 다 탐색
+  const cands = [ethers.constants.Zero];
+  if (flat.gt(0)) cands.push(flat);
+  return cands.filter((v,i,arr)=>arr.findIndex(x=>x.eq(v))===i);
+}
+
+async function tryCallStatic(sellIsEth, buyIsEth, tokenIn, amountInBN_raw, outMinBN, path, to, deadline, callValue){
+  if (sellIsEth && !buyIsEth) {
+    return await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
+  } else if (!sellIsEth && buyIsEth) {
+    return await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+  } else if (!sellIsEth && !buyIsEth) {
+    return await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+  }
+  throw new Error("Unsupported swap direction");
+}
+
+async function estimateGasForSwap(sellIsEth, buyIsEth, tokenIn, amountInBN_raw, outMinBN, path, to, deadline, callValue){
+  if (sellIsEth && !buyIsEth) {
+    return await proxyRouter.estimateGas.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
+  } else if (!sellIsEth && buyIsEth) {
+    return await proxyRouter.estimateGas.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+  } else if (!sellIsEth && !buyIsEth) {
+    return await proxyRouter.estimateGas.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+  }
+  throw new Error("Unsupported swap direction");
+}
+
+async function sendSwapTx(sellIsEth, buyIsEth, tokenIn, amountInBN_raw, outMinBN, path, to, deadline, callValue, gasLimit){
+  if (sellIsEth && !buyIsEth) {
+    return await proxyRouter.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue, gasLimit });
+  } else if (!sellIsEth && buyIsEth) {
+    return await proxyRouter.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue, gasLimit });
+  } else if (!sellIsEth && !buyIsEth) {
+    return await proxyRouter.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue, gasLimit });
+  }
+  throw new Error("Unsupported swap direction");
+}
+
+async function resolveWorkingPlan({sellMeta, buyMeta, amountInBN_raw, basePath, to, deadline, tokenInAddrForParam}){
+  const sellIsEth = metaIsETH(sellMeta);
+  const buyIsEth  = metaIsETH(buyMeta);
+
+  // ✅ slippage 후보(실패하면 자동 완화)
+  const userSlip = getSlipPct();
+  const ethReserve = await getEthReserveIfWethInvolved(basePath);
+  const rec = recommendedSlippagePctByEthReserve(ethReserve);
+  const slipCandidates = [
+    userSlip,
+    (rec != null ? Math.max(userSlip, rec) : userSlip),
+    35,
+    50
+  ].map(x => Math.max(0, Math.min(95, Number(x||0))))
+   .filter((v,i,arr)=>arr.indexOf(v)===i);
+
+  // ✅ path 후보
+  const pathCandidates = buildPathCandidates(basePath);
+
+  // ✅ value 후보(Proxy 구현차 대응)
+  const valueCandidates = buildValueCandidates(sellIsEth, amountInBN_raw);
+
+  // ✅ outMin 계산은 "수수료 차감 후 투입량" 기준(보수적)
+  const amountForQuoteBN = applyPctFeeToAmount(amountInBN_raw);
+  if (amountForQuoteBN.lte(0)) throw new Error("Amount too small after fee.");
+
+  for (const slipPct of slipCandidates){
+    const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
+    const outBN = amts[amts.length - 1];
+    const outMinBN = calcOutMin(outBN, slipPct);
+
+    for (const path of pathCandidates){
+      for (const callValue of valueCandidates){
+        try{
+          await tryCallStatic(
+            sellIsEth, buyIsEth,
+            tokenInAddrForParam,
+            amountInBN_raw,
+            outMinBN,
+            path,
+            to, deadline,
+            callValue
+          );
+          // 성공 조합 반환
+          return { slipPct, outMinBN, path, callValue, rec };
+        }catch(e){
+          // 계속 탐색
+        }
+      }
+    }
+  }
+
+  const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "—";
+  throw new Error(`No working swap plan found (path/value mismatch or liquidity). ${recTxt}`);
+}
+
 async function executeSwap() {
   try {
     if (!userAddress) { alert("Please connect your wallet first."); return; }
     ensureWeb3();
-    await ensureCorrectChain();
-
-    // ✅ 가장 확실한 핵심: 여기서 반드시 온체인 fee 읽기 성공해야 진행
-    await loadProxyFeeParams({ force:true, strict:true });
+    await ensureMainnet();
+    await loadProxyFeeParams();
 
     const sellValStr = String(document.getElementById("sell").value || "").trim();
     if (!sellValStr || Number(sellValStr) <= 0) { alert("Enter an amount to swap."); return; }
@@ -1978,90 +2075,63 @@ async function executeSwap() {
     const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
     if (amountInBN_raw.lte(0)) { alert("Invalid amount."); return; }
 
+    const sellIsEth = metaIsETH(sellMeta);
+    const buyIsEth  = metaIsETH(buyMeta);
+    if (sellIsEth && buyIsEth) { alert("ETH → ETH swap is not supported."); return; }
+
     const tokenIn  = addrForPath(sellMeta);
     const tokenOut = addrForPath(buyMeta);
-    const path = await pickBestPath(tokenIn, tokenOut);
+    const basePath = await pickBestPath(tokenIn, tokenOut);
 
-    const slipPct = getSlipPct();
     const deadline = Math.floor(Date.now()/1000) + 1200;
     const to = userAddress;
 
-    const sellIsEth = metaIsETH(sellMeta);
-    const buyIsEth  = metaIsETH(buyMeta);
-
-    if (sellIsEth && buyIsEth) {
-      alert("ETH → ETH swap is not supported.");
-      return;
-    }
-
-    // ✅ callValue 규칙(확정):
-    // - ETH sell: msg.value = amountIn (원금 포함)
-    // - Token sell: msg.value = flatFeeWei (온체인 읽은 값)
-    let amountForSwapBN = amountInBN_raw;
-    let callValue = ethers.constants.Zero;
-
-    if (sellIsEth) {
-      // ETH fee: amountIn에서 bps 공제 후, msg.value는 원금(전체) 그대로 전송
-      const feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
-      if (amountInBN_raw.lte(feeBN)) {
-        alert(`Amount is too small.\n\n${feePctText()}\nPlease increase your amount.`);
-        return;
-      }
-      amountForSwapBN = amountInBN_raw.sub(feeBN);
-      callValue = amountInBN_raw;
-    } else {
-      // token fee: msg.value는 정확히 flatFeeWei
-      if(!__proxyFlatFeeWei) throw new Error("flatFeeWei not loaded.");
-      callValue = __proxyFlatFeeWei;
-    }
-
-    const amts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
-    const outBN = amts[amts.length - 1];
-    const outMinBN = outBN.mul(10000 - Math.floor(slipPct * 100)).div(10000);
-
-    // ✅ callStatic로 사전검증 (여기서 revert면 컨트랙트 조건 문제)
-    if (sellIsEth && !buyIsEth) {
-      await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
-    } else if (!sellIsEth && buyIsEth) {
+    // ✅ ERC20 sell이면 allowance 선확보(Proxy가 amountIn_raw를 받는다고 가정)
+    if (!sellIsEth){
       await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-      await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-    } else if (!sellIsEth && !buyIsEth) {
-      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-      await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     }
+
+    // ✅ 가장 확실: callStatic으로 "성공하는 path/value/slippage" 자동 선택
+    const plan = await resolveWorkingPlan({
+      sellMeta, buyMeta,
+      amountInBN_raw,
+      basePath,
+      to, deadline,
+      tokenInAddrForParam: tokenIn
+    });
 
     const proceed = confirm(
-      `This swap will be executed via G-DEX Proxy Router (1 confirmation).\n\n` +
-      `${feePctText()}${sellIsEth ? "" : `\nFlat fee: ${ethers.utils.formatEther(callValue)} ETH`}\n\n` +
+      `Swap will be executed via G-DEX Proxy Router (1 confirmation).\n\n` +
+      `${feePctText()}\n` +
+      `Slippage used: ${plan.slipPct}%\n` +
+      `Value sent: ${ethers.utils.formatEther(plan.callValue)} ETH\n\n` +
       `Continue?`
     );
     if (!proceed) return;
 
     setSwapBusy(true);
 
-    let swapTx = null;
+    // estimateGas + buffer
+    const gas = await estimateGasForSwap(
+      sellIsEth, buyIsEth,
+      tokenIn,
+      amountInBN_raw,
+      plan.outMinBN,
+      plan.path,
+      to, deadline,
+      plan.callValue
+    );
 
-    if (sellIsEth && !buyIsEth) {
-      const gas = await proxyRouter.estimateGas.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
-      swapTx = await proxyRouter.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, {
-        value: callValue,
-        gasLimit: gas.mul(125).div(100)
-      });
-
-    } else if (!sellIsEth && buyIsEth) {
-      const gas = await proxyRouter.estimateGas.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-      swapTx = await proxyRouter.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, {
-        value: callValue,
-        gasLimit: gas.mul(125).div(100)
-      });
-
-    } else if (!sellIsEth && !buyIsEth) {
-      const gas = await proxyRouter.estimateGas.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-      swapTx = await proxyRouter.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, {
-        value: callValue,
-        gasLimit: gas.mul(125).div(100)
-      });
-    }
+    const swapTx = await sendSwapTx(
+      sellIsEth, buyIsEth,
+      tokenIn,
+      amountInBN_raw,
+      plan.outMinBN,
+      plan.path,
+      to, deadline,
+      plan.callValue,
+      gas.mul(125).div(100)
+    );
 
     alert("Swap transaction sent!\n\nTX:\n" + swapTx.hash);
 
@@ -2069,7 +2139,12 @@ async function executeSwap() {
 
   } catch (err) {
     console.error("executeSwap error:", err);
-    showErrorPopup("Swap failed", err);
+    // ✅ 지금 스샷처럼 "이유 없는 revert"일 때도 사용자에게 방향 제시
+    const msg = (err && err.message) ? err.message : String(err);
+    showErrorPopup(
+      "Swap failed",
+      msg + "\n\nIf this persists:\n• Make sure you are on Ethereum Mainnet\n• Try higher slippage (e.g., 10%~35%)\n• The Proxy Router may require a specific fee/value pattern — this build auto-probes, but contract-side restrictions can still block certain pairs.\n• As a fallback, try swapping on SushiSwap directly to verify pool liquidity."
+    );
   } finally {
     setSwapBusy(false);
   }
