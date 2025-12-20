@@ -298,7 +298,9 @@ h3{
 }
 h3::before{content:""; display:none;}
 
-.metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
+.metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr); align-items:start;} /* ✅ 핵심: 카드가 row 높이에 “늘어나지 않게” */
+.metrics > .card{align-self:start;} /* ✅ 보강: 내부 여백이 커지는 현상 방지 */
+
 .metric h4{margin:0 0 6px;font-weight:800;color:rgba(11,18,32,.78)}
 .metric .v{font-weight:900;font-size:18px;color:rgba(11,18,32,.92);white-space:nowrap}
 
@@ -804,8 +806,6 @@ h3::before{content:""; display:none;}
           <button class="btn" id="swapConnect">Connect Wallet</button>
         </div>
         <div style="height:10px"></div>
-
-        <!-- ✅ 이 버튼(#swapBtn) 하나로 Approve ↔ Swap 자동 전환 -->
         <button class="btn" id="swapBtn" style="width:100%">Swap</button>
       </section>
 
@@ -898,6 +898,7 @@ h3::before{content:""; display:none;}
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
           <p class="wrap" style="margin:.2rem 0">• Proxy Router (G-DEX): 0xcCFd95108E3c576Faf1190A4D911dB49d3fD61E2</p>
           <p class="wrap" style="margin:.2rem 0">• Underlying Router: SushiSwap V2 — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
+          <!-- ✅ 문구 변경: 퍼센트 수수료 안내 -->
           <p class="wrap" style="margin:.2rem 0">• Fee is charged as a percentage only (e.g., 0.1%) via the Proxy Router (1 transaction swap).</p>
           <p class="wrap" style="margin:.2rem 0">• ERC-20 approvals are requested by your wallet when needed (spender = Proxy Router).</p>
         </div>
@@ -1082,11 +1083,13 @@ function applyManualPoolConfig(){
   const noteEl   = document.getElementById('pManualNote');
   const footEl   = document.getElementById('poolFooterNote');
 
+  // ✅ ticker가 있으면 manual text로 덮어쓰지 않음(레이아웃/기능 유지)
   const hasTicker = !!document.getElementById('poolsTicker');
   if(poolsEl && cfg.recentPoolsText && !hasTicker) poolsEl.textContent = cfg.recentPoolsText;
 
   if(volEl   && cfg.volume24hUsd)    volEl.textContent   = cfg.volume24hUsd;
 
+  // ✅ GLIP Price 카드가 iframe(DEXTools)일 때는 텍스트로 덮어쓰지 않음
   const hasDexTools = !!(priceEl && priceEl.querySelector('#dextools-widget'));
   if(priceEl && cfg.glipPriceUsd && !hasDexTools) priceEl.textContent = '$ ' + cfg.glipPriceUsd;
 
@@ -1096,6 +1099,8 @@ function applyManualPoolConfig(){
 
 /* ============================================================
    ✅ Sushi Pools Ticker (backend: /sushi/pools)
+   - 5개 풀 롤링 표시(3.5초)
+   - 60초마다 목록 새로고침
    ============================================================ */
 let __sushiPools = [];
 let __sushiTickerIdx = 0;
@@ -1115,6 +1120,7 @@ function setPoolsTicker(item){
   pair.textContent = (item && item.name) ? item.name : "—";
   meta.textContent = (tvlTxt + feeTxt).trim();
 }
+
 function setPoolsTickerFallbackFromManual(){
   try{
     const cfg = gdexPoolConfig || {};
@@ -1129,6 +1135,7 @@ function setPoolsTickerFallbackFromManual(){
     setPoolsTicker({ name:"—", tvlText:"", feePct:null, url:"https://www.sushi.com/ethereum/explore/pools" });
   }
 }
+
 async function fetchSushiPools(limit=5){
   const url = `${BACKEND_URL}/sushi/pools?chain=ethereum&limit=${encodeURIComponent(limit)}`;
   const r = await fetch(url, { method:'GET' });
@@ -1136,6 +1143,7 @@ async function fetchSushiPools(limit=5){
   const items = j && Array.isArray(j.items) ? j.items : [];
   return items.slice(0, limit);
 }
+
 function rotateSushiPools(){
   if(!__sushiPools.length) return;
   const wrap = document.getElementById('poolsTicker');
@@ -1151,6 +1159,7 @@ function rotateSushiPools(){
     wrap.classList.add('fadeIn');
   }, 220);
 }
+
 async function bootSushiPoolsTicker(){
   const wrap = document.getElementById('poolsTicker');
   if(!wrap) return;
@@ -1168,6 +1177,7 @@ async function bootSushiPoolsTicker(){
     if(__sushiTickerTimer) clearInterval(__sushiTickerTimer);
     __sushiTickerTimer = setInterval(rotateSushiPools, 3500);
 
+    // 60초마다 갱신
     setInterval(async ()=>{
       try{
         const fresh = await fetchSushiPools(5);
@@ -1215,11 +1225,13 @@ function openMetaMaskDeepLink() {
 
 /* ===== token list ===== */
 const tokenList = [
+  /* ─────────── Native + GLIP ─────────── */
   {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18,
    logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png", priority:100},
   {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18,
    logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png", priority:99},
 
+  /* ─────────── Stablecoins ─────────── */
   {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6,
    logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png", priority:95},
   {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6,
@@ -1229,6 +1241,7 @@ const tokenList = [
   {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18,
    logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193", priority:92},
 
+  /* ─────────── Major Tokens ─────────── */
   {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8,
    logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png", priority:90},
   {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18,
@@ -1306,8 +1319,10 @@ function metaIsETH(meta){
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
   const GLIP = tokenList.find(t=>t.symbol==="GLIP");
+  // Swap
   $('#sellI').src = ETH.logo;  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
   $('#buyI').src  = GLIP.logo; $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP.address;
+  // Pool
   $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
   $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
 }
@@ -1356,11 +1371,7 @@ list.onclick = async e=>{
   target.symEl.dataset.address = t.address;
   dlg.close();
 
-  setTimeout(async ()=>{
-    updatePricePreview();
-    await refreshAllBalances();
-    await updateSwapButtonModeDebounced(true);
-  }, 50);
+  setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); }, 50);
 };
 document.getElementById('tokClose').onclick = ()=>dlg.close();
 dlg.addEventListener('click',e=>{ if(e.target===dlg) dlg.close(); });
@@ -1380,13 +1391,9 @@ function flipTokenMeta(imgA, symA, imgB, symB){
   const a=symA.dataset.address, b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
 }
 function bindFlip(){
-  $('#flip').onclick  = async ()=>{
+  $('#flip').onclick  = ()=>{
     flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
-    setTimeout(async ()=>{
-      updatePricePreview();
-      await refreshAllBalances();
-      await updateSwapButtonModeDebounced(true);
-    }, 50);
+    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); }, 50);
   };
   $('#pFlip').onclick  = ()=>{
     flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
@@ -1408,8 +1415,8 @@ let proxyRouter = null;
 
 /* fee cache (from Proxy) */
 let __proxyFeeLoaded = false;
-let __proxyFeeBps = 0;
-let __proxyFlatFeeWei = null;
+let __proxyFeeBps = 0;        // uint16 -> BigNumber -> number
+let __proxyFlatFeeWei = null; // BigNumber
 let __proxyFeeWallet = null;
 
 const SUSHI_ROUTER_RO_ABI = [
@@ -1502,7 +1509,6 @@ async function connectWallet(){
     await loadProxyFeeParams();
     await refreshAllBalances();
     updatePricePreview();
-    await updateSwapButtonModeDebounced(true);
 
     if (window.ethereum.on) {
       window.ethereum.on('accountsChanged', async acc=>{
@@ -1512,7 +1518,6 @@ async function connectWallet(){
         await loadProxyFeeParams();
         await refreshAllBalances();
         updatePricePreview();
-        await updateSwapButtonModeDebounced(true);
       });
       window.ethereum.on('chainChanged', _=> location.reload());
     }
@@ -1811,102 +1816,8 @@ function bnFromInput(valStr, decimals){
 
 /* ✅ 퍼센트 수수료 문구용 */
 function feePctText(){
-  const pct = (__proxyFeeBps || 0) / 100;
+  const pct = (__proxyFeeBps || 0) / 100; // bps -> %
   return `Fee: ${pct.toFixed(2)}% (e.g., 0.1%)`;
-}
-
-/* ============================================================
-   ✅ (핵심 추가) Approve ↔ Swap 자동 전환 로직
-   - allowance >= 입력 amount 기준
-   - #swapBtn 하나로 동작
-   ============================================================ */
-let __swapBtnMode = "swap"; // "swap" | "approve" | "connect"
-let __swapBtnBusy = false;
-let __approveCheckTimer = null;
-
-function setSwapBtnUI(mode, tokenSym){
-  const btn = document.getElementById("swapBtn");
-  if(!btn) return;
-
-  __swapBtnMode = mode;
-
-  if(__swapBtnBusy){
-    btn.disabled = true;
-    btn.style.opacity = ".75";
-    return;
-  }
-
-  btn.disabled = false;
-  btn.style.opacity = "1";
-
-  if(!userAddress){
-    btn.textContent = "Connect Wallet";
-    __swapBtnMode = "connect";
-    return;
-  }
-
-  if(mode === "approve"){
-    btn.textContent = `Approve ${tokenSym || ""}`.trim();
-  }else{
-    btn.textContent = "Swap";
-  }
-}
-
-async function needsApprovalForCurrentInput(){
-  try{
-    if(!userAddress) return false;
-
-    const sellSym = document.getElementById("sellS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
-    if(!sellMeta || metaIsETH(sellMeta)) return false;
-
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if(!sellValStr || Number(sellValStr) <= 0) return false;
-
-    ensureWeb3();
-
-    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if(amountInBN_raw.lte(0)) return false;
-
-    const token = new ethers.Contract(sellMeta.address, ERC20_ABI, provider);
-    const allowance = await token.allowance(userAddress, GDEX_PROXY_ROUTER);
-
-    // ✅ 핵심: allowance >= 입력한 amount 이면 승인 필요 없음
-    return allowance.lt(amountInBN_raw);
-  }catch(e){
-    console.warn('[needsApproval] failed', e);
-    // 보수적으로: 실패하면 swap 모드로 두되, executeSwap에서 다시 allowance 체크/approve가 있으니 안전
-    return false;
-  }
-}
-
-async function updateSwapButtonMode(force=false){
-  try{
-    const sellSym = document.getElementById("sellS").textContent;
-
-    if(!userAddress){
-      setSwapBtnUI("connect", sellSym);
-      return;
-    }
-
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if(!sellValStr || Number(sellValStr) <= 0){
-      // 입력이 없으면 Swap(비활성 처리 대신 기본 유지)
-      setSwapBtnUI("swap", sellSym);
-      return;
-    }
-
-    const need = await needsApprovalForCurrentInput();
-    setSwapBtnUI(need ? "approve" : "swap", sellSym);
-
-  }catch(e){
-    console.warn('[updateSwapButtonMode] failed', e);
-  }
-}
-
-async function updateSwapButtonModeDebounced(force=false){
-  if(__approveCheckTimer) clearTimeout(__approveCheckTimer);
-  __approveCheckTimer = setTimeout(()=>{ updateSwapButtonMode(force); }, 220);
 }
 
 /* ============================================================
@@ -1924,7 +1835,6 @@ async function updatePricePreview() {
     if (!sellValStr || Number(sellValStr) <= 0) {
       buyInput.value = "";
       if (hint) hint.textContent = "";
-      await updateSwapButtonModeDebounced(true);
       return;
     }
 
@@ -1939,7 +1849,7 @@ async function updatePricePreview() {
       await loadProxyFeeParams();
 
       const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-      if (amountInBN_raw.lte(0)) { buyInput.value = ""; await updateSwapButtonModeDebounced(true); return; }
+      if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
 
       const tokenIn  = addrForPath(sellMeta);
       const tokenOut = addrForPath(buyMeta);
@@ -1954,7 +1864,6 @@ async function updatePricePreview() {
       if (sellIsEth && buyIsEth) {
         buyInput.value = "";
         if (hint) hint.textContent = "ETH → ETH not supported";
-        await updateSwapButtonModeDebounced(true);
         return;
       }
 
@@ -1966,7 +1875,6 @@ async function updatePricePreview() {
           buyInput.value = "";
           const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
           if (hint) hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
-          await updateSwapButtonModeDebounced(true);
           return;
         }
         amountForSwapBN = amountInBN_raw.sub(feeBN);
@@ -1981,14 +1889,10 @@ async function updatePricePreview() {
         const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
         hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
       }
-
-      await updateSwapButtonModeDebounced(true);
-
     }catch(err){
       console.warn("[quote] failed", err);
       buyInput.value = "";
       if (hint) hint.textContent = "";
-      await updateSwapButtonModeDebounced(true);
     }
   }, 120);
 }
@@ -1996,24 +1900,6 @@ async function updatePricePreview() {
 /* ============================================================
    ✅ Swap via Proxy Router (1 TX)
    ============================================================ */
-async function robustApprove(tokenContract, spender){
-  // 1) try MaxUint256
-  try{
-    const tx = await tokenContract.approve(spender, ethers.constants.MaxUint256);
-    return tx;
-  }catch(e1){
-    // 2) some tokens (rare) require approve(0) then approve(max)
-    try{
-      const tx0 = await tokenContract.approve(spender, 0);
-      await tx0.wait(1);
-      const tx = await tokenContract.approve(spender, ethers.constants.MaxUint256);
-      return tx;
-    }catch(e2){
-      throw e1; // 원래 에러를 더 신뢰
-    }
-  }
-}
-
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
   if (!userAddress) throw new Error("Wallet not connected");
@@ -2022,7 +1908,7 @@ async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   const allowance = await token.allowance(userAddress, GDEX_PROXY_ROUTER);
   if (allowance.gte(amountInBN)) return;
 
-  const tx = await robustApprove(token, GDEX_PROXY_ROUTER);
+  const tx = await token.approve(GDEX_PROXY_ROUTER, ethers.constants.MaxUint256);
   alert("Approval sent.\n\nPlease confirm in MetaMask and wait for confirmation.");
   await tx.wait(1);
 }
@@ -2034,51 +1920,14 @@ function getSlipPct(){
 }
 
 function setSwapBusy(isBusy){
-  __swapBtnBusy = !!isBusy;
   const btn = document.getElementById("swapBtn");
   const conn = document.getElementById("swapConnect");
   if(btn){
     btn.disabled = !!isBusy;
     btn.style.opacity = isBusy ? ".75" : "1";
-    btn.textContent = isBusy ? "Processing…" : (userAddress ? (__swapBtnMode === "approve" ? btn.textContent : "Swap") : "Connect Wallet");
+    btn.textContent = isBusy ? "Processing…" : "Swap";
   }
   if(conn) conn.disabled = !!isBusy;
-}
-
-async function handleApproveOnly(){
-  try{
-    if (!userAddress) { alert("Please connect your wallet first."); return; }
-    ensureWeb3();
-
-    const sellSym = document.getElementById("sellS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
-    if(!sellMeta || metaIsETH(sellMeta)){
-      // ETH는 승인 필요 없음 → swap 모드
-      setSwapBtnUI("swap", sellSym);
-      return;
-    }
-
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if (!sellValStr || Number(sellValStr) <= 0) { alert("Enter an amount first."); return; }
-
-    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if(amountInBN_raw.lte(0)) { alert("Invalid amount."); return; }
-
-    setSwapBusy(true);
-    await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-
-    alert("Approval confirmed.\n\nNow you can swap.");
-    await refreshAllBalances();
-    await updateSwapButtonMode(true);
-    updatePricePreview();
-
-  }catch(err){
-    console.error("approve error:", err);
-    showErrorPopup("Approve failed", err);
-  }finally{
-    setSwapBusy(false);
-    await updateSwapButtonModeDebounced(true);
-  }
 }
 
 async function executeSwap() {
@@ -2134,16 +1983,13 @@ async function executeSwap() {
     const outBN = amts[amts.length - 1];
     const outMinBN = outBN.mul(10000 - Math.floor(slipPct * 100)).div(10000);
 
-    // ✅ 여기서도 다시 한번 안전하게 allowance 체크 (사용자가 approve 모드 무시하고 눌러도 revert 방지)
-    if (!sellIsEth) {
-      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-    }
-
     if (sellIsEth && !buyIsEth) {
       await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
     } else if (!sellIsEth && buyIsEth) {
+      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
       await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     } else if (!sellIsEth && !buyIsEth) {
+      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
       await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     }
 
@@ -2182,42 +2028,21 @@ async function executeSwap() {
 
     alert("Swap transaction sent!\n\nTX:\n" + swapTx.hash);
 
-    setTimeout(async ()=>{
-      await refreshAllBalances();
-      updatePricePreview();
-      await updateSwapButtonModeDebounced(true);
-    }, 1500);
+    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
   } catch (err) {
     console.error("executeSwap error:", err);
     showErrorPopup("Swap failed", err);
   } finally {
     setSwapBusy(false);
-    await updateSwapButtonModeDebounced(true);
   }
-}
-
-/* ✅ swapBtn 클릭 시: connect / approve / swap 자동 분기 */
-async function handleSwapActionClick(){
-  if(!userAddress){
-    await connectWallet();
-    return;
-  }
-  if(__swapBtnMode === "approve"){
-    await handleApproveOnly();
-    return;
-  }
-  await executeSwap();
 }
 
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
-  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, async ()=>{
-    updatePricePreview();
-    await updateSwapButtonModeDebounced(true);
-  }));
-  if (swapBtn) swapBtn.addEventListener("click", handleSwapActionClick);
+  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
+  if (swapBtn) swapBtn.addEventListener("click", executeSwap);
 }
 
 /* ===== Bind Connect ===== */
@@ -2242,16 +2067,7 @@ function bindConnect(){
     if (!balStr) return;
     document.getElementById('sell').value = balStr;
     updatePricePreview();
-    await updateSwapButtonModeDebounced(true);
   };
-}
-
-/* ============================================================
-   ✅ 초기 버튼 상태
-   ============================================================ */
-function initSwapButtonState(){
-  const sellSym = document.getElementById("sellS")?.textContent || "";
-  setSwapBtnUI(userAddress ? "swap" : "connect", sellSym);
 }
 
 /* ===== Boot ===== */
@@ -2281,6 +2097,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     bindSwapLogic();
     applyManualPoolConfig();
 
+    // ✅ Sushi Pools 롤링 부팅(백엔드 /sushi/pools 사용)
     bootSushiPoolsTicker();
 
     window.addEventListener('resize', ()=>{
@@ -2290,9 +2107,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
 
     refreshAllBalances();
-
-    initSwapButtonState();
-    updateSwapButtonModeDebounced(true);
 
   }catch(e){
     console.error('[init]', e);
