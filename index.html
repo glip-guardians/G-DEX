@@ -684,6 +684,72 @@ h3::before{content:""; display:none;}
 @media (max-width:420px){
   #metricGlipPrice iframe{height:300px;}
 }
+
+/* ============================================================
+   ✅ NEW: In-app UI Modal (replaces browser alert/confirm)
+   ============================================================ */
+#uiModal{
+  border:1px solid rgba(12,25,45,.18);
+  border-radius:22px;
+  background:rgba(255,255,255,.88);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  color:rgba(11,18,32,.92);
+  width:min(680px, 92vw);
+  padding:0;
+  box-shadow:0 24px 80px rgba(9,18,33,.45);
+}
+#uiModal::backdrop{background:rgba(9,18,33,.58)}
+#uiModal header{
+  padding:14px 16px;
+  border-bottom:1px solid rgba(12,25,45,.12);
+  font-weight:900;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:rgba(255,255,255,.86);
+}
+#uiTitle{
+  font:900 14px/1.1 "Sora",sans-serif;
+  letter-spacing:.02em;
+}
+#uiClose{
+  background:transparent;border:0;color:rgba(11,18,32,.86);cursor:pointer;
+  font-size:16px;padding:6px 10px;border-radius:10px
+}
+#uiClose:hover{background:rgba(123,183,255,.12)}
+#uiBody{
+  padding:14px 16px 4px;
+}
+#uiMessage{
+  margin:0;
+  padding:12px 12px;
+  border-radius:14px;
+  border:1px solid rgba(12,25,45,.12);
+  background:rgba(255,255,255,.72);
+  box-shadow:0 12px 22px rgba(9,18,33,.10);
+  max-height:min(52vh, 420px);
+  overflow:auto;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font:700 13px/1.45 "Plus Jakarta Sans", system-ui;
+  color:rgba(11,18,32,.90);
+}
+#uiFooter{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  padding:12px 16px 16px;
+}
+#uiFooter .btn{min-width:auto}
+#uiCopy{
+  background:rgba(255,255,255,.70);
+  border:1px solid rgba(12,25,45,.16);
+}
+#uiCopy:hover{border-color:rgba(123,183,255,.42)}
+@media (max-width:480px){
+  #uiFooter{flex-wrap:wrap}
+  #uiFooter .btn{width:100%}
+}
 </style>
 </head>
 
@@ -743,8 +809,6 @@ h3::before{content:""; display:none;}
       <section class="metrics">
         <div class="card metric">
           <h4>Recently Created Pools</h4>
-
-          <!-- ✅ 롤링 UI (id 유지) -->
           <div class="v" id="metricPoolsText">
             <div class="poolsTicker" id="poolsTicker" aria-label="Sushi pools ticker">
               <a class="poolsItem" id="poolsTickerLink" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">
@@ -760,7 +824,6 @@ h3::before{content:""; display:none;}
           <div class="v" id="metricVolumeText">$ —</div>
         </div>
 
-        <!-- ✅ GLIP Price: 달러 텍스트 대신 DEXTools 위젯 삽입 (ID 유지) -->
         <div class="card metric">
           <h4>GLIP Price</h4>
           <div class="v" id="metricGlipPrice">
@@ -781,8 +844,7 @@ h3::before{content:""; display:none;}
 
         <div class="input" id="swapSellWrap">
           <div class="balTag" id="sellBal">Bal: —</div>
-          <!-- ✅ 모바일 입력 안정화: number -> text (외형 동일) -->
-          <input id="sell" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="sell" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
           <button class="maxBtn" id="swapMax" type="button">MAX</button>
           <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS" data-address="">ETH</span></button>
         </div>
@@ -791,8 +853,7 @@ h3::before{content:""; display:none;}
 
         <div class="input" id="swapBuyWrap">
           <div class="balTag" id="buyBal">Bal: —</div>
-          <!-- ✅ buy는 계산값 표시용 -->
-          <input id="buy" placeholder="0.0" type="text" inputmode="decimal" disabled>
+          <input id="buy" placeholder="0.0" type="number" disabled>
           <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS" data-address="">GLIP</span></button>
         </div>
 
@@ -833,8 +894,7 @@ h3::before{content:""; display:none;}
         <div class="input leftToken" id="pool0Wrap">
           <div class="balTag" id="pBal0">Bal: —</div>
           <button class="tokenBtn" id="pT0Btn"><img id="pT0Img" src="" alt=""><span id="pT0Sym" data-address="">ETH</span></button>
-          <!-- ✅ 모바일 입력 안정화 -->
-          <input id="pAmt0" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="pAmt0" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
         </div>
 
         <div class="row" style="justify-content:center"><div class="flip" id="pFlip">⇅</div></div>
@@ -842,8 +902,7 @@ h3::before{content:""; display:none;}
         <div class="input leftToken" id="pool1Wrap">
           <div class="balTag" id="pBal1">Bal: —</div>
           <button class="tokenBtn" id="pT1Btn"><img id="pT1Img" src="" alt=""><span id="pT1Sym" data-address="">GLIP</span></button>
-          <!-- ✅ 모바일 입력 안정화 -->
-          <input id="pAmt1" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
         </div>
 
         <div class="card" style="
@@ -997,8 +1056,7 @@ h3::before{content:""; display:none;}
 
         <div class="amountBox">
           <div class="input input--stake" style="margin:0;">
-            <!-- ✅ 모바일 입력 안정화 -->
-            <input id="stakeAmt" placeholder="0.0" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false">
+            <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
             <button class="max" type="button">MAX</button>
           </div>
           <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
@@ -1034,6 +1092,22 @@ h3::before{content:""; display:none;}
   </div>
 </dialog>
 
+<!-- ✅ NEW: In-app UI Modal (Alert/Confirm) -->
+<dialog id="uiModal">
+  <header>
+    <div id="uiTitle">Notice</div>
+    <button id="uiClose" title="Close">✕</button>
+  </header>
+  <div id="uiBody">
+    <pre id="uiMessage"></pre>
+  </div>
+  <div id="uiFooter">
+    <button class="btn ghost" id="uiCopy" type="button" style="display:none;">Copy</button>
+    <button class="btn ghost" id="uiCancel" type="button" style="display:none;">Cancel</button>
+    <button class="btn" id="uiOk" type="button">OK</button>
+  </div>
+</dialog>
+
 <!-- v1 수기 메트릭 설정 -->
 <script id="gdexPoolConfig" type="application/json">
 {
@@ -1049,51 +1123,108 @@ h3::before{content:""; display:none;}
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <script>
-/* ======================================================================
-   ✅ CONFIG (여기만 바꾸면 됨)
-   ====================================================================== */
-const DAPP_HOST = 'gdex-app.com';
-const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
-const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
-
-/* ✅ Underlying SushiSwap Router (Ethereum mainnet) */
-const SUSHI_ROUTER_V2  = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
-const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
-const WETH_MAINNET     = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-
-/* ✅ G-DEX Proxy Router Lite */
-const GDEX_PROXY_ROUTER = "0xec4faf9f862ca704f008841cca30eca7913b98f9";
-
-/* fallback fee (컨트랙트 조회 실패 시) */
-const FALLBACK_FEE_BPS = 30;                      // 0.30%
-const FALLBACK_FLAT_FEE_ETH = "0.00003";          // ETH
-/* ====================================================================== */
-
 /* ===== utils ===== */
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
+/* ============================================================
+   ✅ NEW: In-app modal helpers (replaces alert/confirm)
+   ============================================================ */
+const uiModal = document.getElementById('uiModal');
+const uiTitle = document.getElementById('uiTitle');
+const uiMessage = document.getElementById('uiMessage');
+const uiOk = document.getElementById('uiOk');
+const uiCancel = document.getElementById('uiCancel');
+const uiClose = document.getElementById('uiClose');
+const uiCopy = document.getElementById('uiCopy');
+
+let __uiResolve = null;
+let __uiMode = "alert"; // "alert" | "confirm"
+
+function uiSupported(){
+  return !!(uiModal && typeof uiModal.showModal === "function");
+}
+
+function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelText="Cancel", copy=false}){
+  if(!uiSupported()){
+    // fallback
+    if(mode === "confirm") return Promise.resolve(window.confirm(title + "\n\n" + message));
+    window.alert(title + "\n\n" + message);
+    return Promise.resolve(true);
+  }
+
+  __uiMode = mode;
+  uiTitle.textContent = title || "Notice";
+  uiMessage.textContent = String(message ?? "");
+
+  uiOk.textContent = okText || "OK";
+  uiCancel.textContent = cancelText || "Cancel";
+
+  uiCancel.style.display = (mode === "confirm") ? "inline-block" : "none";
+  uiCopy.style.display = copy ? "inline-block" : "none";
+
+  // remove old handlers
+  uiOk.onclick = null;
+  uiCancel.onclick = null;
+
+  return new Promise(resolve=>{
+    __uiResolve = resolve;
+    uiModal.showModal();
+
+    const cleanup = (val)=>{
+      try{ uiModal.close(); }catch{}
+      __uiResolve = null;
+      resolve(val);
+    };
+
+    uiOk.onclick = ()=>cleanup(true);
+    uiCancel.onclick = ()=>cleanup(false);
+  });
+}
+
+function uiAlert(title, message, {copy=false}={}){
+  return _uiOpen({title, message, mode:"alert", okText:"OK", copy});
+}
+
+function uiConfirm(title, message, {okText="Continue", cancelText="Cancel", copy=false}={}){
+  return _uiOpen({title, message, mode:"confirm", okText, cancelText, copy});
+}
+
+if(uiSupported()){
+  uiClose.onclick = ()=>{
+    try{ uiModal.close(); }catch{}
+    if(__uiResolve){
+      // treat close as cancel on confirm, ok on alert
+      const val = (__uiMode === "confirm") ? false : true;
+      const r = __uiResolve;
+      __uiResolve = null;
+      r(val);
+    }
+  };
+  uiModal.addEventListener('click', (e)=>{
+    // click backdrop to close
+    if(e.target === uiModal){
+      uiClose.click();
+    }
+  });
+  uiCopy.onclick = async ()=>{
+    try{
+      await navigator.clipboard.writeText(uiMessage.textContent || "");
+      uiCopy.textContent = "Copied!";
+      setTimeout(()=>{ uiCopy.textContent = "Copy"; }, 900);
+    }catch{
+      // silent
+    }
+  };
+}
+
+/* 기존 showErrorPopup는 UI 모달로 교체 */
 function showErrorPopup(title, payload) {
   let msg = "";
   if (payload instanceof Error) msg = payload.message || String(payload);
   else if (typeof payload === "string") msg = payload;
   else msg = JSON.stringify(payload, null, 2);
-  alert(title + "\n\n" + msg);
-}
-
-/* ✅ amount string sanitizer (모바일/로케일 안정화) */
-function cleanAmountStr(v){
-  return String(v ?? "")
-    .replace(/,/g,'')
-    .replace(/[^\d.]/g,'')
-    .replace(/^(\.)+/, '0.')
-    .trim();
-}
-function isPositiveAmountStr(v){
-  const s = cleanAmountStr(v);
-  if (!s) return false;
-  const n = Number(s);
-  return Number.isFinite(n) && n > 0;
+  uiAlert(title, msg, {copy:true});
 }
 
 /* ===== Manual Pool Config ===== */
@@ -1227,6 +1358,21 @@ async function bootSushiPoolsTicker(){
   }
 }
 
+/* DApp host */
+const DAPP_HOST = 'gdex-app.com';
+
+/* GLIP token */
+const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
+const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
+
+/* ✅ Underlying SushiSwap Router (Ethereum mainnet) */
+const SUSHI_ROUTER_V2 = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
+const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
+const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+
+/* ✅ G-DEX Proxy Router */
+const GDEX_PROXY_ROUTER = "0xec4faf9f862ca704f008841cca30eca7913b98f9";
+
 /* 모바일 판별 */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -1292,8 +1438,7 @@ const tokenList = [
    logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png", priority:73},
   {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18,
    logo:"https://assets.coingecko.com/coins/images/16547/large/arb.jpg", priority:72},
-  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18,
-   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
+  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
   {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18,
    logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg", priority:70},
   {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18,
@@ -1426,7 +1571,6 @@ let __proxyFeeLoaded = false;
 let __proxyFeeBps = 0;
 let __proxyFlatFeeWei = null;
 let __proxyFeeWallet = null;
-let __proxyFeeLastLoadAt = 0;
 
 const SUSHI_ROUTER_RO_ABI = [
   "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
@@ -1449,7 +1593,7 @@ const ERC20_ABI = [
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
-/* Proxy ABI (GDEXProxyRouterLite) */
+/* Proxy ABI */
 const PROXY_ABI = [
   "function feeWallet() view returns (address)",
   "function feeBps() view returns (uint16)",
@@ -1480,10 +1624,7 @@ function ensureWeb3(){
   if (!proxyRouter) proxyRouter = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, signer);
 }
 
-async function loadProxyFeeParams(force=false){
-  const now = Date.now();
-  if (!force && __proxyFeeLoaded && (now - __proxyFeeLastLoadAt) < 60_000) return; // 60s cache
-
+async function loadProxyFeeParams(){
   try{
     ensureWeb3();
     const feeWallet = await proxyRouter.feeWallet();
@@ -1494,13 +1635,11 @@ async function loadProxyFeeParams(force=false){
     __proxyFeeBps = Number(feeBpsBN.toString());
     __proxyFlatFeeWei = flatFee;
     __proxyFeeLoaded = true;
-    __proxyFeeLastLoadAt = now;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
-    __proxyFeeBps = (__proxyFeeBps || FALLBACK_FEE_BPS);
-    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther(FALLBACK_FLAT_FEE_ETH));
+    __proxyFeeBps = (__proxyFeeBps || 30);
+    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
     __proxyFeeLoaded = false;
-    __proxyFeeLastLoadAt = now;
   }
 }
 
@@ -1508,7 +1647,8 @@ async function connectWallet(){
   try{
     if (typeof window.ethereum === 'undefined') {
       if (isMobile) { openMetaMaskDeepLink(); return; }
-      alert("No Ethereum wallet detected.\n\n• Mobile: open in MetaMask in-app browser.\n• Desktop: install MetaMask extension.");
+      await uiAlert("No wallet detected",
+        "• Mobile: open this site in MetaMask in-app browser.\n• Desktop: install MetaMask extension.");
       return;
     }
     ensureWeb3();
@@ -1528,7 +1668,7 @@ async function connectWallet(){
     });
 
     await ensureMainnet();
-    await loadProxyFeeParams(true);
+    await loadProxyFeeParams();
     await refreshAllBalances();
     updatePricePreview();
 
@@ -1537,7 +1677,7 @@ async function connectWallet(){
         userAddress = acc && acc.length ? acc[0] : null;
         document.getElementById('wAddr').textContent = short(userAddress);
         __proxyFeeLoaded = false;
-        await loadProxyFeeParams(true);
+        await loadProxyFeeParams();
         await refreshAllBalances();
         updatePricePreview();
       });
@@ -1546,7 +1686,7 @@ async function connectWallet(){
 
   }catch(e){
     console.error('[connectWallet]', e);
-    alert('Wallet connection failed.\n\n' + (e?.message || 'Please check MetaMask and try again.'));
+    await uiAlert('Wallet connection failed', (e?.message || 'Please check MetaMask and try again.'), {copy:true});
   }
 }
 
@@ -1583,8 +1723,8 @@ window.addEventListener('beforeinstallprompt', e=>{
 window.addEventListener('appinstalled', ()=>{
   document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none');
 });
-function handleInstallClick(){
-  if(isStandaloneMode()){ alert('G-DEX is already installed.'); return; }
+async function handleInstallClick(){
+  if(isStandaloneMode()){ await uiAlert('Install', 'G-DEX is already installed.'); return; }
   if(deferredPrompt){
     deferredPrompt.prompt();
     deferredPrompt.userChoice.finally(()=>{
@@ -1593,8 +1733,8 @@ function handleInstallClick(){
     });
     return;
   }
-  if(isIos){ alert('In Safari: share → "Add to Home Screen".'); return; }
-  alert('Use browser menu → "Add to Home screen".');
+  if(isIos){ await uiAlert('Install on iOS', 'In Safari: share → "Add to Home Screen".'); return; }
+  await uiAlert('Install', 'Use browser menu → "Add to home screen".');
 }
 
 /* ===== Analytics demo ===== */
@@ -1832,9 +1972,8 @@ function recommendedSlippagePctByEthReserve(ethReserve){
 }
 
 function bnFromInput(valStr, decimals){
-  const s = cleanAmountStr(valStr);
-  if(!s || Number(s) <= 0) return ethers.constants.Zero;
-  return ethers.utils.parseUnits(String(s), decimals);
+  if(!valStr || Number(valStr) <= 0) return ethers.constants.Zero;
+  return ethers.utils.parseUnits(String(valStr), decimals);
 }
 
 /* ✅ 퍼센트 수수료 문구용 */
@@ -1867,9 +2006,7 @@ function getSlipPct(){
 }
 
 /* ============================================================
-   ✅ Quote (Preview) — 컨트랙트 fee 정책에 맞춤
-   - ETH→Token: amountIn에서 % fee 차감 후 getAmountsOut
-   - Token→*: flat fee는 별도이므로 amountIn 그대로 getAmountsOut
+   ✅ Quote (Preview)
    ============================================================ */
 let __quoteTimer = null;
 async function updatePricePreview() {
@@ -1877,9 +2014,9 @@ async function updatePricePreview() {
   __quoteTimer = setTimeout(async ()=>{
     const sellInput = document.getElementById("sell");
     const buyInput  = document.getElementById("buy");
+    const sellValStr = (sellInput.value || "").trim();
     const hint = document.getElementById('slipHint');
 
-    const sellValStr = cleanAmountStr(sellInput.value || "");
     if (!sellValStr || Number(sellValStr) <= 0) {
       buyInput.value = "";
       if (hint) hint.textContent = "";
@@ -1915,7 +2052,6 @@ async function updatePricePreview() {
         return;
       }
 
-      // ✅ 컨트랙트와 일치: ETH→Token만 % fee로 swapValue 감소
       const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
       if (amountForQuoteBN.lte(0)) {
         buyInput.value = "";
@@ -1928,9 +2064,7 @@ async function updatePricePreview() {
       const amounts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
       const out = amounts[amounts.length - 1];
       const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
-
-      // 표시용 (UI)
-      buyInput.value = (Number(outStr) ? Number(outStr).toFixed(6) : "");
+      buyInput.value = Number(outStr).toFixed(6);
 
       if (hint){
         const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
@@ -1946,7 +2080,7 @@ async function updatePricePreview() {
 }
 
 /* ============================================================
-   ✅ Swap via Proxy Router Lite (컨트랙트 조건에 "정확히" 맞춤)
+   ✅ Swap via Proxy Router Lite
    ============================================================ */
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
@@ -1956,14 +2090,15 @@ async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   const allowance = await token.allowance(userAddress, GDEX_PROXY_ROUTER);
   if (allowance.gte(amountInBN)) return;
 
-  // ✅ USDT처럼 non-zero -> non-zero approve가 막힐 수 있어 0 -> Max 패턴
   if (allowance.gt(0)) {
     const tx0 = await token.approve(GDEX_PROXY_ROUTER, 0);
-    alert("Approval step 1/2 sent (reset to 0).\n\nPlease confirm in MetaMask and wait for confirmation.");
+    await uiAlert("Approval step 1/2 sent",
+      "Reset allowance to 0.\n\nPlease confirm in MetaMask and wait for confirmation.");
     await tx0.wait(1);
   }
   const tx = await token.approve(GDEX_PROXY_ROUTER, ethers.constants.MaxUint256);
-  alert("Approval step 2/2 sent.\n\nPlease confirm in MetaMask and wait for confirmation.");
+  await uiAlert("Approval step 2/2 sent",
+    "Set allowance to Max.\n\nPlease confirm in MetaMask and wait for confirmation.");
   await tx.wait(1);
 }
 
@@ -2020,13 +2155,8 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, basePa
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
-  // ✅ 컨트랙트 규칙:
-  // - ETH→Token: value=사용자입력 ETH 그대로
-  // - Token→*:  value=flatFeeWei "정확히" 전송 (컨트랙트는 >= 허용하지만 프런트는 정확히만)
-  const flatWei = (__proxyFlatFeeWei || ethers.utils.parseEther(FALLBACK_FLAT_FEE_ETH));
-  const callValue = sellIsEth ? amountInBN_raw : flatWei;
+  const callValue = sellIsEth ? amountInBN_raw : (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
 
-  // ✅ outMin/quote는 실제 Sushi로 들어가는 amount 기준
   const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
   if (amountForQuoteBN.lte(0)) throw new Error("Amount too small.");
 
@@ -2041,9 +2171,8 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, basePa
   ].map(x => Math.max(0, Math.min(95, Number(x||0))))
    .filter((v,i,arr)=>arr.indexOf(v)===i);
 
-  const tokenInParam = addrForPath(sellMeta); // ETH면 WETH, 토큰이면 token address
+  const tokenInParam = addrForPath(sellMeta);
 
-  // ✅ 컨트랙트 path 규칙 체크
   if (sellIsEth){
     if (basePath[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) {
       throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
@@ -2061,8 +2190,15 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, basePa
   }
 
   for (const slipPct of slipCandidates){
-    const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
-    const outBN = amts[amts.length - 1];
+    let outBN;
+    try{
+      const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
+      outBN = amts[amts.length - 1];
+    }catch(e){
+      const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "—";
+      throw new Error(`No liquidity / route found on SushiSwap for this pair.\n${recTxt}`);
+    }
+
     const outMinBN = calcOutMin(outBN, slipPct);
 
     try{
@@ -2082,31 +2218,31 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, basePa
   }
 
   const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "—";
-  throw new Error(`No working swap plan found (liquidity/slippage or approval). ${recTxt}`);
+  throw new Error(`No working swap plan found (liquidity/slippage or approval).\n${recTxt}`);
 }
 
 async function executeSwap() {
   try {
-    if (!userAddress) { alert("Please connect your wallet first."); return; }
+    if (!userAddress) { await uiAlert("Swap", "Please connect your wallet first."); return; }
     ensureWeb3();
     await ensureMainnet();
-    await loadProxyFeeParams(true);
+    await loadProxyFeeParams();
 
-    const sellValStr = cleanAmountStr(document.getElementById("sell").value || "");
-    if (!sellValStr || Number(sellValStr) <= 0) { alert("Enter an amount to swap."); return; }
+    const sellValStr = String(document.getElementById("sell").value || "").trim();
+    if (!sellValStr || Number(sellValStr) <= 0) { await uiAlert("Swap", "Enter an amount to swap."); return; }
 
     const sellSym = document.getElementById("sellS").textContent;
     const buySym  = document.getElementById("buyS").textContent;
     const sellMeta = getTokenMeta(sellSym);
     const buyMeta  = getTokenMeta(buySym);
-    if (!sellMeta || !buyMeta) { alert("Token metadata not found."); return; }
+    if (!sellMeta || !buyMeta) { await uiAlert("Swap", "Token metadata not found."); return; }
 
     const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if (amountInBN_raw.lte(0)) { alert("Invalid amount."); return; }
+    if (amountInBN_raw.lte(0)) { await uiAlert("Swap", "Invalid amount."); return; }
 
     const sellIsEth = metaIsETH(sellMeta);
     const buyIsEth  = metaIsETH(buyMeta);
-    if (sellIsEth && buyIsEth) { alert("ETH → ETH swap is not supported."); return; }
+    if (sellIsEth && buyIsEth) { await uiAlert("Swap", "ETH → ETH swap is not supported."); return; }
 
     const tokenIn  = addrForPath(sellMeta);
     const tokenOut = addrForPath(buyMeta);
@@ -2115,12 +2251,10 @@ async function executeSwap() {
     const deadline = Math.floor(Date.now()/1000) + 1200;
     const to = userAddress;
 
-    // ✅ ERC20 sell이면 allowance 선확보
     if (!sellIsEth){
       await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
     }
 
-    // ✅ Lite 컨트랙트 규칙에 맞춘 plan
     const plan = await resolveWorkingPlanLite({
       sellMeta, buyMeta,
       amountInBN_raw,
@@ -2131,12 +2265,14 @@ async function executeSwap() {
     const feeLine = sellIsEth ? feePctText() : flatFeeText();
     const valueEth = ethers.utils.formatEther(plan.callValue);
 
-    const proceed = confirm(
+    const proceed = await uiConfirm(
+      "Confirm Swap",
       `Swap will be executed via G-DEX Proxy Router Lite (1 confirmation).\n\n` +
       `${feeLine}\n` +
       `Slippage used: ${plan.slipPct}%\n` +
       `ETH value sent: ${valueEth} ETH\n\n` +
-      `Continue?`
+      `Continue?`,
+      {okText:"Continue", cancelText:"Cancel", copy:true}
     );
     if (!proceed) return;
 
@@ -2163,7 +2299,11 @@ async function executeSwap() {
       gasLimit: gas.mul(125).div(100)
     });
 
-    alert("Swap transaction sent!\n\nTX:\n" + swapTx.hash);
+    await uiAlert("Swap transaction sent!",
+      "TX:\n" + swapTx.hash,
+      {copy:true}
+    );
+
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
   } catch (err) {
@@ -2186,8 +2326,7 @@ async function executeSwap() {
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
-
-  if (sellInput) ["input","change","keyup"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
+  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
   if (swapBtn) swapBtn.addEventListener("click", executeSwap);
 }
 
@@ -2252,7 +2391,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
 
     refreshAllBalances();
-    updatePricePreview();
 
   }catch(e){
     console.error('[init]', e);
