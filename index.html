@@ -1820,8 +1820,8 @@ function applyPctFeeToAmount(amountInBN){
   return amountInBN.sub(feeBN);
 }
 
-/* ✅ Proxy path/value 자동탐색을 위한 후보 생성 */
-function buildPathCandidates(basePath){
+/* ✅ (수정) Proxy path 자동탐색: 방향별로 더 많은 패턴을 시도 */
+function buildPathCandidatesByDirection({ sellIsEth, buyIsEth, tokenIn, tokenOut, basePath }){
   const uniq = [];
   const push = (p)=>{
     if(!p || !Array.isArray(p) || p.length < 1) return;
@@ -1830,10 +1830,38 @@ function buildPathCandidates(basePath){
     uniq.push({ key, path: p });
   };
 
+  const tIn  = String(tokenIn);
+  const tOut = String(tokenOut);
+  const W    = WETH_MAINNET;
+
+  // 항상 기본 path
   push(basePath);
-  if(basePath.length >= 2) push(basePath.slice(1));      // tokenIn 제거형
-  if(basePath.length === 2) push([basePath[1]]);         // 단일(토큰아웃만)
-  if(basePath.length === 3) push([basePath[1], basePath[2]]); // 2개(중간+아웃)
+
+  // 방향별 후보(Proxy Router마다 path 요구가 조금씩 다를 수 있어 폭넓게)
+  if (sellIsEth && !buyIsEth){
+    // ETH -> Token
+    push([W, tOut]);
+    push([tOut]);               // 어떤 구현은 "tokenOut만" 받기도 함
+    push([W, tOut, tOut]);      // 방어적(일부 잘못된 구현/검증 회피용) — 중복 제거로 대부분 무시됨
+  } else if (!sellIsEth && buyIsEth){
+    // Token -> ETH
+    push([tIn, W]);
+    push([W]);                  // 어떤 구현은 "WETH만" 요구
+    push([tIn]);                // 극단 케이스
+  } else if (!sellIsEth && !buyIsEth){
+    // Token -> Token
+    push([tIn, tOut]);
+    if (tIn.toLowerCase() !== W.toLowerCase() && tOut.toLowerCase() !== W.toLowerCase()){
+      push([tIn, W, tOut]);
+    }
+    push([W, tOut]);            // tokenIn은 별도 파라미터로 받는 구현 대응
+    push([tOut]);               // 극단 케이스
+  }
+
+  // 원래 코드의 slice 후보도 유지
+  if (basePath && basePath.length >= 2) push(basePath.slice(1));
+  if (basePath && basePath.length === 3) push([basePath[1], basePath[2]]);
+  if (basePath && basePath.length === 2) push([basePath[1]]);
 
   return uniq.map(x=>x.path);
 }
@@ -1919,8 +1947,30 @@ async function updatePricePreview() {
 
 /* ============================================================
    ✅ Swap via Proxy Router (가장 확실한 방식)
-   - path/value/slippage를 callStatic으로 "성공하는 조합" 자동 선택
+   - path/value/slippage/outMin을 callStatic으로 "성공하는 조합" 자동 선택
    ============================================================ */
+
+/* ✅ (수정) USDT 같은 토큰에서 approve가 막힐 수 있어 "0 → Max" 시퀀스 지원 */
+async function approveMaxSafely(tokenContract, spender, currentAllowance){
+  const max = ethers.constants.MaxUint256;
+
+  // 일부 토큰(USDT 등)은 allowance가 0이 아닐 때 바로 approve가 revert될 수 있음
+  if (currentAllowance && !currentAllowance.isZero()){
+    try{
+      const tx0 = await tokenContract.approve(spender, 0);
+      alert("Approval step 1/2 sent (reset to 0).\n\nPlease confirm in MetaMask and wait for confirmation.");
+      await tx0.wait(1);
+    }catch(e){
+      // reset이 필요 없는 토큰일 수 있음 → 무시하고 다음 시도
+      console.warn('[approve reset] skipped/failed', e);
+    }
+  }
+
+  const tx1 = await tokenContract.approve(spender, max);
+  alert("Approval step 2/2 sent (set Max).\n\nPlease confirm in MetaMask and wait for confirmation.");
+  await tx1.wait(1);
+}
+
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
   if (!userAddress) throw new Error("Wallet not connected");
@@ -1929,9 +1979,15 @@ async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   const allowance = await token.allowance(userAddress, GDEX_PROXY_ROUTER);
   if (allowance.gte(amountInBN)) return;
 
-  const tx = await token.approve(GDEX_PROXY_ROUTER, ethers.constants.MaxUint256);
-  alert("Approval sent.\n\nPlease confirm in MetaMask and wait for confirmation.");
-  await tx.wait(1);
+  // 기본 approve 시도 → 실패하면 안전 approve(0→max)로 재시도
+  try{
+    const tx = await token.approve(GDEX_PROXY_ROUTER, ethers.constants.MaxUint256);
+    alert("Approval sent.\n\nPlease confirm in MetaMask and wait for confirmation.");
+    await tx.wait(1);
+  }catch(e){
+    console.warn('[approve] primary failed, trying safe approve', e);
+    await approveMaxSafely(token, GDEX_PROXY_ROUTER, allowance);
+  }
 }
 
 function setSwapBusy(isBusy){
@@ -1950,18 +2006,20 @@ function calcOutMin(outBN, slipPct){
   return outBN.mul(10000 - bp).div(10000);
 }
 
+/* ✅ value 후보 확장 */
 function buildValueCandidates(sellIsEth, amountInBN_raw){
   const flat = __proxyFlatFeeWei || ethers.constants.Zero;
 
   if (sellIsEth){
-    // 어떤 구현은 amountIn만 받고, 어떤 구현은 amountIn+flat을 요구할 수도 있어 둘 다 시도
-    const a = amountInBN_raw;
-    const b = flat.gt(0) ? amountInBN_raw.add(flat) : amountInBN_raw;
-    const c = ethers.constants.Zero; // 혹시라도(비정상) 0 요구 구현
-    return [a, b, c].filter((v,i,arr)=>arr.findIndex(x=>x.eq(v))===i);
+    const cands = [
+      amountInBN_raw,                                  // msg.value = amountIn
+      flat.gt(0) ? amountInBN_raw.add(flat) : null,    // msg.value = amountIn + flat
+      flat.gt(0) ? flat : null,                        // msg.value = flat only (일부 구현)
+      ethers.constants.Zero                            // msg.value = 0 (비정상 구현 방어)
+    ].filter(Boolean);
+    return cands.filter((v,i,arr)=>arr.findIndex(x=>x.eq(v))===i);
   }
 
-  // ERC20 판매일 때: flatFee 요구/미요구 둘 다 탐색
   const cands = [ethers.constants.Zero];
   if (flat.gt(0)) cands.push(flat);
   return cands.filter((v,i,arr)=>arr.findIndex(x=>x.eq(v))===i);
@@ -2000,60 +2058,76 @@ async function sendSwapTx(sellIsEth, buyIsEth, tokenIn, amountInBN_raw, outMinBN
   throw new Error("Unsupported swap direction");
 }
 
-async function resolveWorkingPlan({sellMeta, buyMeta, amountInBN_raw, basePath, to, deadline, tokenInAddrForParam}){
+/* ✅ (수정) plan 탐색: outMin=0 fallback도 포함해서 "min 때문에 실패"를 제거 */
+async function resolveWorkingPlan({sellMeta, buyMeta, amountInBN_raw, basePath, to, deadline, tokenInAddrForParam, tokenOutAddrForParam}){
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
-  // ✅ slippage 후보(실패하면 자동 완화)
   const userSlip = getSlipPct();
   const ethReserve = await getEthReserveIfWethInvolved(basePath);
   const rec = recommendedSlippagePctByEthReserve(ethReserve);
   const slipCandidates = [
     userSlip,
     (rec != null ? Math.max(userSlip, rec) : userSlip),
+    10,
+    20,
     35,
     50
   ].map(x => Math.max(0, Math.min(95, Number(x||0))))
    .filter((v,i,arr)=>arr.indexOf(v)===i);
 
-  // ✅ path 후보
-  const pathCandidates = buildPathCandidates(basePath);
+  const pathCandidates = buildPathCandidatesByDirection({
+    sellIsEth, buyIsEth,
+    tokenIn: tokenInAddrForParam,
+    tokenOut: tokenOutAddrForParam,
+    basePath
+  });
 
-  // ✅ value 후보(Proxy 구현차 대응)
   const valueCandidates = buildValueCandidates(sellIsEth, amountInBN_raw);
 
-  // ✅ outMin 계산은 "수수료 차감 후 투입량" 기준(보수적)
   const amountForQuoteBN = applyPctFeeToAmount(amountInBN_raw);
   if (amountForQuoteBN.lte(0)) throw new Error("Amount too small after fee.");
+
+  let lastErr = null;
 
   for (const slipPct of slipCandidates){
     const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
     const outBN = amts[amts.length - 1];
     const outMinBN = calcOutMin(outBN, slipPct);
 
+    // outMin 후보: (정상 outMin) + (0 fallback)
+    const outMinCandidates = [outMinBN, ethers.constants.Zero]
+      .filter((v,i,arr)=>arr.findIndex(x=>x.eq(v))===i);
+
     for (const path of pathCandidates){
       for (const callValue of valueCandidates){
-        try{
-          await tryCallStatic(
-            sellIsEth, buyIsEth,
-            tokenInAddrForParam,
-            amountInBN_raw,
-            outMinBN,
-            path,
-            to, deadline,
-            callValue
-          );
-          // 성공 조합 반환
-          return { slipPct, outMinBN, path, callValue, rec };
-        }catch(e){
-          // 계속 탐색
+        for (const outMinTry of outMinCandidates){
+          try{
+            await tryCallStatic(
+              sellIsEth, buyIsEth,
+              tokenInAddrForParam,
+              amountInBN_raw,
+              outMinTry,
+              path,
+              to, deadline,
+              callValue
+            );
+            return { slipPct, outMinBN: outMinTry, path, callValue, rec, usedOutMinZero: outMinTry.eq(0) };
+          }catch(e){
+            lastErr = e;
+          }
         }
       }
     }
   }
 
   const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "—";
+  // lastErr는 종종 "missing revert data"라 의미가 약함 → 메시지는 기존 유지
   throw new Error(`No working swap plan found (path/value mismatch or liquidity). ${recTxt}`);
+}
+
+function setSwapBusySafe(flag){
+  try{ setSwapBusy(flag); }catch{}
 }
 
 async function executeSwap() {
@@ -2086,32 +2160,35 @@ async function executeSwap() {
     const deadline = Math.floor(Date.now()/1000) + 1200;
     const to = userAddress;
 
-    // ✅ ERC20 sell이면 allowance 선확보(Proxy가 amountIn_raw를 받는다고 가정)
+    // ✅ ERC20 sell이면 allowance 선확보
     if (!sellIsEth){
       await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
     }
 
-    // ✅ 가장 확실: callStatic으로 "성공하는 path/value/slippage" 자동 선택
+    // ✅ callStatic으로 "성공하는 path/value/slippage/outMin" 자동 선택
     const plan = await resolveWorkingPlan({
       sellMeta, buyMeta,
       amountInBN_raw,
       basePath,
       to, deadline,
-      tokenInAddrForParam: tokenIn
+      tokenInAddrForParam: tokenIn,
+      tokenOutAddrForParam: tokenOut
     });
 
+    const extraWarn = plan.usedOutMinZero ? "\n⚠️ Fallback used: amountOutMin = 0 (maximum slippage risk)" : "";
     const proceed = confirm(
       `Swap will be executed via G-DEX Proxy Router (1 confirmation).\n\n` +
       `${feePctText()}\n` +
       `Slippage used: ${plan.slipPct}%\n` +
-      `Value sent: ${ethers.utils.formatEther(plan.callValue)} ETH\n\n` +
-      `Continue?`
+      `Value sent: ${ethers.utils.formatEther(plan.callValue)} ETH\n` +
+      `Path: ${plan.path.map(p=>p.slice(0,6)+"…"+p.slice(-4)).join(" → ")}\n` +
+      extraWarn +
+      `\n\nContinue?`
     );
     if (!proceed) return;
 
-    setSwapBusy(true);
+    setSwapBusySafe(true);
 
-    // estimateGas + buffer
     const gas = await estimateGasForSwap(
       sellIsEth, buyIsEth,
       tokenIn,
@@ -2139,14 +2216,13 @@ async function executeSwap() {
 
   } catch (err) {
     console.error("executeSwap error:", err);
-    // ✅ 지금 스샷처럼 "이유 없는 revert"일 때도 사용자에게 방향 제시
     const msg = (err && err.message) ? err.message : String(err);
     showErrorPopup(
       "Swap failed",
-      msg + "\n\nIf this persists:\n• Make sure you are on Ethereum Mainnet\n• Try higher slippage (e.g., 10%~35%)\n• The Proxy Router may require a specific fee/value pattern — this build auto-probes, but contract-side restrictions can still block certain pairs.\n• As a fallback, try swapping on SushiSwap directly to verify pool liquidity."
+      msg + "\n\nIf this persists:\n• Make sure you are on Ethereum Mainnet\n• Try higher slippage (e.g., 10%~35%)\n• Confirm ERC-20 approval spender is the Proxy Router\n• As a fallback, try swapping on SushiSwap directly to verify pool liquidity."
     );
   } finally {
-    setSwapBusy(false);
+    setSwapBusySafe(false);
   }
 }
 
@@ -2228,4 +2304,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
-
