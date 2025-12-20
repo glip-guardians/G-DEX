@@ -623,7 +623,6 @@ h3::before{content:""; display:none;}
 
 /* ============================================================
    ✅ Sushi Pools Ticker (Recently Created Pools)
-   - 레이아웃 유지(기존 metric 카드 내부만)
    ============================================================ */
 .metric .v #poolsTicker,
 .metric .v .poolsTicker{white-space:normal;}
@@ -664,7 +663,6 @@ h3::before{content:""; display:none;}
 
 /* ============================================================
    ✅ DEXTools Chart embed (GLIP Price card)
-   - 기존 레이아웃 유지 + 모바일 반응형
    ============================================================ */
 #metricGlipPrice{white-space:normal;}
 #metricGlipPrice .chartFrame{
@@ -804,8 +802,6 @@ h3::before{content:""; display:none;}
           <button class="btn" id="swapConnect">Connect Wallet</button>
         </div>
         <div style="height:10px"></div>
-
-        <!-- ✅ 이 버튼(#swapBtn) 하나로 Approve ↔ Swap 자동 전환 -->
         <button class="btn" id="swapBtn" style="width:100%">Swap</button>
       </section>
 
@@ -1044,7 +1040,7 @@ h3::before{content:""; display:none;}
 }
 </script>
 
-<!-- ✅ ethers.js (for stable encoding/callStatic/estimateGas) -->
+<!-- ✅ ethers.js -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <script>
@@ -1095,7 +1091,7 @@ function applyManualPoolConfig(){
 }
 
 /* ============================================================
-   ✅ Sushi Pools Ticker (backend: /sushi/pools)
+   ✅ Sushi Pools Ticker
    ============================================================ */
 let __sushiPools = [];
 let __sushiTickerIdx = 0;
@@ -1115,6 +1111,7 @@ function setPoolsTicker(item){
   pair.textContent = (item && item.name) ? item.name : "—";
   meta.textContent = (tvlTxt + feeTxt).trim();
 }
+
 function setPoolsTickerFallbackFromManual(){
   try{
     const cfg = gdexPoolConfig || {};
@@ -1129,6 +1126,7 @@ function setPoolsTickerFallbackFromManual(){
     setPoolsTicker({ name:"—", tvlText:"", feePct:null, url:"https://www.sushi.com/ethereum/explore/pools" });
   }
 }
+
 async function fetchSushiPools(limit=5){
   const url = `${BACKEND_URL}/sushi/pools?chain=ethereum&limit=${encodeURIComponent(limit)}`;
   const r = await fetch(url, { method:'GET' });
@@ -1136,6 +1134,7 @@ async function fetchSushiPools(limit=5){
   const items = j && Array.isArray(j.items) ? j.items : [];
   return items.slice(0, limit);
 }
+
 function rotateSushiPools(){
   if(!__sushiPools.length) return;
   const wrap = document.getElementById('poolsTicker');
@@ -1151,6 +1150,7 @@ function rotateSushiPools(){
     wrap.classList.add('fadeIn');
   }, 220);
 }
+
 async function bootSushiPoolsTicker(){
   const wrap = document.getElementById('poolsTicker');
   if(!wrap) return;
@@ -1267,7 +1267,8 @@ const tokenList = [
    logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png", priority:73},
   {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18,
    logo:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg", priority:72},
-  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
+  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18,
+   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
   {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18,
    logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg", priority:70},
   {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18,
@@ -1308,6 +1309,7 @@ function initDefaults(){
   const GLIP = tokenList.find(t=>t.symbol==="GLIP");
   $('#sellI').src = ETH.logo;  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
   $('#buyI').src  = GLIP.logo; $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP.address;
+
   $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
   $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
 }
@@ -1356,11 +1358,7 @@ list.onclick = async e=>{
   target.symEl.dataset.address = t.address;
   dlg.close();
 
-  setTimeout(async ()=>{
-    updatePricePreview();
-    await refreshAllBalances();
-    await updateSwapButtonModeDebounced(true);
-  }, 50);
+  setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); }, 50);
 };
 document.getElementById('tokClose').onclick = ()=>dlg.close();
 dlg.addEventListener('click',e=>{ if(e.target===dlg) dlg.close(); });
@@ -1380,13 +1378,9 @@ function flipTokenMeta(imgA, symA, imgB, symB){
   const a=symA.dataset.address, b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
 }
 function bindFlip(){
-  $('#flip').onclick  = async ()=>{
+  $('#flip').onclick  = ()=>{
     flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
-    setTimeout(async ()=>{
-      updatePricePreview();
-      await refreshAllBalances();
-      await updateSwapButtonModeDebounced(true);
-    }, 50);
+    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); }, 50);
   };
   $('#pFlip').onclick  = ()=>{
     flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
@@ -1403,10 +1397,11 @@ let signer = null;
 let sushiRouterRO = null;
 let factory = null;
 
-/* swap router (Proxy) */
-let proxyRouter = null;
+/* proxy (read + write) */
+let proxyRouterRO = null;   // ✅ read-only (provider)
+let proxyRouter = null;     // ✅ write (signer)
 
-/* fee cache (from Proxy) */
+/* fee cache */
 let __proxyFeeLoaded = false;
 let __proxyFeeBps = 0;
 let __proxyFlatFeeWei = null;
@@ -1433,7 +1428,6 @@ const ERC20_ABI = [
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
-/* Proxy ABI (minimal) */
 const PROXY_ABI = [
   "function feeWallet() view returns (address)",
   "function feeBps() view returns (uint16)",
@@ -1442,6 +1436,14 @@ const PROXY_ABI = [
   "function swapExactTokensForTokensWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
   "function swapExactTokensForETHWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable"
 ];
+
+async function ensureCorrectChain(){
+  if(!provider) return;
+  const net = await provider.getNetwork();
+  if (net && net.chainId !== 1) {
+    throw new Error("Wrong network. Please switch MetaMask to Ethereum Mainnet.");
+  }
+}
 
 function ensureWeb3(){
   if (!window.ethereum) throw new Error("No wallet detected.");
@@ -1453,29 +1455,54 @@ function ensureWeb3(){
   if (!sushiRouterRO) sushiRouterRO = new ethers.Contract(SUSHI_ROUTER_V2, SUSHI_ROUTER_RO_ABI, provider);
   if (!factory) factory = new ethers.Contract(SUSHI_FACTORY_V2, FACTORY_ABI, provider);
 
+  // ✅ 가장 확실한 포인트:
+  // - fee 조회는 provider(RO)로 읽고
+  // - swap은 signer로 실행
+  if (!proxyRouterRO) proxyRouterRO = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, provider);
   if (!proxyRouter) proxyRouter = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, signer);
 }
 
-async function loadProxyFeeParams(){
+/* ✅ 가장 확실한 방식: 폴백으로 fee를 "추정"하지 않음.
+   - fee 읽기 실패 시 swap을 막아서 msg.value mismatch revert를 원천 차단 */
+async function loadProxyFeeParams(opts={ force:false, strict:false }){
   try{
-    if (__proxyFeeLoaded) return;
     ensureWeb3();
-    const feeWallet = await proxyRouter.feeWallet();
-    const feeBpsBN  = await proxyRouter.feeBps();
-    const flatFee   = await proxyRouter.flatFeeWei();
+    await ensureCorrectChain();
+
+    if(__proxyFeeLoaded && !opts.force) return true;
+
+    const feeWallet = await proxyRouterRO.feeWallet();
+    const feeBpsBN  = await proxyRouterRO.feeBps();
+    const flatFee   = await proxyRouterRO.flatFeeWei();
 
     __proxyFeeWallet = feeWallet;
     __proxyFeeBps = Number(feeBpsBN.toString());
     __proxyFlatFeeWei = flatFee;
     __proxyFeeLoaded = true;
+    return true;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
-    __proxyFeeBps = (__proxyFeeBps || 30);
-    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
     __proxyFeeLoaded = false;
+
+    if(opts.strict){
+      throw new Error(
+        "Proxy fee data could not be loaded from chain.\n\n" +
+        "To prevent swap failure (msg.value mismatch), swap is blocked.\n\n" +
+        "Please refresh, reconnect wallet, and try again."
+      );
+    }
+    return false;
   }
 }
 
+/* ===== Fee text ===== */
+function feePctText(){
+  if(!__proxyFeeLoaded) return "Fee: — (loading)";
+  const pct = (__proxyFeeBps || 0) / 100; // bps -> %
+  return `Fee: ${pct.toFixed(2)}%`;
+}
+
+/* ===== Connect ===== */
 async function connectWallet(){
   try{
     if (typeof window.ethereum === 'undefined') {
@@ -1491,6 +1518,8 @@ async function connectWallet(){
     userAddress = accounts[0];
     document.getElementById('wAddr').textContent = short(userAddress);
 
+    await ensureCorrectChain();
+
     ['poolConnect','btnConn','swapConnect'].forEach(id=>{
       const el = document.getElementById(id);
       if(el){
@@ -1499,20 +1528,20 @@ async function connectWallet(){
       }
     });
 
-    await loadProxyFeeParams();
+    // ✅ fee는 반드시 온체인에서 읽는다 (실패하면 loaded=false)
+    await loadProxyFeeParams({ force:true, strict:false });
+
     await refreshAllBalances();
     updatePricePreview();
-    await updateSwapButtonModeDebounced(true);
 
     if (window.ethereum.on) {
       window.ethereum.on('accountsChanged', async acc=>{
         userAddress = acc && acc.length ? acc[0] : null;
         document.getElementById('wAddr').textContent = short(userAddress);
         __proxyFeeLoaded = false;
-        await loadProxyFeeParams();
+        await loadProxyFeeParams({ force:true, strict:false });
         await refreshAllBalances();
         updatePricePreview();
-        await updateSwapButtonModeDebounced(true);
       });
       window.ethereum.on('chainChanged', _=> location.reload());
     }
@@ -1668,7 +1697,7 @@ function drawGauge(d){
 }
 
 /* ============================================================
-   ✅ 잔액 표시 (기존 로직 유지)
+   ✅ 잔액 표시
    ============================================================ */
 function hexToBigInt(hex){ return (!hex) ? 0n : BigInt(hex); }
 function formatUnitsBigInt(bn, decimals){
@@ -1757,7 +1786,7 @@ async function refreshAllBalances(){
 }
 
 /* ============================================================
-   ✅ Direct Router helpers (path / reserves / slippage hint)
+   ✅ Direct Router helpers
    ============================================================ */
 function addrForPath(meta){
   return metaIsETH(meta) ? WETH_MAINNET : meta.address;
@@ -1809,108 +1838,8 @@ function bnFromInput(valStr, decimals){
   return ethers.utils.parseUnits(String(valStr), decimals);
 }
 
-/* ✅ 퍼센트 수수료 문구용 */
-function feePctText(){
-  const pct = (__proxyFeeBps || 0) / 100;
-  return `Fee: ${pct.toFixed(2)}% (e.g., 0.1%)`;
-}
-
 /* ============================================================
-   ✅ (핵심 추가) Approve ↔ Swap 자동 전환 로직
-   - allowance >= 입력 amount 기준
-   - #swapBtn 하나로 동작
-   ============================================================ */
-let __swapBtnMode = "swap"; // "swap" | "approve" | "connect"
-let __swapBtnBusy = false;
-let __approveCheckTimer = null;
-
-function setSwapBtnUI(mode, tokenSym){
-  const btn = document.getElementById("swapBtn");
-  if(!btn) return;
-
-  __swapBtnMode = mode;
-
-  if(__swapBtnBusy){
-    btn.disabled = true;
-    btn.style.opacity = ".75";
-    return;
-  }
-
-  btn.disabled = false;
-  btn.style.opacity = "1";
-
-  if(!userAddress){
-    btn.textContent = "Connect Wallet";
-    __swapBtnMode = "connect";
-    return;
-  }
-
-  if(mode === "approve"){
-    btn.textContent = `Approve ${tokenSym || ""}`.trim();
-  }else{
-    btn.textContent = "Swap";
-  }
-}
-
-async function needsApprovalForCurrentInput(){
-  try{
-    if(!userAddress) return false;
-
-    const sellSym = document.getElementById("sellS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
-    if(!sellMeta || metaIsETH(sellMeta)) return false;
-
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if(!sellValStr || Number(sellValStr) <= 0) return false;
-
-    ensureWeb3();
-
-    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if(amountInBN_raw.lte(0)) return false;
-
-    const token = new ethers.Contract(sellMeta.address, ERC20_ABI, provider);
-    const allowance = await token.allowance(userAddress, GDEX_PROXY_ROUTER);
-
-    // ✅ 핵심: allowance >= 입력한 amount 이면 승인 필요 없음
-    return allowance.lt(amountInBN_raw);
-  }catch(e){
-    console.warn('[needsApproval] failed', e);
-    // 보수적으로: 실패하면 swap 모드로 두되, executeSwap에서 다시 allowance 체크/approve가 있으니 안전
-    return false;
-  }
-}
-
-async function updateSwapButtonMode(force=false){
-  try{
-    const sellSym = document.getElementById("sellS").textContent;
-
-    if(!userAddress){
-      setSwapBtnUI("connect", sellSym);
-      return;
-    }
-
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if(!sellValStr || Number(sellValStr) <= 0){
-      // 입력이 없으면 Swap(비활성 처리 대신 기본 유지)
-      setSwapBtnUI("swap", sellSym);
-      return;
-    }
-
-    const need = await needsApprovalForCurrentInput();
-    setSwapBtnUI(need ? "approve" : "swap", sellSym);
-
-  }catch(e){
-    console.warn('[updateSwapButtonMode] failed', e);
-  }
-}
-
-async function updateSwapButtonModeDebounced(force=false){
-  if(__approveCheckTimer) clearTimeout(__approveCheckTimer);
-  __approveCheckTimer = setTimeout(()=>{ updateSwapButtonMode(force); }, 220);
-}
-
-/* ============================================================
-   ✅ Quote + Fee hint (Proxy 기준)
+   ✅ Quote + Fee hint
    ============================================================ */
 let __quoteTimer = null;
 async function updatePricePreview() {
@@ -1924,7 +1853,6 @@ async function updatePricePreview() {
     if (!sellValStr || Number(sellValStr) <= 0) {
       buyInput.value = "";
       if (hint) hint.textContent = "";
-      await updateSwapButtonModeDebounced(true);
       return;
     }
 
@@ -1936,10 +1864,13 @@ async function updatePricePreview() {
 
     try{
       ensureWeb3();
-      await loadProxyFeeParams();
+      await ensureCorrectChain();
+
+      // ✅ quote 단계에서는 strict=false (UI만)
+      await loadProxyFeeParams({ force:false, strict:false });
 
       const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-      if (amountInBN_raw.lte(0)) { buyInput.value = ""; await updateSwapButtonModeDebounced(true); return; }
+      if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
 
       const tokenIn  = addrForPath(sellMeta);
       const tokenOut = addrForPath(buyMeta);
@@ -1954,19 +1885,19 @@ async function updatePricePreview() {
       if (sellIsEth && buyIsEth) {
         buyInput.value = "";
         if (hint) hint.textContent = "ETH → ETH not supported";
-        await updateSwapButtonModeDebounced(true);
         return;
       }
 
       let amountForSwapBN = amountInBN_raw;
 
-      if (sellIsEth) {
+      // ✅ feeBps 로딩된 경우에만 ETH 입력에서 fee 공제 반영
+      if (sellIsEth && __proxyFeeLoaded) {
         const feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
         if (amountInBN_raw.lte(feeBN)) {
           buyInput.value = "";
           const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-          if (hint) hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
-          await updateSwapButtonModeDebounced(true);
+          const feeTxt = __proxyFeeLoaded ? feePctText() : "Fee: —";
+          if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
           return;
         }
         amountForSwapBN = amountInBN_raw.sub(feeBN);
@@ -1979,41 +1910,23 @@ async function updatePricePreview() {
 
       if (hint){
         const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-        hint.textContent = [recTxt, feePctText()].filter(Boolean).join(" · ");
+        const feeTxt = __proxyFeeLoaded ? feePctText() : "Fee: — (connect wallet)";
+        hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
       }
-
-      await updateSwapButtonModeDebounced(true);
-
     }catch(err){
       console.warn("[quote] failed", err);
       buyInput.value = "";
       if (hint) hint.textContent = "";
-      await updateSwapButtonModeDebounced(true);
     }
   }, 120);
 }
 
 /* ============================================================
-   ✅ Swap via Proxy Router (1 TX)
+   ✅ Swap via Proxy Router (가장 확실한 버전)
+   - fee 로딩 실패하면 swap을 아예 막음
+   - token swap: msg.value = flatFeeWei (온체인 읽은 값)
+   - ETH swap: msg.value = amountIn (원금 포함)
    ============================================================ */
-async function robustApprove(tokenContract, spender){
-  // 1) try MaxUint256
-  try{
-    const tx = await tokenContract.approve(spender, ethers.constants.MaxUint256);
-    return tx;
-  }catch(e1){
-    // 2) some tokens (rare) require approve(0) then approve(max)
-    try{
-      const tx0 = await tokenContract.approve(spender, 0);
-      await tx0.wait(1);
-      const tx = await tokenContract.approve(spender, ethers.constants.MaxUint256);
-      return tx;
-    }catch(e2){
-      throw e1; // 원래 에러를 더 신뢰
-    }
-  }
-}
-
 async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   if (metaIsETH(tokenMeta)) return;
   if (!userAddress) throw new Error("Wallet not connected");
@@ -2022,7 +1935,7 @@ async function ensureAllowanceIfNeeded(tokenMeta, amountInBN){
   const allowance = await token.allowance(userAddress, GDEX_PROXY_ROUTER);
   if (allowance.gte(amountInBN)) return;
 
-  const tx = await robustApprove(token, GDEX_PROXY_ROUTER);
+  const tx = await token.approve(GDEX_PROXY_ROUTER, ethers.constants.MaxUint256);
   alert("Approval sent.\n\nPlease confirm in MetaMask and wait for confirmation.");
   await tx.wait(1);
 }
@@ -2034,58 +1947,24 @@ function getSlipPct(){
 }
 
 function setSwapBusy(isBusy){
-  __swapBtnBusy = !!isBusy;
   const btn = document.getElementById("swapBtn");
   const conn = document.getElementById("swapConnect");
   if(btn){
     btn.disabled = !!isBusy;
     btn.style.opacity = isBusy ? ".75" : "1";
-    btn.textContent = isBusy ? "Processing…" : (userAddress ? (__swapBtnMode === "approve" ? btn.textContent : "Swap") : "Connect Wallet");
+    btn.textContent = isBusy ? "Processing…" : "Swap";
   }
   if(conn) conn.disabled = !!isBusy;
-}
-
-async function handleApproveOnly(){
-  try{
-    if (!userAddress) { alert("Please connect your wallet first."); return; }
-    ensureWeb3();
-
-    const sellSym = document.getElementById("sellS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
-    if(!sellMeta || metaIsETH(sellMeta)){
-      // ETH는 승인 필요 없음 → swap 모드
-      setSwapBtnUI("swap", sellSym);
-      return;
-    }
-
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if (!sellValStr || Number(sellValStr) <= 0) { alert("Enter an amount first."); return; }
-
-    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if(amountInBN_raw.lte(0)) { alert("Invalid amount."); return; }
-
-    setSwapBusy(true);
-    await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-
-    alert("Approval confirmed.\n\nNow you can swap.");
-    await refreshAllBalances();
-    await updateSwapButtonMode(true);
-    updatePricePreview();
-
-  }catch(err){
-    console.error("approve error:", err);
-    showErrorPopup("Approve failed", err);
-  }finally{
-    setSwapBusy(false);
-    await updateSwapButtonModeDebounced(true);
-  }
 }
 
 async function executeSwap() {
   try {
     if (!userAddress) { alert("Please connect your wallet first."); return; }
     ensureWeb3();
-    await loadProxyFeeParams();
+    await ensureCorrectChain();
+
+    // ✅ 가장 확실한 핵심: 여기서 반드시 온체인 fee 읽기 성공해야 진행
+    await loadProxyFeeParams({ force:true, strict:true });
 
     const sellValStr = String(document.getElementById("sell").value || "").trim();
     if (!sellValStr || Number(sellValStr) <= 0) { alert("Enter an amount to swap."); return; }
@@ -2115,10 +1994,14 @@ async function executeSwap() {
       return;
     }
 
+    // ✅ callValue 규칙(확정):
+    // - ETH sell: msg.value = amountIn (원금 포함)
+    // - Token sell: msg.value = flatFeeWei (온체인 읽은 값)
     let amountForSwapBN = amountInBN_raw;
     let callValue = ethers.constants.Zero;
 
     if (sellIsEth) {
+      // ETH fee: amountIn에서 bps 공제 후, msg.value는 원금(전체) 그대로 전송
       const feeBN = amountInBN_raw.mul(__proxyFeeBps).div(10000);
       if (amountInBN_raw.lte(feeBN)) {
         alert(`Amount is too small.\n\n${feePctText()}\nPlease increase your amount.`);
@@ -2127,29 +2010,29 @@ async function executeSwap() {
       amountForSwapBN = amountInBN_raw.sub(feeBN);
       callValue = amountInBN_raw;
     } else {
-      callValue = __proxyFlatFeeWei || ethers.constants.Zero;
+      // token fee: msg.value는 정확히 flatFeeWei
+      if(!__proxyFlatFeeWei) throw new Error("flatFeeWei not loaded.");
+      callValue = __proxyFlatFeeWei;
     }
 
     const amts = await sushiRouterRO.getAmountsOut(amountForSwapBN, path);
     const outBN = amts[amts.length - 1];
     const outMinBN = outBN.mul(10000 - Math.floor(slipPct * 100)).div(10000);
 
-    // ✅ 여기서도 다시 한번 안전하게 allowance 체크 (사용자가 approve 모드 무시하고 눌러도 revert 방지)
-    if (!sellIsEth) {
-      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
-    }
-
+    // ✅ callStatic로 사전검증 (여기서 revert면 컨트랙트 조건 문제)
     if (sellIsEth && !buyIsEth) {
       await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
     } else if (!sellIsEth && buyIsEth) {
+      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
       await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     } else if (!sellIsEth && !buyIsEth) {
+      await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
       await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
     }
 
     const proceed = confirm(
       `This swap will be executed via G-DEX Proxy Router (1 confirmation).\n\n` +
-      `${feePctText()}\n\n` +
+      `${feePctText()}${sellIsEth ? "" : `\nFlat fee: ${ethers.utils.formatEther(callValue)} ETH`}\n\n` +
       `Continue?`
     );
     if (!proceed) return;
@@ -2182,42 +2065,21 @@ async function executeSwap() {
 
     alert("Swap transaction sent!\n\nTX:\n" + swapTx.hash);
 
-    setTimeout(async ()=>{
-      await refreshAllBalances();
-      updatePricePreview();
-      await updateSwapButtonModeDebounced(true);
-    }, 1500);
+    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
   } catch (err) {
     console.error("executeSwap error:", err);
     showErrorPopup("Swap failed", err);
   } finally {
     setSwapBusy(false);
-    await updateSwapButtonModeDebounced(true);
   }
-}
-
-/* ✅ swapBtn 클릭 시: connect / approve / swap 자동 분기 */
-async function handleSwapActionClick(){
-  if(!userAddress){
-    await connectWallet();
-    return;
-  }
-  if(__swapBtnMode === "approve"){
-    await handleApproveOnly();
-    return;
-  }
-  await executeSwap();
 }
 
 function bindSwapLogic() {
   const sellInput = document.getElementById("sell");
   const swapBtn   = document.getElementById("swapBtn");
-  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, async ()=>{
-    updatePricePreview();
-    await updateSwapButtonModeDebounced(true);
-  }));
-  if (swapBtn) swapBtn.addEventListener("click", handleSwapActionClick);
+  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
+  if (swapBtn) swapBtn.addEventListener("click", executeSwap);
 }
 
 /* ===== Bind Connect ===== */
@@ -2242,16 +2104,7 @@ function bindConnect(){
     if (!balStr) return;
     document.getElementById('sell').value = balStr;
     updatePricePreview();
-    await updateSwapButtonModeDebounced(true);
   };
-}
-
-/* ============================================================
-   ✅ 초기 버튼 상태
-   ============================================================ */
-function initSwapButtonState(){
-  const sellSym = document.getElementById("sellS")?.textContent || "";
-  setSwapBtnUI(userAddress ? "swap" : "connect", sellSym);
 }
 
 /* ===== Boot ===== */
@@ -2290,9 +2143,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
 
     refreshAllBalances();
-
-    initSwapButtonState();
-    updateSwapButtonModeDebounced(true);
 
   }catch(e){
     console.error('[init]', e);
