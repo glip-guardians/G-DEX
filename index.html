@@ -1147,7 +1147,6 @@ function uiSupported(){
 
 function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelText="Cancel", copy=false}){
   if(!uiSupported()){
-    // fallback
     if(mode === "confirm") return Promise.resolve(window.confirm(title + "\n\n" + message));
     window.alert(title + "\n\n" + message);
     return Promise.resolve(true);
@@ -1163,7 +1162,6 @@ function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelT
   uiCancel.style.display = (mode === "confirm") ? "inline-block" : "none";
   uiCopy.style.display = copy ? "inline-block" : "none";
 
-  // remove old handlers
   uiOk.onclick = null;
   uiCancel.onclick = null;
 
@@ -1194,7 +1192,6 @@ if(uiSupported()){
   uiClose.onclick = ()=>{
     try{ uiModal.close(); }catch{}
     if(__uiResolve){
-      // treat close as cancel on confirm, ok on alert
       const val = (__uiMode === "confirm") ? false : true;
       const r = __uiResolve;
       __uiResolve = null;
@@ -1202,7 +1199,6 @@ if(uiSupported()){
     }
   };
   uiModal.addEventListener('click', (e)=>{
-    // click backdrop to close
     if(e.target === uiModal){
       uiClose.click();
     }
@@ -1212,9 +1208,7 @@ if(uiSupported()){
       await navigator.clipboard.writeText(uiMessage.textContent || "");
       uiCopy.textContent = "Copied!";
       setTimeout(()=>{ uiCopy.textContent = "Copy"; }, 900);
-    }catch{
-      // silent
-    }
+    }catch{}
   };
 }
 
@@ -1930,16 +1924,54 @@ function addrForPath(meta){
   return metaIsETH(meta) ? WETH_MAINNET : meta.address;
 }
 
-async function pickBestPath(tokenIn, tokenOut){
-  if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return [tokenIn, tokenOut];
+/* ✅ NEW: pair cache + multiple path candidates (token-token / token-ETH 안정화) */
+const __pairCache = new Map();
+async function getPairAddressCached(a,b){
+  const A = a.toLowerCase(), B = b.toLowerCase();
+  const key = (A < B) ? `${A}-${B}` : `${B}-${A}`;
+  if(__pairCache.has(key)) return __pairCache.get(key);
+  const p = await factory.getPair(a,b);
+  __pairCache.set(key, p);
+  return p;
+}
+async function hasPair(a,b){
   try{
-    const directPair = await factory.getPair(tokenIn, tokenOut);
-    if (directPair && directPair !== ethers.constants.AddressZero) return [tokenIn, tokenOut];
-  }catch{}
-  if (tokenIn.toLowerCase() === WETH_MAINNET.toLowerCase() || tokenOut.toLowerCase() === WETH_MAINNET.toLowerCase()){
-    return [tokenIn, tokenOut];
+    const p = await getPairAddressCached(a,b);
+    return !!p && p !== ethers.constants.AddressZero;
+  }catch{
+    return false;
   }
-  return [tokenIn, WETH_MAINNET, tokenOut];
+}
+function uniqPaths(paths){
+  const seen = new Set();
+  const out = [];
+  for(const p of paths){
+    const k = p.map(x=>x.toLowerCase()).join('>');
+    if(seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+  }
+  return out;
+}
+async function getPathCandidates(tokenIn, tokenOut){
+  if(!tokenIn || !tokenOut) return [];
+  const A = tokenIn.toLowerCase(), B = tokenOut.toLowerCase();
+  if (A === B) return [[tokenIn, tokenOut]];
+
+  // if either side is WETH, the simplest path is usually best
+  if (A === WETH_MAINNET.toLowerCase() || B === WETH_MAINNET.toLowerCase()){
+    return [[tokenIn, tokenOut]];
+  }
+
+  const paths = [];
+
+  // direct (if exists)
+  if (await hasPair(tokenIn, tokenOut)) paths.push([tokenIn, tokenOut]);
+
+  // via WETH (always try for stability)
+  paths.push([tokenIn, WETH_MAINNET, tokenOut]);
+
+  return uniqPaths(paths);
 }
 
 async function getEthReserveIfWethInvolved(path){
@@ -1947,7 +1979,7 @@ async function getEthReserveIfWethInvolved(path){
     const idx = path.findIndex(a => a.toLowerCase() === WETH_MAINNET.toLowerCase());
     if (idx < 0) return null;
     const other = (idx === 0) ? path[1] : path[idx-1];
-    const pairAddr = await factory.getPair(WETH_MAINNET, other);
+    const pairAddr = await getPairAddressCached(WETH_MAINNET, other);
     if (!pairAddr || pairAddr === ethers.constants.AddressZero) return null;
 
     const pair = new ethers.Contract(pairAddr, PAIR_ABI, provider);
@@ -2006,7 +2038,7 @@ function getSlipPct(){
 }
 
 /* ============================================================
-   ✅ Quote (Preview)
+   ✅ Quote (Preview) — updated to select best path among candidates
    ============================================================ */
 let __quoteTimer = null;
 async function updatePricePreview() {
@@ -2039,38 +2071,51 @@ async function updatePricePreview() {
       const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
       if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
 
-      const tokenIn  = addrForPath(sellMeta);
-      const tokenOut = addrForPath(buyMeta);
-      const basePath = await pickBestPath(tokenIn, tokenOut);
-
-      const ethReserve = await getEthReserveIfWethInvolved(basePath);
-      const rec = recommendedSlippagePctByEthReserve(ethReserve);
-
       if (sellIsEth && buyIsEth) {
         buyInput.value = "";
         if (hint) hint.textContent = "ETH → ETH not supported";
         return;
       }
 
+      const tokenIn  = addrForPath(sellMeta);
+      const tokenOut = addrForPath(buyMeta);
+
+      // Build candidates and pick the one with the best output quote
+      const paths = await getPathCandidates(tokenIn, tokenOut);
+      if(!paths.length) throw new Error("No route candidates.");
+
       const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
       if (amountForQuoteBN.lte(0)) {
         buyInput.value = "";
-        const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
         const feeTxt = sellIsEth ? feePctText() : flatFeeText();
-        if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
+        if (hint) hint.textContent = feeTxt;
         return;
       }
 
-      const amounts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
-      const out = amounts[amounts.length - 1];
-      const outStr = ethers.utils.formatUnits(out, buyMeta.decimals ?? 18);
+      let best = null;
+      for(const path of paths){
+        try{
+          // enforce simple ETH rules for preview
+          if (sellIsEth && path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) continue;
+          if (!sellIsEth && path[0].toLowerCase() !== tokenIn.toLowerCase()) continue;
+          if (!sellIsEth && buyIsEth && path[path.length-1].toLowerCase() !== WETH_MAINNET.toLowerCase()) continue;
+
+          const amounts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
+          const out = amounts[amounts.length - 1];
+          if(!best || out.gt(best.out)) best = { path, out };
+        }catch{}
+      }
+      if(!best) throw new Error("No quote route found (liquidity).");
+
+      const outStr = ethers.utils.formatUnits(best.out, buyMeta.decimals ?? 18);
       buyInput.value = Number(outStr).toFixed(6);
 
-      if (hint){
-        const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-        const feeTxt = sellIsEth ? feePctText() : flatFeeText();
-        hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
-      }
+      const ethReserve = await getEthReserveIfWethInvolved(best.path);
+      const rec = recommendedSlippagePctByEthReserve(ethReserve);
+      const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
+      const feeTxt = sellIsEth ? feePctText() : flatFeeText();
+      if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
+
     }catch(err){
       console.warn("[quote] failed", err);
       buyInput.value = "";
@@ -2151,74 +2196,111 @@ async function sendTxLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, ou
   throw new Error("Unsupported swap direction");
 }
 
-async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, basePath, to, deadline}){
+/* ✅ UPDATED: try multiple path candidates + multiple slippage candidates */
+async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
-  const callValue = sellIsEth ? amountInBN_raw : (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+  const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+  const callValue = sellIsEth ? amountInBN_raw : flat;
 
   const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
   if (amountForQuoteBN.lte(0)) throw new Error("Amount too small.");
 
   const userSlip = getSlipPct();
-  const ethReserve = await getEthReserveIfWethInvolved(basePath);
-  const rec = recommendedSlippagePctByEthReserve(ethReserve);
 
-  const slipCandidates = [
-    userSlip,
-    (rec != null ? Math.max(userSlip, rec) : userSlip),
-    10, 25, 35, 50
-  ].map(x => Math.max(0, Math.min(95, Number(x||0))))
-   .filter((v,i,arr)=>arr.indexOf(v)===i);
+  const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
+  if(!pathCandidates.length) throw new Error("No route candidates available.");
 
   const tokenInParam = addrForPath(sellMeta);
 
-  if (sellIsEth){
-    if (basePath[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) {
-      throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
-    }
-  }else{
-    if (basePath[0].toLowerCase() !== tokenInParam.toLowerCase()) {
-      throw new Error("BAD_PATH: For token sells, path[0] must equal tokenIn.");
-    }
-  }
-  if (!sellIsEth && buyIsEth){
-    const last = basePath[basePath.length - 1];
-    if (last.toLowerCase() !== WETH_MAINNET.toLowerCase()){
-      throw new Error("BAD_PATH: For Token→ETH, path last must be WETH.");
-    }
-  }
+  const reasons = [];
 
-  for (const slipPct of slipCandidates){
-    let outBN;
+  for (const path of pathCandidates){
+    // strict rules (contract safety)
     try{
-      const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, basePath);
+      if (sellIsEth){
+        if (path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
+      }else{
+        if (path[0].toLowerCase() !== tokenInParam.toLowerCase()) throw new Error("BAD_PATH: For token sells, path[0] must equal tokenIn.");
+      }
+      if (!sellIsEth && buyIsEth){
+        const last = path[path.length - 1];
+        if (last.toLowerCase() !== WETH_MAINNET.toLowerCase()){
+          throw new Error("BAD_PATH: For Token→ETH, path last must be WETH.");
+        }
+      }
+    }catch(e){
+      reasons.push(String(e.message || e));
+      continue;
+    }
+
+    // per-path recommended slippage (based on WETH reserve if present)
+    const ethReserve = await getEthReserveIfWethInvolved(path);
+    const rec = recommendedSlippagePctByEthReserve(ethReserve);
+
+    const slipCandidates = [
+      userSlip,
+      (rec != null ? Math.max(userSlip, rec) : userSlip),
+      10, 25, 35, 50
+    ].map(x => Math.max(0, Math.min(95, Number(x||0))))
+     .filter((v,i,arr)=>arr.indexOf(v)===i);
+
+    // quote output for this path once (then vary outMin)
+    let outBN = null;
+    try{
+      const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
       outBN = amts[amts.length - 1];
     }catch(e){
-      const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "—";
-      throw new Error(`No liquidity / route found on SushiSwap for this pair.\n${recTxt}`);
+      reasons.push(`NO_LIQUIDITY: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
+      continue;
     }
 
-    const outMinBN = calcOutMin(outBN, slipPct);
-
-    try{
-      await tryCallStaticLite({
-        sellIsEth, buyIsEth,
-        tokenInParam,
-        amountInBN_raw,
-        outMinBN,
-        path: basePath,
-        to, deadline,
-        callValue
-      });
-      return { slipPct, outMinBN, path: basePath, callValue, rec };
-    }catch(e){
-      // try next slippage
+    for (const slipPct of slipCandidates){
+      const outMinBN = calcOutMin(outBN, slipPct);
+      try{
+        await tryCallStaticLite({
+          sellIsEth, buyIsEth,
+          tokenInParam,
+          amountInBN_raw,
+          outMinBN,
+          path,
+          to, deadline,
+          callValue
+        });
+        return { slipPct, outMinBN, path, callValue, rec };
+      }catch(e){
+        // keep trying
+      }
     }
+
+    reasons.push(`REVERTED: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
   }
 
-  const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "—";
-  throw new Error(`No working swap plan found (liquidity/slippage or approval).\n${recTxt}`);
+  const recTxt = `Recommended ~ ${(await (async()=> {
+    // best-effort: return a conservative default for the UI
+    if (sellIsEth) return 3;
+    return 10;
+  })())}%`;
+
+  throw new Error(
+    `No working swap plan found (liquidity/slippage/value/approval).\n` +
+    `${recTxt}\n\nTried routes:\n- ${reasons.slice(0,8).join("\n- ")}`
+  );
+}
+
+async function ensureSufficientEthForValue(callValue){
+  // user must have ETH for msg.value + gas (gas not precisely known here)
+  // show clearer message early when flat-fee swaps fail.
+  try{
+    const bal = await provider.getBalance(userAddress);
+    if (bal.lt(callValue)){
+      throw new Error(`Insufficient ETH for required value.\n\nRequired: ${ethers.utils.formatEther(callValue)} ETH\nBalance: ${ethers.utils.formatEther(bal)} ETH\n\nTip: Token swaps require a flat ETH fee (msg.value) + gas.`);
+    }
+  }catch(e){
+    // if provider fails, ignore
+    if(e && e.message) throw e;
+  }
 }
 
 async function executeSwap() {
@@ -2246,19 +2328,24 @@ async function executeSwap() {
 
     const tokenIn  = addrForPath(sellMeta);
     const tokenOut = addrForPath(buyMeta);
-    const basePath = await pickBestPath(tokenIn, tokenOut);
 
     const deadline = Math.floor(Date.now()/1000) + 1200;
     const to = userAddress;
 
+    // approvals
     if (!sellIsEth){
       await ensureAllowanceIfNeeded(sellMeta, amountInBN_raw);
     }
 
+    // early ETH check for msg.value
+    const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+    const expectedValue = sellIsEth ? amountInBN_raw : flat;
+    await ensureSufficientEthForValue(expectedValue);
+
     const plan = await resolveWorkingPlanLite({
       sellMeta, buyMeta,
       amountInBN_raw,
-      basePath,
+      tokenIn, tokenOut,
       to, deadline
     });
 
@@ -2313,9 +2400,9 @@ async function executeSwap() {
       "Swap failed",
       msg + "\n\nIf this persists:\n" +
       "• Make sure you are on Ethereum Mainnet\n" +
-      "• For token swaps, confirm you approved the Proxy Router as spender\n" +
+      "• For token swaps, ensure you have enough ETH for flat fee + gas\n" +
+      "• Confirm you approved the Proxy Router as spender (not Sushi Router)\n" +
       "• Try higher slippage (10%~35%) if liquidity is thin\n" +
-      "• Verify the path rule: ETH→Token path[0]=WETH, Token→ETH path last=WETH\n" +
       "• As a fallback, try swapping on SushiSwap directly to verify pool liquidity."
     );
   } finally {
@@ -2350,7 +2437,21 @@ function bindConnect(){
     const sellMeta = getTokenMeta(sellSym);
     const balStr = await fetchTokenBalanceString(sellMeta);
     if (!balStr) return;
-    document.getElementById('sell').value = balStr;
+
+    // ✅ ETH MAX: leave small gas buffer so swaps don't fail
+    if (sellMeta && metaIsETH(sellMeta) && userAddress) {
+      try{
+        const raw = await ethGetBalance(userAddress); // bigint wei
+        const bn = ethers.BigNumber.from(raw.toString());
+        const buffer = ethers.utils.parseEther("0.005"); // keep gas buffer
+        const use = bn.gt(buffer) ? bn.sub(buffer) : ethers.constants.Zero;
+        document.getElementById('sell').value = ethers.utils.formatEther(use);
+      }catch{
+        document.getElementById('sell').value = balStr;
+      }
+    } else {
+      document.getElementById('sell').value = balStr;
+    }
     updatePricePreview();
   };
 }
