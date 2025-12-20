@@ -298,7 +298,18 @@ h3{
 }
 h3::before{content:""; display:none;}
 
-.metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
+/* ✅ 핵심(해결방안 적용):
+   Metrics 3열 그리드에서 가장 큰 카드(DEXTools)가 다른 카드 높이를 '늘려서' 빈 여백이 커지는 문제 방지
+   -> stretch 해제(콘텐츠 높이만큼만 카드 높이 적용) */
+.metrics{
+  grid-area:metrics;
+  display:grid;
+  gap:16px;
+  grid-template-columns:repeat(3,1fr);
+  align-items:start;          /* ✅ row 높이는 유지되더라도 카드 자체는 늘어나지 않음 */
+}
+.metrics .metric{align-self:start;} /* ✅ 안전장치 */
+
 .metric h4{margin:0 0 6px;font-weight:800;color:rgba(11,18,32,.78)}
 .metric .v{font-weight:900;font-size:18px;color:rgba(11,18,32,.92);white-space:nowrap}
 
