@@ -2585,10 +2585,14 @@ function bindSwapLogic() {
 }
 
 /* ===== Bind Connect ===== */
+async function connectWallet(){
+    if(el) el.onclick = connectWallet;
+}
+  
 function bindConnect(){
   ['poolConnect','btnConn','swapConnect'].forEach(id=>{
     const el = document.getElementById(id);
-    if(el) el.onclick = connectWallet;
+
   });
 
   const stakeMaxBtn = document.querySelector('.input--stake .max');
@@ -2672,5 +2676,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
 
