@@ -2211,6 +2211,14 @@ function calcOutMin(outBN, slipPct){
   const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100))); // 0~95%
   return outBN.mul(10000 - bp).div(10000);
 }
+function applyOutFeeToOutMin(outMinBN){
+  // ✅ 일부 ProxyRouter 설계는 output에서 fee를 떼기도 함
+  // 그 경우 outMin이 너무 높아서 revert가 날 수 있어 outMin을 feeBps만큼 더 낮춰보는 모델을 추가
+  const bps = Math.max(0, Number(__proxyFeeBps || 0));
+  if (!bps) return outMinBN;
+  // outMin * (1 - bps/10000)
+  return outMinBN.mul(10000 - bps).div(10000);
+}
 
 /* ============================================================
    ✅ overrides는 항상 마지막 인자(맨 뒤)로 들어감
@@ -2664,4 +2672,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
