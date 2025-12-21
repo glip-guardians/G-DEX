@@ -750,6 +750,22 @@ h3::before{content:""; display:none;}
   #uiFooter{flex-wrap:wrap}
   #uiFooter .btn{width:100%}
 }
+
+/* ✅ Swap status line (silent mode UX) */
+#swapStatus{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(12,25,45,.12);
+  background:rgba(255,255,255,.70);
+  box-shadow:0 10px 18px rgba(9,18,33,.08);
+  font-size:12px;
+  line-height:1.35;
+  color:rgba(11,18,32,.78);
+  display:none;
+}
+#swapStatus a{color:rgba(11,18,32,.90); font-weight:900; text-decoration:none}
+#swapStatus a:hover{text-decoration:underline}
 </style>
 </head>
 
@@ -866,6 +882,9 @@ h3::before{content:""; display:none;}
         </div>
         <div style="height:10px"></div>
         <button class="btn" id="swapBtn" style="width:100%">Swap</button>
+
+        <!-- ✅ silent mode status line -->
+        <div id="swapStatus"></div>
       </section>
 
       <!-- Pool -->
@@ -1125,9 +1144,28 @@ h3::before{content:""; display:none;}
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <script>
+/* ============================================================
+   ✅ SILENT SWAP MODE
+   - 안내/확인 문구(모달) 없이 바로 스왑 진행
+   ============================================================ */
+const SWAP_SILENT = true;
+
 /* ===== utils ===== */
 const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
+
+/* ✅ Swap Status (inline, non-blocking) */
+function setSwapStatus(msg, {show=true}={}){
+  const el = document.getElementById('swapStatus');
+  if(!el) return;
+  if(!msg){
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = msg;
+  el.style.display = show ? 'block' : 'none';
+}
 
 /* ============================================================
    ✅ DEBUG helpers
@@ -1149,15 +1187,9 @@ function safeStringify(obj){
     return v;
   }, 2); }catch(e){ return String(obj); }
 }
-async function showDebugDump(title, obj){
-  const txt = safeStringify(obj);
-  dbg(title, obj);
-  window.__lastSwapDebug = obj;
-  await uiAlert(title, txt, {copy:true});
-}
 
 /* ============================================================
-   ✅ NEW: In-app modal helpers (replaces alert/confirm)
+   ✅ In-app modal helpers (kept for errors / connect guidance)
    ============================================================ */
 const uiModal = document.getElementById('uiModal');
 const uiTitle = document.getElementById('uiTitle');
@@ -1212,7 +1244,6 @@ function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelT
 function uiAlert(title, message, {copy=false}={}){
   return _uiOpen({title, message, mode:"alert", okText:"OK", copy});
 }
-
 function uiConfirm(title, message, {okText="Continue", cancelText="Cancel", copy=false}={}){
   return _uiOpen({title, message, mode:"confirm", okText, cancelText, copy});
 }
@@ -1241,12 +1272,13 @@ if(uiSupported()){
   };
 }
 
-/* 기존 showErrorPopup는 UI 모달로 교체 */
+/* 기존 showErrorPopup는 UI 모달로 교체 (에러는 유지) */
 function showErrorPopup(title, payload) {
   let msg = "";
   if (payload instanceof Error) msg = payload.message || String(payload);
   else if (typeof payload === "string") msg = payload;
   else msg = JSON.stringify(payload, null, 2);
+  setSwapStatus(""); // clear inline
   uiAlert(title, msg, {copy:true});
 }
 
@@ -1496,7 +1528,7 @@ function metaIsETH(meta){
   return !!meta && (meta.symbol === "ETH" || meta.address === "ETH");
 }
 
-/* ✅ NEW: getSelectedMeta (dataset.address 우선) */
+/* ✅ getSelectedMeta (dataset.address 우선) */
 function getSelectedMeta(symEl){
   if(!symEl) return null;
   const sym = String(symEl.textContent || "").trim();
@@ -1617,7 +1649,6 @@ const SUSHI_ROUTER_RO_ABI = [
 ];
 
 const SUSHI_ROUTER_RW_ABI = [
-  // Direct swap fallback (Router02)
   "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable",
   "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)",
   "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)"
@@ -2073,7 +2104,7 @@ function flatFeeText(){
   }
 }
 
-/* ✅ ETH sell uses bps fee (proxy mode quote helper) */
+/* ✅ ETH sell uses bps fee */
 function applyPctFeeToEthAmount(amountInBN){
   const bps = Math.max(0, Number(__proxyFeeBps || 0));
   if (!bps) return amountInBN;
@@ -2081,7 +2112,8 @@ function applyPctFeeToEthAmount(amountInBN){
   if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
   return amountInBN.sub(feeBN);
 }
-/* ✅ NEW: 토큰 판매에도 feeBps가 차감되는 컨트랙트에 대비 */
+
+/* ✅ token sell fee modelB 대비 */
 function applyPctFeeToTokenAmount(amountInBN){
   const bps = Math.max(0, Number(__proxyFeeBps || 0));
   if (!bps) return amountInBN;
@@ -2090,7 +2122,7 @@ function applyPctFeeToTokenAmount(amountInBN){
   return amountInBN.sub(feeBN);
 }
 
-/* ✅ NEW: “quote에 사용할 실제 스왑 투입 amount”를 2모델로 만들기 */
+/* ✅ quote 모델 A/B */
 function getQuoteAmountsForModels({ sellIsEth, amountInBN_raw }){
   const modelA = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
   const modelB = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : applyPctFeeToTokenAmount(amountInBN_raw);
@@ -2147,7 +2179,6 @@ async function updatePricePreview() {
       const paths = await getPathCandidates(tokenIn, tokenOut);
       if(!paths.length) throw new Error("No route candidates.");
 
-      // Proxy quote logic (ETH sells may be fee-adjusted)
       const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
       if (amountForQuoteBN.lte(0)) {
         buyInput.value = "";
@@ -2198,16 +2229,12 @@ async function ensureAllowance(tokenMeta, amountInBN, spender){
   const allowance = await token.allowance(userAddress, spender);
   if (allowance.gte(amountInBN)) return;
 
-  // USDT-safe pattern: reset then set max (works for most tokens too)
+  // ✅ SILENT: 안내 모달 없이 승인만 진행 (MetaMask confirm은 필수)
   if (allowance.gt(0)) {
     const tx0 = await token.approve(spender, 0);
-    await uiAlert("Approval step 1/2 sent",
-      "Reset allowance to 0.\n\nPlease confirm in MetaMask and wait for confirmation.");
     await tx0.wait(1);
   }
   const tx = await token.approve(spender, ethers.constants.MaxUint256);
-  await uiAlert("Approval step 2/2 sent",
-    "Set allowance to Max.\n\nPlease confirm in MetaMask and wait for confirmation.");
   await tx.wait(1);
 }
 
@@ -2239,7 +2266,7 @@ function setSwapBusy(isBusy){
 }
 
 function calcOutMin(outBN, slipPct){
-  const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100))); // 0~95%
+  const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100)));
   return outBN.mul(10000 - bp).div(10000);
 }
 
@@ -2285,7 +2312,6 @@ async function tryCallStaticLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_
   }
   throw new Error("Unsupported swap direction");
 }
-
 async function estimateGasLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
   if (sellIsEth && !buyIsEth) {
     return await proxyRouter.estimateGas.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
@@ -2296,7 +2322,6 @@ async function estimateGasLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_ra
   }
   throw new Error("Unsupported swap direction");
 }
-
 async function sendTxLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue, gasLimit}){
   if (sellIsEth && !buyIsEth) {
     return await proxyRouter.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue, gasLimit });
@@ -2322,26 +2347,7 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
   const tokenInParam = addrForPath(sellMeta);
   const { modelA, modelB } = getQuoteAmountsForModels({ sellIsEth, amountInBN_raw });
 
-  const reasons = [];
-
   for (const path of pathCandidates){
-    try{
-      if (sellIsEth){
-        if (path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
-      }else{
-        if (path[0].toLowerCase() !== tokenInParam.toLowerCase()) throw new Error("BAD_PATH: For token sells, path[0] must equal tokenIn.");
-      }
-      if (!sellIsEth && buyIsEth){
-        const last = path[path.length - 1];
-        if (last.toLowerCase() !== WETH_MAINNET.toLowerCase()){
-          throw new Error("BAD_PATH: For Token→ETH, path last must be WETH.");
-        }
-      }
-    }catch(e){
-      reasons.push(String(e.message || e));
-      continue;
-    }
-
     const ethReserve = await getEthReserveIfWethInvolved(path);
     const rec = recommendedSlippagePctByEthReserve(ethReserve);
 
@@ -2357,14 +2363,11 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
       { name: "modelB", amountForQuoteBN: modelB },
     ].filter(m => m.amountForQuoteBN && m.amountForQuoteBN.gt(0));
 
-    let hadLiquidity = false;
-
     for(const m of models){
       let outBN = null;
       try{
         const amts = await sushiRouterRO.getAmountsOut(m.amountForQuoteBN, path);
         outBN = amts[amts.length - 1];
-        hadLiquidity = true;
       }catch{
         continue;
       }
@@ -2382,22 +2385,12 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
             callValue
           });
           return { slipPct, outMinBN, path, callValue, rec, modelUsed: m.name };
-        }catch(e){
-          // keep trying
-        }
+        }catch(e){}
       }
-    }
-
-    if(!hadLiquidity){
-      reasons.push(`NO_LIQUIDITY: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
-    }else{
-      reasons.push(`REVERTED: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
     }
   }
 
-  throw new Error(
-    `No working swap plan found (liquidity/slippage/value/approval).\n\nTried routes:\n- ${reasons.slice(0,10).join("\n- ")}`
-  );
+  throw new Error("Proxy plan not found.");
 }
 
 /* ============================================================
@@ -2413,7 +2406,6 @@ async function tryCallStaticDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinB
   }
   throw new Error("Unsupported swap direction");
 }
-
 async function estimateGasDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
   if (sellIsEth && !buyIsEth) {
     return await sushiRouterRW.estimateGas.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
@@ -2424,7 +2416,6 @@ async function estimateGasDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN,
   }
   throw new Error("Unsupported swap direction");
 }
-
 async function sendTxDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue, gasLimit}){
   if (sellIsEth && !buyIsEth) {
     return await sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue, gasLimit });
@@ -2446,24 +2437,7 @@ async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, toke
   const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
   if(!pathCandidates.length) throw new Error("No route candidates available.");
 
-  const reasons = [];
-
   for(const path of pathCandidates){
-    try{
-      if (sellIsEth){
-        if (path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
-      }else{
-        if (path[0].toLowerCase() !== tokenIn.toLowerCase()) throw new Error("BAD_PATH: For token sells, path[0] must equal tokenIn.");
-      }
-      if (!sellIsEth && buyIsEth){
-        const last = path[path.length-1];
-        if (last.toLowerCase() !== WETH_MAINNET.toLowerCase()) throw new Error("BAD_PATH: For Token→ETH, path last must be WETH.");
-      }
-    }catch(e){
-      reasons.push(String(e.message||e));
-      continue;
-    }
-
     const ethReserve = await getEthReserveIfWethInvolved(path);
     const rec = recommendedSlippagePctByEthReserve(ethReserve);
 
@@ -2479,7 +2453,6 @@ async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, toke
       const amts = await sushiRouterRO.getAmountsOut(amountInBN_raw, path);
       outBN = amts[amts.length - 1];
     }catch{
-      reasons.push(`NO_LIQUIDITY: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
       continue;
     }
 
@@ -2494,42 +2467,55 @@ async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, toke
           callValue
         });
         return { slipPct, outMinBN, path, callValue, rec };
-      }catch(e){
-        // keep trying
-      }
+      }catch(e){}
     }
-
-    reasons.push(`REVERTED: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
   }
 
-  throw new Error(
-    `Direct swap plan not found.\n\nTried routes:\n- ${reasons.slice(0,10).join("\n- ")}`
-  );
+  throw new Error("Direct plan not found.");
 }
 
 /* ============================================================
-   ✅ Swap execution: Proxy first, fallback to Direct Sushi
+   ✅ Swap execution (Silent):
+   - Confirm/Notice 모달 없이 즉시 진행
+   - Proxy 실패 시 자동 Direct 폴백
    ============================================================ */
 async function executeSwap() {
   try {
-    if (!userAddress) { await uiAlert("Swap", "Please connect your wallet first."); return; }
+    setSwapStatus("");
+    if (!userAddress) { 
+      setSwapStatus("Please connect your wallet first.");
+      return;
+    }
+
     ensureWeb3();
     await ensureMainnet();
     await loadProxyFeeParams();
 
     const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if (!sellValStr || Number(sellValStr) <= 0) { await uiAlert("Swap", "Enter an amount to swap."); return; }
+    if (!sellValStr || Number(sellValStr) <= 0) { 
+      setSwapStatus("Enter an amount to swap.");
+      return;
+    }
 
     const sellMeta = getSelectedMeta(document.getElementById("sellS"));
     const buyMeta  = getSelectedMeta(document.getElementById("buyS"));
-    if (!sellMeta || !buyMeta) { await uiAlert("Swap", "Token metadata not found."); return; }
+    if (!sellMeta || !buyMeta) { 
+      setSwapStatus("Token metadata not found.");
+      return;
+    }
 
     const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if (amountInBN_raw.lte(0)) { await uiAlert("Swap", "Invalid amount."); return; }
+    if (amountInBN_raw.lte(0)) { 
+      setSwapStatus("Invalid amount.");
+      return;
+    }
 
     const sellIsEth = metaIsETH(sellMeta);
     const buyIsEth  = metaIsETH(buyMeta);
-    if (sellIsEth && buyIsEth) { await uiAlert("Swap", "ETH → ETH swap is not supported."); return; }
+    if (sellIsEth && buyIsEth) { 
+      setSwapStatus("ETH → ETH swap is not supported.");
+      return;
+    }
 
     const tokenIn  = addrForPath(sellMeta);
     const tokenOut = addrForPath(buyMeta);
@@ -2541,6 +2527,7 @@ async function executeSwap() {
 
     // approvals for proxy mode first (spender = proxy router)
     if (!sellIsEth){
+      setSwapStatus("Checking approval…");
       await ensureAllowance(sellMeta, amountInBN_raw, GDEX_PROXY_ROUTER);
     }
 
@@ -2548,23 +2535,10 @@ async function executeSwap() {
     const expectedValueProxy = sellIsEth ? amountInBN_raw : flat;
     await ensureSufficientEthForValue(expectedValueProxy);
 
-    // pre-swap debug
-    const pre = {
-      chainId: (await provider.getNetwork()).chainId,
-      userAddress,
-      sell: { symbol: sellMeta.symbol, address: sellMeta.address, decimals: sellMeta.decimals },
-      buy:  { symbol: buyMeta.symbol,  address: buyMeta.address,  decimals: buyMeta.decimals },
-      input: { sellValStr, amountInRaw: amountInBN_raw.toString(), slippagePct: getSlipPct() },
-      fee: { feeBps: __proxyFeeBps, flatFeeWei: (__proxyFlatFeeWei ? __proxyFlatFeeWei.toString() : null), feeWallet: __proxyFeeWallet },
-      routers: { proxy: GDEX_PROXY_ROUTER, sushi: SUSHI_ROUTER_V2, weth: WETH_MAINNET },
-      computed: { tokenIn, tokenOut, expectedMsgValueWei_proxy: expectedValueProxy.toString() }
-    };
-    dbg("PRE-SWAP", pre);
-    if(dbgEnabled()){
-      await showDebugDump("Swap Debug (preflight)", pre);
-    }
+    setSwapBusy(true);
+    setSwapStatus("Preparing route…");
 
-    // 1) Try proxy router plan
+    // 1) Try proxy router plan (silent)
     let plan = null;
     let mode = "proxy";
 
@@ -2577,55 +2551,31 @@ async function executeSwap() {
       });
       mode = "proxy";
     }catch(proxyErr){
-      const msg = proxyErr?.message || String(proxyErr);
-      dbg("Proxy plan failed", msg);
+      // ✅ SILENT: 안내문구 없이 자동 Direct 폴백
+      try{
+        if (!sellIsEth){
+          setSwapStatus("Proxy failed. Switching to Direct mode… Checking Sushi approval…");
+          await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
+        }else{
+          setSwapStatus("Proxy failed. Switching to Direct mode…");
+        }
 
-      const goDirect = await uiConfirm(
-        "Proxy route failed",
-        msg + "\n\nThis failed BEFORE a TX was sent.\n\n" +
-        "You can try a Direct SushiSwap swap from the same UI.\n" +
-        "• No G-DEX flat fee will be charged in Direct mode\n" +
-        "• You may need to approve Sushi Router as spender\n\n" +
-        "Switch to Direct mode and continue?",
-        {okText:"Use Direct Mode", cancelText:"Cancel", copy:true}
-      );
-      if(!goDirect) return;
+        const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
+        await ensureSufficientEthForValue(expectedValueDirect);
 
-      // For direct mode, approvals spender = Sushi router
-      if (!sellIsEth){
-        await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
+        plan = await resolveWorkingPlanDirect({
+          sellMeta, buyMeta,
+          amountInBN_raw,
+          tokenIn, tokenOut,
+          to, deadline
+        });
+        mode = "direct";
+      }catch(directErr){
+        throw directErr;
       }
-
-      const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
-      await ensureSufficientEthForValue(expectedValueDirect);
-
-      plan = await resolveWorkingPlanDirect({
-        sellMeta, buyMeta,
-        amountInBN_raw,
-        tokenIn, tokenOut,
-        to, deadline
-      });
-      mode = "direct";
     }
 
-    const valueEth = ethers.utils.formatEther(plan.callValue);
-    const feeLine = (mode === "proxy")
-      ? (sellIsEth ? feePctText() : flatFeeText())
-      : "Direct Mode: No G-DEX fee";
-
-    const proceed = await uiConfirm(
-      "Confirm Swap",
-      `Mode: ${mode === "proxy" ? "G-DEX Proxy Router Lite" : "Direct SushiSwap"}\n\n` +
-      `${feeLine}\n` +
-      `Slippage used: ${plan.slipPct}%\n` +
-      `ETH value sent: ${valueEth} ETH\n\n` +
-      `Route:\n${plan.path.join(" > ")}\n\n` +
-      `Continue?`,
-      {okText:"Continue", cancelText:"Cancel", copy:true}
-    );
-    if (!proceed) return;
-
-    setSwapBusy(true);
+    setSwapStatus(`Sending transaction (${mode === "proxy" ? "Proxy" : "Direct"})…`);
 
     // 2) estimate gas + send
     let gas, tx;
@@ -2673,11 +2623,8 @@ async function executeSwap() {
 
     pushRecentTx(tx.hash);
 
-    await uiAlert(
-      "Swap transaction sent!",
-      "TX:\n" + tx.hash + "\n\nEtherscan:\nhttps://etherscan.io/tx/" + tx.hash,
-      {copy:true}
-    );
+    // ✅ SILENT: 모달 없이 status 라인만
+    setSwapStatus(`TX sent: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`);
 
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
@@ -2692,8 +2639,7 @@ async function executeSwap() {
       "• Make sure you are on Ethereum Mainnet\n" +
       "• For proxy token swaps, ensure you have enough ETH for flat fee + gas\n" +
       "• Proxy mode spender = Proxy Router, Direct mode spender = Sushi Router\n" +
-      "• Try higher slippage (10%~35%) if liquidity is thin\n" +
-      "• If Proxy Router fails for USDT, Direct mode should still succeed."
+      "• Try higher slippage (10%~35%) if liquidity is thin"
     );
   } finally {
     setSwapBusy(false);
@@ -2751,48 +2697,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
     bindTokenButtons();
     bindFlip();
     bindConnect();
+    bindSwapLogic();
     bindPoolSupplyButton();
     bindTop();
     document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick));
-    if(isIos && !isStandaloneMode()){
-      document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
-    }
 
-    document.getElementById('apr').textContent="12.5%";
-    document.getElementById('myStaked').textContent="1,250 GLIP";
-    document.getElementById('earned').textContent="42.4 GLIP";
-    document.getElementById('est30').textContent="≈ 12.8 GLIP";
+    applyManualPoolConfig();
+    bootSushiPoolsTicker();
 
+    // analytics demo
     fillKpis(demoAnalytics);
     drawSpark(demoAnalytics);
     drawDonut(demoAnalytics);
     drawGauge(demoAnalytics);
 
-    bindSwapLogic();
-    applyManualPoolConfig();
-
-    bootSushiPoolsTicker();
-
-    window.addEventListener('resize', ()=>{
-      drawSpark(demoAnalytics);
-      drawDonut(demoAnalytics);
-      drawGauge(demoAnalytics);
-    });
-
-    refreshAllBalances();
-
-    if(dbgEnabled()){
-      dbg("Debug mode ON");
-      uiAlert("Debug mode enabled", "URL contains ?debug=1\n\n• Swap preflight dump will appear.", {copy:false});
+    // silent hint
+    if(SWAP_SILENT){
+      setSwapStatus("Ready. (Silent swap mode enabled)");
     }
-
   }catch(e){
-    console.error('[init]', e);
-    showErrorPopup('Initialization error — see console.', e);
+    console.error('[boot]', e);
   }
 });
 </script>
 </body>
 </html>
-<br><br>
-
