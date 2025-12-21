@@ -2585,14 +2585,12 @@ function bindSwapLogic() {
 }
 
 /* ===== Bind Connect ===== */
-async function connectWallet(){
-    if(el) el.onclick = connectWallet;
-}
+
   
 function bindConnect(){
   ['poolConnect','btnConn','swapConnect'].forEach(id=>{
     const el = document.getElementById(id);
-
+    if(el) el.onclick = connectWallet;   // ✅ 이 한 줄이 핵심
   });
 
   const stakeMaxBtn = document.querySelector('.input--stake .max');
@@ -2624,6 +2622,7 @@ function bindConnect(){
     updatePricePreview();
   };
 }
+
 
 /* ===== Boot ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -2676,6 +2675,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
 
 
