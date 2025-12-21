@@ -710,9 +710,7 @@ h3::before{content:""; display:none;}
   font-size:16px;padding:6px 10px;border-radius:10px
 }
 #uiClose:hover{background:rgba(123,183,255,.12)}
-#uiBody{
-  padding:14px 16px 4px;
-}
+#uiBody{ padding:14px 16px 4px; }
 #uiMessage{
   margin:0;
   padding:12px 12px;
@@ -1140,7 +1138,6 @@ h3::before{content:""; display:none;}
 <script>
 /* ============================================================
    ✅ SILENT SWAP MODE
-   - 안내/확인 문구(모달) 없이 바로 스왑 진행
    ============================================================ */
 const SWAP_SILENT = true;
 
@@ -1149,7 +1146,7 @@ const $ = s => document.querySelector(s);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
 
 /* ✅ Swap Status (inline, non-blocking) */
-function setSwapStatus(msg, {show=true}={}) {
+function setSwapStatus(msg, {show=true}={}){
   const el = document.getElementById('swapStatus');
   if(!el) return;
   if(!msg){
@@ -1162,8 +1159,28 @@ function setSwapStatus(msg, {show=true}={}) {
 }
 
 /* ============================================================
+   ✅ MOBILE WATCHDOG (핵심)
+   - 모바일에서 MetaMask Confirm 응답이 안 오는 경우 영구정지 방지
+   ============================================================ */
+function withTimeout(promise, ms, onTimeout){
+  let t;
+  const timeout = new Promise((_, reject)=>{
+    t = setTimeout(()=>{
+      try{ onTimeout && onTimeout(); }catch{}
+      reject(new Error("Wallet confirmation timeout"));
+    }, ms);
+  });
+  return Promise.race([
+    promise.finally(()=>clearTimeout(t)),
+    timeout
+  ]);
+}
+function hintWalletConfirm(){
+  setSwapStatus("Waiting for wallet confirmation… (If no popup, open MetaMask confirmation screen and return)");
+}
+
+/* ============================================================
    ✅ DEBUG helpers
-   - enable via ?debug=1 OR localStorage.GDEX_DEBUG="1"
    ============================================================ */
 function dbgEnabled(){
   try{
@@ -1174,18 +1191,9 @@ function dbg(...args){
   if(!dbgEnabled()) return;
   console.log("[G-DEX DEBUG]", ...args);
 }
-function safeStringify(obj){
-  try{
-    return JSON.stringify(obj, (k,v)=>{
-      if (typeof v === "bigint") return v.toString();
-      if (v && v._isBigNumber) return v.toString();
-      return v;
-    }, 2);
-  }catch(e){ return String(obj); }
-}
 
 /* ============================================================
-   ✅ In-app modal helpers (kept for errors / connect guidance)
+   ✅ In-app modal helpers
    ============================================================ */
 const uiModal = document.getElementById('uiModal');
 const uiTitle = document.getElementById('uiTitle');
@@ -1201,7 +1209,6 @@ let __uiMode = "alert"; // "alert" | "confirm"
 function uiSupported(){
   return !!(uiModal && typeof uiModal.showModal === "function");
 }
-
 function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelText="Cancel", copy=false}){
   if(!uiSupported()){
     if(mode === "confirm") return Promise.resolve(window.confirm(title + "\n\n" + message));
@@ -1236,12 +1243,8 @@ function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelT
     uiCancel.onclick = ()=>cleanup(false);
   });
 }
-
 function uiAlert(title, message, {copy=false}={}){
   return _uiOpen({title, message, mode:"alert", okText:"OK", copy});
-}
-function uiConfirm(title, message, {okText="Continue", cancelText="Cancel", copy=false}={}){
-  return _uiOpen({title, message, mode:"confirm", okText, cancelText, copy});
 }
 
 if(uiSupported()){
@@ -1291,23 +1294,12 @@ let gdexPoolConfig = {};
     console.warn('[G-DEX] invalid gdexPoolConfig JSON', e);
   }
 })();
-
 function applyManualPoolConfig(){
   const cfg = gdexPoolConfig || {};
-  const poolsEl  = document.getElementById('metricPoolsText');
   const volEl    = document.getElementById('metricVolumeText');
-  const priceEl  = document.getElementById('metricGlipPrice');
   const noteEl   = document.getElementById('pManualNote');
   const footEl   = document.getElementById('poolFooterNote');
-
-  const hasTicker = !!document.getElementById('poolsTicker');
-  if(poolsEl && cfg.recentPoolsText && !hasTicker) poolsEl.textContent = cfg.recentPoolsText;
-
   if(volEl   && cfg.volume24hUsd)    volEl.textContent   = cfg.volume24hUsd;
-
-  const hasDexTools = !!(priceEl && priceEl.querySelector('#dextools-widget'));
-  if(priceEl && cfg.glipPriceUsd && !hasDexTools) priceEl.textContent = '$ ' + cfg.glipPriceUsd;
-
   if(noteEl  && cfg.poolManualNote)  noteEl.textContent  = cfg.poolManualNote;
   if(footEl  && cfg.poolFooterNote)  footEl.textContent  = cfg.poolFooterNote;
 }
@@ -1333,7 +1325,6 @@ function setPoolsTicker(item){
   pair.textContent = (item && item.name) ? item.name : "—";
   meta.textContent = (tvlTxt + feeTxt).trim();
 }
-
 function setPoolsTickerFallbackFromManual(){
   try{
     const cfg = gdexPoolConfig || {};
@@ -1348,7 +1339,6 @@ function setPoolsTickerFallbackFromManual(){
     setPoolsTicker({ name:"—", tvlText:"", feePct:null, url:"https://www.sushi.com/ethereum/explore/pools" });
   }
 }
-
 async function fetchSushiPools(limit=5){
   const url = `${BACKEND_URL}/sushi/pools?chain=ethereum&limit=${encodeURIComponent(limit)}`;
   const r = await fetch(url, { method:'GET' });
@@ -1356,7 +1346,6 @@ async function fetchSushiPools(limit=5){
   const items = j && Array.isArray(j.items) ? j.items : [];
   return items.slice(0, limit);
 }
-
 function rotateSushiPools(){
   if(!__sushiPools.length) return;
   const wrap = document.getElementById('poolsTicker');
@@ -1372,7 +1361,6 @@ function rotateSushiPools(){
     wrap.classList.add('fadeIn');
   }, 220);
 }
-
 async function bootSushiPoolsTicker(){
   const wrap = document.getElementById('poolsTicker');
   if(!wrap) return;
@@ -1447,72 +1435,7 @@ const tokenList = [
   {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6,
    logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png", priority:94},
   {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18,
-   logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png", priority:93},
-  {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18,
-   logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193", priority:92},
-
-  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8,
-   logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png", priority:90},
-  {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png", priority:89},
-  {symbol:"BNB", name:"BNB", address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png", priority:88},
-  {symbol:"XRP", name:"XRP", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6,
-   logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png", priority:87},
-  {symbol:"LINK", name:"Chainlink", address:"0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/877/standard/chainlink-new-logo.png", priority:86},
-  {symbol:"UNI", name:"Uniswap", address:"0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals:18,
-   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984/logo.png", priority:85},
-  {symbol:"AAVE", name:"Aave", address:"0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/12645/standard/AAVE.png", priority:84},
-  {symbol:"LDO", name:"Lido DAO", address:"0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/13573/standard/Lido_DAO.png", priority:83},
-  {symbol:"SNX", name:"Synthetix", address:"0xC011A72400E58ecD99Ee497CF89E3775d4bd732F", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/3406/standard/SNX.png", priority:82},
-  {symbol:"CRV", name:"Curve DAO", address:"0xD533a949740bb3306d119CC777fa900bA034cd52", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/12124/standard/Curve.png", priority:81},
-  {symbol:"COMP", name:"Compound", address:"0xc00e94Cb662C3520282E6f5717214004A7f26888", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/10775/standard/COMP.png", priority:80},
-  {symbol:"MKR", name:"Maker", address:"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/1364/standard/Mark_Maker.png", priority:79},
-  {symbol:"YFI", name:"yearn.finance", address:"0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e", decimals:18,
-   logo:"https://coin-images.coingecko.com/coins/images/11849/large/yearn.jpg", priority:78},
-  {symbol:"SUSHI", name:"Sushi", address:"0x6B3595068778DD592e39A122f4f5a5CF09C90fE2", decimals:18,
-   logo:"https://coin-images.coingecko.com/coins/images/12271/large/512x512_Logo_no_chop.png", priority:77},
-  {symbol:"BAL", name:"Balancer", address:"0xba100000625a3754423978a60c9317c58a424e3D", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/11683/standard/Balancer.png", priority:76},
-  {symbol:"1INCH", name:"1inch", address:"0x111111111117dC0aa78b770fA6A738034120C302", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/13469/standard/1inch-token.png", priority:75},
-  {symbol:"ENS", name:"Ethereum Name Service", address:"0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72", decimals:18,
-   logo:"https://coin-images.coingecko.com/coins/images/19785/large/ENS.jpg", priority:74},
-  {symbol:"OP", name:"Optimism", address:"0x4200000000000000000000000000000000000042", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png", priority:73},
-  {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/16547/large/arb.jpg", priority:72},
-  {symbol:"IMX", name:"Immutable X", address:"0xF34e271312e41bC4a3E58A9cA7D2F3f28f4a2eA9", decimals:18,
-   logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF/logo.png", priority:71},
-  {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg", priority:70},
-  {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/11939/standard/shiba.png", priority:69},
-  {symbol:"DOGE", name:"Dogecoin (ERC20)", address:"0x4206931337dc273a630d328da6441786bfad668f", decimals:8,
-   logo:"https://assets.coingecko.com/coins/images/5/standard/dogecoin.png", priority:68},
-  {symbol:"BAT", name:"Basic Attention", address:"0x0D8775F648430679A709E98d2b0Cb6250d2887EF", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/677/standard/basic-attention-token.png", priority:67},
-  {symbol:"MANA", name:"Decentraland", address:"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", decimals:18,
-   logo:"https://coin-images.coingecko.com/coins/images/878/large/decentraland-mana.png", priority:66},
-  {symbol:"SAND", name:"The Sandbox", address:"0x3845badAde8e6dFF049820680d1F14bD3903a5d0", decimals:18,
-   logo:"https://coin-images.coingecko.com/coins/images/12129/large/sandbox_logo.jpg", priority:65},
-  {symbol:"AXS", name:"Axie Infinity", address:"0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/13029/standard/axie_infinity_logo.png", priority:64},
-  {symbol:"GRT", name:"The Graph", address:"0xc944E90C64B2c07662A292be6244BDf05Cda44a7", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/13397/standard/Graph_Token.png", priority:63},
-  {symbol:"FTM", name:"Fantom", address:"0x4e15361FD6b4BB609Fa63C81A2be19d873717870", decimals:18,
-   logo:"https://coin-images.coingecko.com/coins/images/16036/large/Fantom.png", priority:62},
-  {symbol:"NEAR", name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24,
-   logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg", priority:61},
-  {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18,
-   logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png", priority:60}
+   logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png", priority:93}
 ];
 
 function getTokenMeta(symbolOrAddress) {
@@ -1545,10 +1468,8 @@ function getSelectedMeta(symEl){
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
   const GLIP = tokenList.find(t=>t.symbol==="GLIP");
-
   $('#sellI').src = ETH.logo;  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
   $('#buyI').src  = GLIP.logo; $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP.address;
-
   $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
   $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
 }
@@ -1633,7 +1554,7 @@ let provider = null;
 let signer = null;
 
 let sushiRouterRO = null;
-let sushiRouterRW = null;     // ✅ direct swap signer instance
+let sushiRouterRW = null;
 let factory = null;
 let proxyRouter = null;
 
@@ -1646,31 +1567,19 @@ let __proxyFeeWallet = null;
 const SUSHI_ROUTER_RO_ABI = [
   "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
 ];
-
 const SUSHI_ROUTER_RW_ABI = [
   "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable",
   "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)",
   "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)"
 ];
-
 const FACTORY_ABI = [
   "function getPair(address tokenA, address tokenB) view returns (address pair)"
 ];
-
-const PAIR_ABI = [
-  "function token0() view returns (address)",
-  "function token1() view returns (address)",
-  "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
-];
-
 const ERC20_ABI = [
-  "function decimals() view returns (uint8)",
-  "function symbol() view returns (string)",
   "function balanceOf(address owner) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
-
 /* Proxy ABI */
 const PROXY_ABI = [
   "function feeWallet() view returns (address)",
@@ -1688,7 +1597,6 @@ async function ensureMainnet(){
     throw new Error(`Wrong network detected (chainId=${net?.chainId}). Please switch to Ethereum Mainnet.`);
   }
 }
-
 function ensureWeb3(){
   if (!window.ethereum) throw new Error("No wallet detected.");
   if (!window.ethers) throw new Error("ethers.js failed to load.");
@@ -1702,7 +1610,6 @@ function ensureWeb3(){
 
   if (!proxyRouter) proxyRouter = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, signer);
 }
-
 async function loadProxyFeeParams(){
   try{
     ensureWeb3();
@@ -1816,136 +1723,19 @@ async function handleInstallClick(){
   await uiAlert('Install', 'Use browser menu → "Add to home screen".');
 }
 
-/* ===== Analytics demo ===== */
-const demoAnalytics = {
-  rebateRate: 12,
-  feeNet: 420000,
-  split: { users: 0.70, esg: 0.20, treasury: 0.10 },
-  returnedSeries: [1200,3400,5600,8300,12000,16200,21000,27900,35000,43600,52000,61500,72000,84500,98000,112000,127800,145200,163500,182400],
-  turnout: 38,
-  transparency: 92,
-  co2: { current: 152, target: 220 }
-};
-function fillKpis(d){
-  const {rebateRate, feeNet, split, turnout, transparency} = d;
-  const returned = feeNet * (rebateRate/100) * split.users;
-  const esgAccrual= feeNet * (rebateRate/100) * split.esg;
-  document.getElementById('kRebate').textContent = rebateRate.toFixed(0) + "%";
-  document.getElementById('kReturned').textContent = "$ " + Math.round(returned).toLocaleString();
-  document.getElementById('kESG').textContent = "$ " + Math.round(esgAccrual).toLocaleString();
-  document.getElementById('kTransparency').textContent = transparency.toFixed(0) + "%";
-  document.getElementById('kTurnout').textContent = turnout.toFixed(0) + "%";
-  const greenScore = Math.round( (transparency/100) * (split.esg*rebateRate) * 10 );
-  document.getElementById('kGreen').textContent = greenScore;
-  document.getElementById('rvHint').textContent = "Net Fees $" + feeNet.toLocaleString() + " · R% " + rebateRate + "%";
-  document.getElementById('esgNote').textContent = `Current quarter alloc: Users ${(split.users*100).toFixed(0)}% · ESG ${(split.esg*100).toFixed(0)}% · Treasury ${(split.treasury*100).toFixed(0)}%.`;
-  document.getElementById('giHint').textContent = `tCO₂e offset est. ${d.co2.current}/${d.co2.target}`;
-}
-function drawSpark(d){
-  const el = document.getElementById('spark');
-  const ctx = el.getContext('2d');
-  const DPR = window.devicePixelRatio||1;
-  const w = el.clientWidth * DPR, h = el.clientHeight * DPR;
-  el.width = w; el.height = h;
-  const data = d.returnedSeries;
-  const min = Math.min(...data), max = Math.max(...data);
-  const padX = 20 * DPR, padY = 16 * DPR;
-  const x = i => padX + (i/(data.length-1)) * (w - padX*2);
-  const y = v => { const t=(v-min)/(max-min || 1); return h - padY - t*(h - padY*2); };
-
-  const grad = ctx.createLinearGradient(0, y(max), 0, h-padY);
-  grad.addColorStop(0, "rgba(123,183,255,.40)");
-  grad.addColorStop(1, "rgba(255,255,255,.10)");
-
-  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
-  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
-  ctx.lineTo(x(data.length-1), h-padY); ctx.lineTo(x(0), h-padY); ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-
-  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
-  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
-  ctx.lineWidth = 2.5 * DPR; ctx.strokeStyle = "#7bb7ff"; ctx.stroke();
-}
-function drawDonut(d){
-  const canvas = document.getElementById('donut');
-  const ctx = canvas.getContext('2d');
-  const DPR = window.devicePixelRatio||1;
-  const size = canvas.parentElement.clientWidth;
-  const dim = Math.min(200, size);
-  canvas.width = dim * DPR; canvas.height = dim * DPR;
-  const cx = canvas.width/2, cy = canvas.height/2;
-  const rOuter = (dim*DPR)/2 - 6*DPR;
-  const rInner = rOuter * 0.62;
-  const parts = [
-    {key:"Users",    val:d.split.users,    color:"#7bb7ff"},
-    {key:"ESG",      val:d.split.esg,      color:"#39d98a"},
-    {key:"Treasury", val:d.split.treasury, color:"rgba(11,18,32,.55)"}
-  ];
-  let start = -Math.PI/2;
-  parts.forEach(p=>{
-    const arc = p.val * Math.PI*2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, rOuter, start, start+arc);
-    ctx.arc(cx, cy, rInner, start+arc, start, true);
-    ctx.closePath();
-    ctx.fillStyle = p.color; ctx.fill();
-    start += arc;
-  });
-  document.getElementById('donutCenter').textContent = d.rebateRate + "%";
-  const leg = document.getElementById('donutLegend');
-  leg.innerHTML = parts.map(p=>
-    `<div class="item"><span class="dot" style="background:${p.color}"></span>${p.key} ${(p.val*100).toFixed(0)}%</div>`
-  ).join("");
-}
-function drawGauge(d){
-  const canvas = document.getElementById('gauge');
-  const ctx = canvas.getContext('2d');
-  const DPR = window.devicePixelRatio||1;
-  const w = canvas.parentElement.clientWidth, h = 120;
-  canvas.width = w*DPR; canvas.height = h*DPR;
-  const cx = canvas.width/2, cy = canvas.height*0.95;
-  const r = Math.min(w*DPR*0.42, h*DPR*0.9);
-  ctx.lineWidth = 16*DPR; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
-  ctx.strokeStyle = "rgba(11,18,32,.16)"; ctx.stroke();
-  const pct = Math.max(0, Math.min(1, d.co2.current / d.co2.target));
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI);
-  ctx.strokeStyle = "#7bb7ff"; ctx.stroke();
-}
-
 /* ============================================================
-   ✅ Balance (low-level)
+   ✅ Balance (simple)
    ============================================================ */
-function hexToBigInt(hex){ return (!hex) ? 0n : BigInt(hex); }
-function formatUnitsBigInt(bn, decimals){
-  const d = BigInt(decimals);
-  const base = 10n ** d;
-  const whole = bn / base;
-  const frac = bn % base;
-  const fracStr = frac.toString().padStart(Number(d), '0').slice(0, 8).replace(/0+$/,'');
-  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
-}
-function pad32(addr){ return addr.toLowerCase().replace(/^0x/,'').padStart(64,'0'); }
-
-async function ethGetBalance(addr){
-  const hex = await ethereum.request({ method:'eth_getBalance', params:[addr,'latest'] });
-  return hexToBigInt(hex);
-}
-async function erc20BalanceOf(tokenAddr, owner){
-  const data = "0x70a08231" + pad32(owner);
-  const hex = await ethereum.request({ method:'eth_call', params:[{to:tokenAddr, data}, 'latest'] });
-  return hexToBigInt(hex);
-}
 async function fetchTokenBalanceString(meta){
   try{
     if(!userAddress || !window.ethereum) return null;
     if(!meta) return null;
     if(metaIsETH(meta)){
-      const bn = await ethGetBalance(userAddress);
-      return formatUnitsBigInt(bn, 18);
+      const bn = await provider.getBalance(userAddress);
+      return ethers.utils.formatUnits(bn, 18);
     }else{
-      const bn = await erc20BalanceOf(meta.address, userAddress);
-      return formatUnitsBigInt(bn, meta.decimals ?? 18);
+      const bn = await (new ethers.Contract(meta.address, ERC20_ABI, provider)).balanceOf(userAddress);
+      return ethers.utils.formatUnits(bn, meta.decimals ?? 18);
     }
   }catch(e){
     console.warn('[balance] fail', e);
@@ -2005,29 +1795,16 @@ async function refreshAllBalances(){
 }
 
 /* ============================================================
-   ✅ Router helpers
+   ✅ Routing helpers (simple path candidates)
    ============================================================ */
 function addrForPath(meta){
   return metaIsETH(meta) ? WETH_MAINNET : meta.address;
 }
-
-/* ✅ pair cache + multiple path candidates */
-const __pairCache = new Map();
-async function getPairAddressCached(a,b){
-  const A = a.toLowerCase(), B = b.toLowerCase();
-  const key = (A < B) ? `${A}-${B}` : `${B}-${A}`;
-  if(__pairCache.has(key)) return __pairCache.get(key);
-  const p = await factory.getPair(a,b);
-  __pairCache.set(key, p);
-  return p;
-}
 async function hasPair(a,b){
   try{
-    const p = await getPairAddressCached(a,b);
+    const p = await factory.getPair(a,b);
     return !!p && p !== ethers.constants.AddressZero;
-  }catch{
-    return false;
-  }
+  }catch{ return false; }
 }
 function uniqPaths(paths){
   const seen = new Set();
@@ -2055,83 +1832,18 @@ async function getPathCandidates(tokenIn, tokenOut){
   return uniqPaths(paths);
 }
 
-async function getEthReserveIfWethInvolved(path){
-  try{
-    const idx = path.findIndex(a => a.toLowerCase() === WETH_MAINNET.toLowerCase());
-    if (idx < 0) return null;
-    const other = (idx === 0) ? path[1] : path[idx-1];
-    const pairAddr = await getPairAddressCached(WETH_MAINNET, other);
-    if (!pairAddr || pairAddr === ethers.constants.AddressZero) return null;
-
-    const pair = new ethers.Contract(pairAddr, PAIR_ABI, provider);
-    const [r0, r1] = await pair.getReserves();
-    const t0 = (await pair.token0()).toLowerCase();
-    const wethIs0 = (t0 === WETH_MAINNET.toLowerCase());
-    const wethReserve = wethIs0 ? r0 : r1;
-    const eth = Number(ethers.utils.formatUnits(wethReserve, 18));
-    return eth;
-  }catch{
-    return null;
-  }
-}
-
-function recommendedSlippagePctByEthReserve(ethReserve){
-  if (ethReserve == null) return null;
-  if (ethReserve < 0.2) return 25;
-  if (ethReserve < 0.5) return 15;
-  if (ethReserve < 1.0) return 10;
-  if (ethReserve < 2.0) return 6;
-  return 3;
-}
-
 function bnFromInput(valStr, decimals){
   if(!valStr || Number(valStr) <= 0) return ethers.constants.Zero;
   return ethers.utils.parseUnits(String(valStr), decimals);
 }
-
-/* ✅ fee text */
-function feePctText(){
-  const pct = (__proxyFeeBps || 0) / 100;
-  return `Fee: ${pct.toFixed(2)}%`;
-}
-function flatFeeText(){
-  try{
-    const flat = __proxyFlatFeeWei || ethers.constants.Zero;
-    return `Flat fee: ${ethers.utils.formatEther(flat)} ETH`;
-  }catch{
-    return `Flat fee: —`;
-  }
-}
-
-/* ✅ ETH sell uses bps fee */
-function applyPctFeeToEthAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyFeeBps || 0));
-  if (!bps) return amountInBN;
-  const feeBN = amountInBN.mul(bps).div(10000);
-  if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
-  return amountInBN.sub(feeBN);
-}
-
-/* ✅ token sell fee modelB 대비 */
-function applyPctFeeToTokenAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyFeeBps || 0));
-  if (!bps) return amountInBN;
-  const feeBN = amountInBN.mul(bps).div(10000);
-  if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
-  return amountInBN.sub(feeBN);
-}
-
-/* ✅ quote 모델 A/B */
-function getQuoteAmountsForModels({ sellIsEth, amountInBN_raw }){
-  const modelA = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
-  const modelB = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : applyPctFeeToTokenAmount(amountInBN_raw);
-  return { modelA, modelB };
-}
-
 function getSlipPct(){
   const slipInput = document.getElementById("slip");
   const v = slipInput ? Number(slipInput.value || "0") : 0;
   return Math.max(0, Math.min(95, v));
+}
+function calcOutMin(outBN, slipPct){
+  const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100)));
+  return outBN.mul(10000 - bp).div(10000);
 }
 
 /* ============================================================
@@ -2158,19 +1870,9 @@ async function updatePricePreview() {
 
     try{
       ensureWeb3();
-      await loadProxyFeeParams();
-
       const sellIsEth = metaIsETH(sellMeta);
-      const buyIsEth  = metaIsETH(buyMeta);
-
       const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
       if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
-
-      if (sellIsEth && buyIsEth) {
-        buyInput.value = "";
-        if (hint) hint.textContent = "ETH → ETH not supported";
-        return;
-      }
 
       const tokenIn  = addrForPath(sellMeta);
       const tokenOut = addrForPath(buyMeta);
@@ -2178,22 +1880,10 @@ async function updatePricePreview() {
       const paths = await getPathCandidates(tokenIn, tokenOut);
       if(!paths.length) throw new Error("No route candidates.");
 
-      const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
-      if (amountForQuoteBN.lte(0)) {
-        buyInput.value = "";
-        const feeTxt = sellIsEth ? feePctText() : flatFeeText();
-        if (hint) hint.textContent = feeTxt;
-        return;
-      }
-
       let best = null;
       for(const path of paths){
         try{
-          if (sellIsEth && path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) continue;
-          if (!sellIsEth && path[0].toLowerCase() !== tokenIn.toLowerCase()) continue;
-          if (!sellIsEth && buyIsEth && path[path.length-1].toLowerCase() !== WETH_MAINNET.toLowerCase()) continue;
-
-          const amounts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
+          const amounts = await sushiRouterRO.getAmountsOut(amountInBN_raw, path);
           const out = amounts[amounts.length - 1];
           if(!best || out.gt(best.out)) best = { path, out };
         }catch{}
@@ -2203,12 +1893,7 @@ async function updatePricePreview() {
       const outStr = ethers.utils.formatUnits(best.out, buyMeta.decimals ?? 18);
       buyInput.value = Number(outStr).toFixed(6);
 
-      const ethReserve = await getEthReserveIfWethInvolved(best.path);
-      const rec = recommendedSlippagePctByEthReserve(ethReserve);
-      const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-      const feeTxt = sellIsEth ? feePctText() : flatFeeText();
-      if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
-
+      if (hint) hint.textContent = "";
     }catch(err){
       console.warn("[quote] failed", err);
       buyInput.value = "";
@@ -2228,7 +1913,6 @@ async function ensureAllowance(tokenMeta, amountInBN, spender){
   const allowance = await token.allowance(userAddress, spender);
   if (allowance.gte(amountInBN)) return;
 
-  // ✅ SILENT: 안내 모달 없이 승인만 진행 (MetaMask confirm은 필수)
   if (allowance.gt(0)) {
     const tx0 = await token.approve(spender, 0);
     await tx0.wait(1);
@@ -2236,20 +1920,28 @@ async function ensureAllowance(tokenMeta, amountInBN, spender){
   const tx = await token.approve(spender, ethers.constants.MaxUint256);
   await tx.wait(1);
 }
-
 async function ensureSufficientTokenBalance(tokenMeta, amountInBN){
   if(metaIsETH(tokenMeta)) return;
-  try{
-    const bn = await (new ethers.Contract(tokenMeta.address, ERC20_ABI, provider)).balanceOf(userAddress);
-    if(bn.lt(amountInBN)){
-      throw new Error(
-        `Insufficient ${tokenMeta.symbol} balance.\n\n`+
-        `Required: ${ethers.utils.formatUnits(amountInBN, tokenMeta.decimals ?? 18)}\n`+
-        `Balance: ${ethers.utils.formatUnits(bn, tokenMeta.decimals ?? 18)}`
-      );
-    }
-  }catch(e){
-    if(e && e.message) throw e;
+  const bn = await (new ethers.Contract(tokenMeta.address, ERC20_ABI, provider)).balanceOf(userAddress);
+  if(bn.lt(amountInBN)){
+    throw new Error(
+      `Insufficient ${tokenMeta.symbol} balance.\n\n`+
+      `Required: ${ethers.utils.formatUnits(amountInBN, tokenMeta.decimals ?? 18)}\n`+
+      `Balance: ${ethers.utils.formatUnits(bn, tokenMeta.decimals ?? 18)}`
+    );
+  }
+}
+async function ensureSufficientEthForValue(callValue){
+  const bal = await provider.getBalance(userAddress);
+  const buffer = ethers.utils.parseEther("0.003");
+  const need = callValue.add(buffer);
+  if (bal.lt(need)){
+    throw new Error(
+      `Insufficient ETH for required value + gas buffer.\n\n`+
+      `Required (value+buffer): ${ethers.utils.formatEther(need)} ETH\n`+
+      `Balance: ${ethers.utils.formatEther(bal)} ETH\n\n`+
+      `Tip: Token swaps (proxy mode) require flat ETH fee (msg.value) + gas.`
+    );
   }
 }
 
@@ -2263,63 +1955,6 @@ function setSwapBusy(isBusy){
   }
   if(conn) conn.disabled = !!isBusy;
 }
-
-function calcOutMin(outBN, slipPct){
-  const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100)));
-  return outBN.mul(10000 - bp).div(10000);
-}
-
-/* ============================================================
-   ✅ Mobile gas-estimation stabilization
-   - estimateGas 실패(UNPREDICTABLE_GAS_LIMIT / reverted) 시:
-     1) outMin 완화로 1회 재시도
-     2) 그래도 실패하면 안전 gasLimit로 전송 시도
-   ============================================================ */
-function isUnpredictableGasErr(e){
-  const msg = (e?.message || String(e || "")).toLowerCase();
-  return (
-    e?.code === "UNPREDICTABLE_GAS_LIMIT" ||
-    msg.includes("unpredictable_gas_limit") ||
-    msg.includes("cannot estimate gas") ||
-    msg.includes("execution reverted") ||
-    msg.includes("revert")
-  );
-}
-function relaxOutMin(outMinBN, extraSlipPct){
-  const extra = Math.max(0, Math.min(95, Number(extraSlipPct || 0)));
-  const bp = Math.floor(extra * 100);
-  return outMinBN.mul(10000 - bp).div(10000);
-}
-function fallbackGasLimit(mode, sellIsEth, buyIsEth){
-  if(mode === "proxy"){
-    if (sellIsEth && !buyIsEth) return ethers.BigNumber.from("550000");
-    if (!sellIsEth && buyIsEth) return ethers.BigNumber.from("750000");
-    return ethers.BigNumber.from("850000");
-  }else{
-    if (sellIsEth && !buyIsEth) return ethers.BigNumber.from("420000");
-    if (!sellIsEth && buyIsEth) return ethers.BigNumber.from("520000");
-    return ethers.BigNumber.from("600000");
-  }
-}
-
-async function ensureSufficientEthForValue(callValue){
-  try{
-    const bal = await provider.getBalance(userAddress);
-    const buffer = ethers.utils.parseEther("0.003");
-    const need = callValue.add(buffer);
-    if (bal.lt(need)){
-      throw new Error(
-        `Insufficient ETH for required value + gas buffer.\n\n`+
-        `Required (value+buffer): ${ethers.utils.formatEther(need)} ETH\n`+
-        `Balance: ${ethers.utils.formatEther(bal)} ETH\n\n`+
-        `Tip: Token swaps (proxy mode) require flat ETH fee (msg.value) + gas.`
-      );
-    }
-  }catch(e){
-    if(e && e.message) throw e;
-  }
-}
-
 function pushRecentTx(hash){
   try{
     const wrap = document.getElementById("recentList");
@@ -2332,174 +1967,133 @@ function pushRecentTx(hash){
 }
 
 /* ============================================================
-   ✅ Proxy Router Lite swap helpers
+   ✅ Proxy / Direct send helpers
+   - estimateGas 실패 시 safe gasLimit로 전송
    ============================================================ */
-async function tryCallStaticLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  }
-  throw new Error("Unsupported swap direction");
-}
-async function estimateGasLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await proxyRouter.estimateGas.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await proxyRouter.estimateGas.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && !buyIsEth) {
-    return await proxyRouter.estimateGas.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  }
-  throw new Error("Unsupported swap direction");
-}
-async function sendTxLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue, gasLimit}){
-  if (sellIsEth && !buyIsEth) {
-    return await proxyRouter.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue, gasLimit });
-  } else if (!sellIsEth && buyIsEth) {
-    return await proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue, gasLimit });
-  } else if (!sellIsEth && !buyIsEth) {
+async function estimateAndSendProxy({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue, safeGas}){
+  // try estimateGas
+  try{
+    let gas;
+    if (sellIsEth && !buyIsEth) gas = await proxyRouter.estimateGas.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
+    else if (!sellIsEth && buyIsEth) gas = await proxyRouter.estimateGas.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+    else if (!sellIsEth && !buyIsEth) gas = await proxyRouter.estimateGas.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+    else throw new Error("Unsupported swap direction");
+
+    const gasLimit = gas.mul(125).div(100);
+    if (sellIsEth && !buyIsEth) return await proxyRouter.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue, gasLimit });
+    if (!sellIsEth && buyIsEth) return await proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue, gasLimit });
+    return await proxyRouter.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue, gasLimit });
+  }catch(e){
+    setSwapStatus("Gas estimation failed (attempt-1). Using safe gas limit…");
+    const gasLimit = safeGas;
+    if (sellIsEth && !buyIsEth) return await proxyRouter.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue, gasLimit });
+    if (!sellIsEth && buyIsEth) return await proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue, gasLimit });
     return await proxyRouter.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue, gasLimit });
   }
-  throw new Error("Unsupported swap direction");
 }
 
-async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
+async function estimateAndSendDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue, safeGas}){
+  try{
+    let gas;
+    if (sellIsEth && !buyIsEth) gas = await sushiRouterRW.estimateGas.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
+    else if (!sellIsEth && buyIsEth) gas = await sushiRouterRW.estimateGas.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
+    else if (!sellIsEth && !buyIsEth) gas = await sushiRouterRW.estimateGas.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
+    else throw new Error("Unsupported swap direction");
+
+    const gasLimit = gas.mul(125).div(100);
+    if (sellIsEth && !buyIsEth) return await sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue, gasLimit });
+    if (!sellIsEth && buyIsEth) return await sushiRouterRW.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, { gasLimit });
+    return await sushiRouterRW.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, { gasLimit });
+  }catch(e){
+    setSwapStatus("Gas estimation failed (attempt-1). Using safe gas limit…");
+    const gasLimit = safeGas;
+    if (sellIsEth && !buyIsEth) return await sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue, gasLimit });
+    if (!sellIsEth && buyIsEth) return await sushiRouterRW.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, { gasLimit });
+    return await sushiRouterRW.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, { gasLimit });
+  }
+}
+
+/* ============================================================
+   ✅ Resolve a working plan (callStatic 기반)
+   ============================================================ */
+async function resolvePlanProxy({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
+  await loadProxyFeeParams();
   const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
   const callValue = sellIsEth ? amountInBN_raw : flat;
 
+  const paths = await getPathCandidates(tokenIn, tokenOut);
+  if(!paths.length) throw new Error("No route candidates available.");
+
+  // 여러 슬리피지 후보 (사용자값 + 10/25/35)
   const userSlip = getSlipPct();
-  const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
-  if(!pathCandidates.length) throw new Error("No route candidates available.");
+  const slipCandidates = [userSlip, 10, 25, 35, 50].map(x=>Math.max(0,Math.min(95,Number(x||0))))
+    .filter((v,i,a)=>a.indexOf(v)===i);
 
-  const tokenInParam = addrForPath(sellMeta);
-  const { modelA, modelB } = getQuoteAmountsForModels({ sellIsEth, amountInBN_raw });
+  // quote로 outMin 만들고 callStatic으로 사전검증
+  for(const path of paths){
+    let outBN;
+    try{
+      const amts = await sushiRouterRO.getAmountsOut(amountInBN_raw, path);
+      outBN = amts[amts.length-1];
+    }catch{ continue; }
 
-  for (const path of pathCandidates){
-    const ethReserve = await getEthReserveIfWethInvolved(path);
-    const rec = recommendedSlippagePctByEthReserve(ethReserve);
-
-    const slipCandidates = [
-      userSlip,
-      (rec != null ? Math.max(userSlip, rec) : userSlip),
-      10, 25, 35, 50
-    ].map(x => Math.max(0, Math.min(95, Number(x||0))))
-     .filter((v,i,arr)=>arr.indexOf(v)===i);
-
-    const models = [
-      { name: "modelA", amountForQuoteBN: modelA },
-      { name: "modelB", amountForQuoteBN: modelB },
-    ].filter(m => m.amountForQuoteBN && m.amountForQuoteBN.gt(0));
-
-    for(const m of models){
-      let outBN = null;
+    for(const slipPct of slipCandidates){
+      const outMinBN = calcOutMin(outBN, slipPct);
       try{
-        const amts = await sushiRouterRO.getAmountsOut(m.amountForQuoteBN, path);
-        outBN = amts[amts.length - 1];
-      }catch{
-        continue;
-      }
-
-      for (const slipPct of slipCandidates){
-        const outMinBN = calcOutMin(outBN, slipPct);
-        try{
-          await tryCallStaticLite({
-            sellIsEth, buyIsEth,
-            tokenInParam,
-            amountInBN_raw,
-            outMinBN,
-            path,
-            to, deadline,
-            callValue
-          });
-          return { slipPct, outMinBN, path, callValue, rec, modelUsed: m.name };
-        }catch(e){}
-      }
+        const tokenInParam = addrForPath(sellMeta);
+        if (sellIsEth && !buyIsEth) {
+          await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
+        } else if (!sellIsEth && buyIsEth) {
+          await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+        } else if (!sellIsEth && !buyIsEth) {
+          await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+        } else {
+          throw new Error("Unsupported");
+        }
+        return { outMinBN, path, callValue, slipPct };
+      }catch{}
     }
   }
 
   throw new Error("Proxy plan not found.");
 }
 
-/* ============================================================
-   ✅ Direct Sushi fallback plan + send
-   ============================================================ */
-async function tryCallStaticDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  } else if (!sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  }
-  throw new Error("Unsupported swap direction");
-}
-async function estimateGasDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.estimateGas.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await sushiRouterRW.estimateGas.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  } else if (!sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.estimateGas.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  }
-  throw new Error("Unsupported swap direction");
-}
-async function sendTxDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue, gasLimit}){
-  if (sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue, gasLimit });
-  } else if (!sellIsEth && buyIsEth) {
-    return await sushiRouterRW.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, { gasLimit });
-  } else if (!sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline, { gasLimit });
-  }
-  throw new Error("Unsupported swap direction");
-}
-
-async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
+async function resolvePlanDirect({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
-
   const callValue = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
+
+  const paths = await getPathCandidates(tokenIn, tokenOut);
+  if(!paths.length) throw new Error("No route candidates available.");
+
   const userSlip = getSlipPct();
+  const slipCandidates = [userSlip, 10, 25, 35, 50].map(x=>Math.max(0,Math.min(95,Number(x||0))))
+    .filter((v,i,a)=>a.indexOf(v)===i);
 
-  const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
-  if(!pathCandidates.length) throw new Error("No route candidates available.");
-
-  for(const path of pathCandidates){
-    const ethReserve = await getEthReserveIfWethInvolved(path);
-    const rec = recommendedSlippagePctByEthReserve(ethReserve);
-
-    const slipCandidates = [
-      userSlip,
-      (rec != null ? Math.max(userSlip, rec) : userSlip),
-      10, 25, 35, 50
-    ].map(x => Math.max(0, Math.min(95, Number(x||0))))
-     .filter((v,i,arr)=>arr.indexOf(v)===i);
-
-    let outBN = null;
+  for(const path of paths){
+    let outBN;
     try{
       const amts = await sushiRouterRO.getAmountsOut(amountInBN_raw, path);
-      outBN = amts[amts.length - 1];
-    }catch{
-      continue;
-    }
+      outBN = amts[amts.length-1];
+    }catch{ continue; }
 
     for(const slipPct of slipCandidates){
       const outMinBN = calcOutMin(outBN, slipPct);
       try{
-        await tryCallStaticDirect({
-          sellIsEth, buyIsEth,
-          amountInBN_raw,
-          outMinBN,
-          path, to, deadline,
-          callValue
-        });
-        return { slipPct, outMinBN, path, callValue, rec };
-      }catch(e){}
+        if (sellIsEth && !buyIsEth) {
+          await sushiRouterRW.callStatic.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
+        } else if (!sellIsEth && buyIsEth) {
+          await sushiRouterRW.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
+        } else if (!sellIsEth && !buyIsEth) {
+          await sushiRouterRW.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
+        } else {
+          throw new Error("Unsupported");
+        }
+        return { outMinBN, path, callValue, slipPct };
+      }catch{}
     }
   }
 
@@ -2507,10 +2101,7 @@ async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, toke
 }
 
 /* ============================================================
-   ✅ Swap execution (Silent):
-   - Confirm/Notice 모달 없이 즉시 진행
-   - Proxy 실패 시 자동 Direct 폴백
-   - 모바일: estimateGas 실패 시 fallback gasLimit + outMin 완화 재시도
+   ✅ Swap execution (모바일 정지 방지 포함)
    ============================================================ */
 async function executeSwap() {
   try {
@@ -2571,129 +2162,77 @@ async function executeSwap() {
     setSwapBusy(true);
     setSwapStatus("Preparing route…");
 
-    // 1) Try proxy router plan (silent)
+    // 1) Try proxy router plan (silent) -> if fails, fallback to direct
     let plan = null;
     let mode = "proxy";
-
     try{
-      plan = await resolveWorkingPlanLite({
-        sellMeta, buyMeta,
-        amountInBN_raw,
-        tokenIn, tokenOut,
-        to, deadline
-      });
+      plan = await resolvePlanProxy({ sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline });
       mode = "proxy";
     }catch(proxyErr){
-      // ✅ 자동 Direct 폴백
-      try{
-        if (!sellIsEth){
-          setSwapStatus("Proxy failed. Switching to Direct mode… Checking Sushi approval…");
-          await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
-        }else{
-          setSwapStatus("Proxy failed. Switching to Direct mode…");
-        }
-
-        const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
-        await ensureSufficientEthForValue(expectedValueDirect);
-
-        plan = await resolveWorkingPlanDirect({
-          sellMeta, buyMeta,
-          amountInBN_raw,
-          tokenIn, tokenOut,
-          to, deadline
-        });
-        mode = "direct";
-      }catch(directErr){
-        throw directErr;
+      // fallback direct + ensure sushi approval
+      if (!sellIsEth){
+        setSwapStatus("Proxy failed. Switching to Direct mode… Checking Sushi approval…");
+        await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
+      }else{
+        setSwapStatus("Proxy failed. Switching to Direct mode…");
       }
+      const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
+      await ensureSufficientEthForValue(expectedValueDirect);
+
+      plan = await resolvePlanDirect({ sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline });
+      mode = "direct";
     }
 
     setSwapStatus(`Sending transaction (${mode === "proxy" ? "Proxy" : "Direct"})…`);
 
-    const tokenInParam = addrForPath(sellMeta);
+    // 2) estimate gas + send (모바일 watchdog 포함)
+    hintWalletConfirm();
 
-    async function _estimateAndSendOnce(curPlan, attemptLabel){
-      let gas = null;
+    const SAFE_GAS_PROXY  = ethers.BigNumber.from("650000"); // 너무 과하면 모바일에서 confirm이 버벅일 수 있어 보수값
+    const SAFE_GAS_DIRECT = ethers.BigNumber.from("520000");
 
-      // (A) estimateGas 시도
-      try{
-        if(mode === "proxy"){
-          gas = await estimateGasLite({
-            sellIsEth, buyIsEth,
-            tokenInParam,
-            amountInBN_raw,
-            outMinBN: curPlan.outMinBN,
-            path: curPlan.path,
-            to, deadline,
-            callValue: curPlan.callValue
-          });
-        }else{
-          gas = await estimateGasDirect({
-            sellIsEth, buyIsEth,
-            amountInBN_raw,
-            outMinBN: curPlan.outMinBN,
-            path: curPlan.path,
-            to, deadline,
-            callValue: curPlan.callValue
-          });
-        }
-        // estimate 성공 시 약간 여유
-        gas = gas.mul(125).div(100);
-      }catch(e){
-        // (B) estimateGas 실패 → fallback gasLimit로 진행
-        if(isUnpredictableGasErr(e)){
-          dbg("estimateGas failed ("+attemptLabel+") using fallback gasLimit", e);
-          setSwapStatus(`Gas estimation failed (${attemptLabel}). Using safe gas limit…`);
-          gas = fallbackGasLimit(mode, sellIsEth, buyIsEth);
-        }else{
-          throw e;
-        }
-      }
-
-      // (C) send
-      if(mode === "proxy"){
-        return await sendTxLite({
+    let tx;
+    if(mode === "proxy"){
+      const tokenInParam = addrForPath(sellMeta);
+      tx = await withTimeout(
+        estimateAndSendProxy({
           sellIsEth, buyIsEth,
           tokenInParam,
           amountInBN_raw,
-          outMinBN: curPlan.outMinBN,
-          path: curPlan.path,
+          outMinBN: plan.outMinBN,
+          path: plan.path,
           to, deadline,
-          callValue: curPlan.callValue,
-          gasLimit: gas
-        });
-      }else{
-        return await sendTxDirect({
+          callValue: plan.callValue,
+          safeGas: SAFE_GAS_PROXY
+        }),
+        45000,
+        ()=>{
+          setSwapBusy(false);
+          setSwapStatus("No wallet response. Please open MetaMask confirmation and return, then retry.");
+        }
+      );
+    }else{
+      tx = await withTimeout(
+        estimateAndSendDirect({
           sellIsEth, buyIsEth,
           amountInBN_raw,
-          outMinBN: curPlan.outMinBN,
-          path: curPlan.path,
+          outMinBN: plan.outMinBN,
+          path: plan.path,
           to, deadline,
-          callValue: curPlan.callValue,
-          gasLimit: gas
-        });
-      }
+          callValue: plan.callValue,
+          safeGas: SAFE_GAS_DIRECT
+        }),
+        45000,
+        ()=>{
+          setSwapBusy(false);
+          setSwapStatus("No wallet response. Please open MetaMask confirmation and return, then retry.");
+        }
+      );
     }
 
-    let tx = null;
-    try{
-      // 1차 시도
-      tx = await _estimateAndSendOnce(plan, "attempt-1");
-    }catch(e1){
-      // 2차: outMin을 더 낮춰(추가 슬리피지) 재시도
-      if(isUnpredictableGasErr(e1)){
-        const relaxed = {
-          ...plan,
-          outMinBN: relaxOutMin(plan.outMinBN, 25)
-        };
-        setSwapStatus(`Retrying with relaxed outMin… (${mode})`);
-        tx = await _estimateAndSendOnce(relaxed, "attempt-2");
-      }else{
-        throw e1;
-      }
-    }
-
+    // tx가 생기는 순간 UI 정지 방지: 즉시 Busy 해제 + 링크 표시
     pushRecentTx(tx.hash);
+    setSwapBusy(false);
     setSwapStatus(`TX sent: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`);
 
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
@@ -2709,10 +2248,10 @@ async function executeSwap() {
       "• Make sure you are on Ethereum Mainnet\n" +
       "• For proxy token swaps, ensure you have enough ETH for flat fee + gas\n" +
       "• Proxy mode spender = Proxy Router, Direct mode spender = Sushi Router\n" +
-      "• Try higher slippage (10%~35%) if liquidity is thin\n" +
-      "• Mobile gas estimation can fail; this UI retries + uses safe gas limits."
+      "• Try higher slippage (10%~35%) if liquidity is thin"
     );
   } finally {
+    // 타임아웃/에러 어떤 경우에도 UI가 영구정지하지 않도록
     setSwapBusy(false);
   }
 }
@@ -2746,8 +2285,7 @@ function bindConnect(){
 
     if (sellMeta && metaIsETH(sellMeta) && userAddress) {
       try{
-        const raw = await ethGetBalance(userAddress);
-        const bn = ethers.BigNumber.from(raw.toString());
+        const bn = await provider.getBalance(userAddress);
         const buffer = ethers.utils.parseEther("0.005");
         const use = bn.gt(buffer) ? bn.sub(buffer) : ethers.constants.Zero;
         document.getElementById('sell').value = ethers.utils.formatEther(use);
@@ -2776,13 +2314,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     applyManualPoolConfig();
     bootSushiPoolsTicker();
 
-    // analytics demo
-    fillKpis(demoAnalytics);
-    drawSpark(demoAnalytics);
-    drawDonut(demoAnalytics);
-    drawGauge(demoAnalytics);
-
-    // silent hint
     if(SWAP_SILENT){
       setSwapStatus("Ready. (Silent swap mode enabled)");
     }
