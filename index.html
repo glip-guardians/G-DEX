@@ -2075,6 +2075,26 @@ function applyPctFeeToEthAmount(amountInBN){
   if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
   return amountInBN.sub(feeBN);
 }
+/* ✅ NEW: 토큰 판매에도 feeBps가 차감되는 컨트랙트에 대비 */
+function applyPctFeeToTokenAmount(amountInBN){
+  const bps = Math.max(0, Number(__proxyFeeBps || 0));
+  if (!bps) return amountInBN;
+  const feeBN = amountInBN.mul(bps).div(10000);
+  if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
+  return amountInBN.sub(feeBN);
+}
+
+/* ✅ NEW: “quote에 사용할 실제 스왑 투입 amount”를 2모델로 만들기 */
+function getQuoteAmountsForModels({ sellIsEth, amountInBN_raw }){
+  // 모델 A: 기존 (ETH일 때만 %차감)
+  const modelA = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
+
+  // 모델 B: ETH도 %차감 + 토큰도 %차감(컨트랙트가 tokenIn에도 fee를 떼는 경우 대비)
+  const modelB = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : applyPctFeeToTokenAmount(amountInBN_raw);
+
+  return { modelA, modelB };
+}
+  
 
 function getSlipPct(){
   const slipInput = document.getElementById("slip");
@@ -2260,17 +2280,19 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
   const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
   const callValue = sellIsEth ? amountInBN_raw : flat;
 
-  const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
-  if (amountForQuoteBN.lte(0)) throw new Error("Amount too small.");
-
   const userSlip = getSlipPct();
   const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
   if(!pathCandidates.length) throw new Error("No route candidates available.");
 
   const tokenInParam = addrForPath(sellMeta);
+
+  // ✅ 2가지 모델(토큰 fee 차감 여부)을 모두 시도
+  const { modelA, modelB } = getQuoteAmountsForModels({ sellIsEth, amountInBN_raw });
+
   const reasons = [];
 
   for (const path of pathCandidates){
+    // 경로 기본 검증
     try{
       if (sellIsEth){
         if (path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
@@ -2298,39 +2320,58 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
     ].map(x => Math.max(0, Math.min(95, Number(x||0))))
      .filter((v,i,arr)=>arr.indexOf(v)===i);
 
-    let outBN = null;
-    try{
-      const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
-      outBN = amts[amts.length - 1];
-    }catch(e){
-      reasons.push(`NO_LIQUIDITY: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
-      continue;
-    }
+    // ✅ 모델A/B 각각에 대해 quote → outMin → callStatic 시도
+    const models = [
+      { name: "modelA", amountForQuoteBN: modelA },
+      { name: "modelB", amountForQuoteBN: modelB },
+    ].filter(m => m.amountForQuoteBN && m.amountForQuoteBN.gt(0));
 
-    for (const slipPct of slipCandidates){
-      const outMinBN = calcOutMin(outBN, slipPct);
+    let hadLiquidity = false;
+
+    for(const m of models){
+      let outBN = null;
       try{
-        await tryCallStaticLite({
-          sellIsEth, buyIsEth,
-          tokenInParam,
-          amountInBN_raw,
-          outMinBN,
-          path,
-          to, deadline,
-          callValue
-        });
-        return { slipPct, outMinBN, path, callValue, rec, quotedOutBN: outBN };
+        const amts = await sushiRouterRO.getAmountsOut(m.amountForQuoteBN, path);
+        outBN = amts[amts.length - 1];
+        hadLiquidity = true;
       }catch(e){
-        // keep trying
+        // 이 모델 기준으로는 quote 자체가 안됨(유동성/페어 문제)
+        continue;
+      }
+
+      for (const slipPct of slipCandidates){
+        const outMinBN = calcOutMin(outBN, slipPct);
+        try{
+          await tryCallStaticLite({
+            sellIsEth, buyIsEth,
+            tokenInParam,
+            amountInBN_raw,   // ✅ tx에는 raw amountIn 그대로 (컨트랙트가 내부에서 fee 차감할 수 있음)
+            outMinBN,
+            path,
+            to, deadline,
+            callValue
+          });
+
+          // ✅ 성공 플랜 반환 (어떤 모델이 맞았는지 기록)
+          return { slipPct, outMinBN, path, callValue, rec, modelUsed: m.name };
+        }catch(e){
+          // 계속 시도
+        }
       }
     }
 
-    reasons.push(`REVERTED: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
+    if(!hadLiquidity){
+      reasons.push(`NO_LIQUIDITY: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
+    }else{
+      reasons.push(`REVERTED: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
+    }
   }
+
+  const recTxt = `Recommended ~ ${sellIsEth ? 3 : 10}%`;
 
   throw new Error(
     `No working swap plan found (liquidity/slippage/value/approval).\n` +
-    `Recommended ~ 10%\n\nTried routes:\n- ${reasons.slice(0,8).join("\n- ")}`
+    `${recTxt}\n\nTried routes:\n- ${reasons.slice(0,10).join("\n- ")}`
   );
 }
 
@@ -2511,7 +2552,8 @@ async function executeSwap() {
 
           const paths = await getPathCandidates(tokenIn, tokenOut);
           const path = paths[0];
-          const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
+          const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : applyPctFeeToTokenAmount(amountInBN_raw);
+
           const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
           const outBN = amts[amts.length-1];
           const outMinBN = calcOutMin(outBN, getSlipPct());
@@ -2655,3 +2697,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
