@@ -2255,6 +2255,45 @@ function calcOutMin(outBN, slipPct){
   const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100)));
   return outBN.mul(10000 - bp).div(10000);
 }
+/* ============================================================
+   ✅ Mobile gas-estimation stabilization
+   - estimateGas 실패(UNPREDICTABLE_GAS_LIMIT / reverted) 시:
+     1) outMin 완화(추가 슬리피지)로 1회 재시도
+     2) 그래도 실패하면 안전 gasLimit로 전송 시도
+   ============================================================ */
+
+function isUnpredictableGasErr(e){
+  const msg = (e?.message || String(e || "")).toLowerCase();
+  return (
+    e?.code === "UNPREDICTABLE_GAS_LIMIT" ||
+    msg.includes("unpredictable_gas_limit") ||
+    msg.includes("cannot estimate gas") ||
+    msg.includes("execution reverted") ||
+    msg.includes("revert")
+  );
+}
+
+// outMin을 추가로 더 낮춰서(=슬리피지 더 크게) 한번 더 "완화" 시도
+function relaxOutMin(outMinBN, extraSlipPct){
+  // extraSlipPct: 예) 25 => outMin을 추가로 25% 더 낮춤
+  const extra = Math.max(0, Math.min(95, Number(extraSlipPct || 0)));
+  const bp = Math.floor(extra * 100); // 25% => 2500bp
+  return outMinBN.mul(10000 - bp).div(10000);
+}
+
+// 모드/방향별 안전 가스리밋 (경험적으로 넉넉하게)
+function fallbackGasLimit(mode, sellIsEth, buyIsEth){
+  // proxy는 내부에서 fee 처리 + router 호출이라 direct보다 보통 더 큼
+  if(mode === "proxy"){
+    if (sellIsEth && !buyIsEth) return ethers.BigNumber.from("550000"); // ETH->Token
+    if (!sellIsEth && buyIsEth) return ethers.BigNumber.from("750000"); // Token->ETH
+    return ethers.BigNumber.from("850000");                              // Token->Token
+  }else{
+    if (sellIsEth && !buyIsEth) return ethers.BigNumber.from("420000"); // ETH->Token
+    if (!sellIsEth && buyIsEth) return ethers.BigNumber.from("520000"); // Token->ETH
+    return ethers.BigNumber.from("600000");                              // Token->Token
+  }
+}
 
 async function ensureSufficientEthForValue(callValue){
   const bal = await provider.getBalance(userAddress);
@@ -2696,3 +2735,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
