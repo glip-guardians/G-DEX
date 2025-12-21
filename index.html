@@ -1463,6 +1463,26 @@ function getTokenMeta(symbolOrAddress) {
     t.address?.toLowerCase() === symbolOrAddress?.toLowerCase()
   );
 }
+// ✅ UI에서 선택된 토큰을 "심볼"이 아니라 "dataset.address" 기준으로 확정한다
+function getSelectedMeta(symEl){
+  if(!symEl) return null;
+
+  const addr = (symEl.dataset.address || "").trim();
+  const sym  = (symEl.textContent || "").trim();
+
+  // ETH는 dataset/address가 "ETH"로 들어오거나 심볼이 ETH일 수 있음
+  if (addr === "ETH" || sym === "ETH") return getTokenMeta("ETH");
+
+  // address가 0x로 시작하면 address 우선 매칭
+  if (/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+    const byAddr = getTokenMeta(addr);
+    if(byAddr) return byAddr;
+  }
+
+  // fallback: 심볼로 찾기
+  return getTokenMeta(sym);
+}
+  
 function metaIsETH(meta){
   return !!meta && (meta.symbol === "ETH" || meta.address === "ETH");
 }
@@ -1889,20 +1909,22 @@ async function refreshAllBalances(){
     return;
   }
 
-  const sellSym = document.getElementById('sellS').textContent;
-  const buySym  = document.getElementById('buyS').textContent;
-  const sellMeta = getTokenMeta(sellSym);
-  const buyMeta  = getTokenMeta(buySym);
+const sellMeta = getSelectedMeta(document.getElementById('sellS'));
+const buyMeta  = getSelectedMeta(document.getElementById('buyS'));
+const sellSym = document.getElementById('sellS').textContent;
+const buySym  = document.getElementById('buyS').textContent;
+
 
   const sellBalStr = await fetchTokenBalanceString(sellMeta);
   const buyBalStr  = await fetchTokenBalanceString(buyMeta);
   setBalText('sellBal', sellSym, sellBalStr);
   setBalText('buyBal',  buySym,  buyBalStr);
 
-  const p0Sym = document.getElementById('pT0Sym').textContent;
-  const p1Sym = document.getElementById('pT1Sym').textContent;
-  const p0Meta = getTokenMeta(p0Sym);
-  const p1Meta = getTokenMeta(p1Sym);
+const p0Meta = getSelectedMeta(document.getElementById('pT0Sym'));
+const p1Meta = getSelectedMeta(document.getElementById('pT1Sym'));
+const p0Sym = document.getElementById('pT0Sym').textContent;
+const p1Sym = document.getElementById('pT1Sym').textContent;
+
 
   const p0BalStr = await fetchTokenBalanceString(p0Meta);
   const p1BalStr = await fetchTokenBalanceString(p1Meta);
@@ -2055,10 +2077,11 @@ async function updatePricePreview() {
       return;
     }
 
-    const sellSym = document.getElementById("sellS").textContent;
-    const buySym  = document.getElementById("buyS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
-    const buyMeta  = getTokenMeta(buySym);
+const sellMeta = getSelectedMeta(document.getElementById("sellS"));
+const buyMeta  = getSelectedMeta(document.getElementById("buyS"));
+const sellSym = document.getElementById("sellS").textContent;
+const buySym  = document.getElementById("buyS").textContent;
+
     if (!sellMeta || !buyMeta) return;
 
     try{
@@ -2313,10 +2336,11 @@ async function executeSwap() {
     const sellValStr = String(document.getElementById("sell").value || "").trim();
     if (!sellValStr || Number(sellValStr) <= 0) { await uiAlert("Swap", "Enter an amount to swap."); return; }
 
-    const sellSym = document.getElementById("sellS").textContent;
-    const buySym  = document.getElementById("buyS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
-    const buyMeta  = getTokenMeta(buySym);
+const sellMeta = getSelectedMeta(document.getElementById("sellS"));
+const buyMeta  = getSelectedMeta(document.getElementById("buyS"));
+const sellSym = document.getElementById("sellS").textContent;
+const buySym  = document.getElementById("buyS").textContent;
+
     if (!sellMeta || !buyMeta) { await uiAlert("Swap", "Token metadata not found."); return; }
 
     const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
@@ -2433,8 +2457,8 @@ function bindConnect(){
 
   const swapMax = document.getElementById('swapMax');
   if(swapMax) swapMax.onclick = async ()=>{
-    const sellSym = document.getElementById("sellS").textContent;
-    const sellMeta = getTokenMeta(sellSym);
+const sellMeta = getSelectedMeta(document.getElementById("sellS"));
+
     const balStr = await fetchTokenBalanceString(sellMeta);
     if (!balStr) return;
 
@@ -2502,3 +2526,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
