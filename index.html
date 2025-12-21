@@ -1676,60 +1676,22 @@ async function loadProxyFeeParams(){
 
     __proxyFeeWallet = feeWallet;
     __proxyFeeBps = Number(feeBpsBN.toString());
-    __proxyFlatFeeWei = flatFee;
-    __proxyFeeLoaded = true;
+
+    // ✅ 핵심: 0이면 실사용 불가 → fallback 강제
+    const flatBN = ethers.BigNumber.from(flatFee.toString());
+    if (flatBN.lte(0)) {
+      __proxyFlatFeeWei = ethers.utils.parseEther("0.00003");
+      __proxyFeeLoaded = false; // fallback 사용 표시
+    } else {
+      __proxyFlatFeeWei = flatBN;
+      __proxyFeeLoaded = true;
+    }
+
   }catch(e){
     console.warn('[proxy fee params] failed', e);
     __proxyFeeBps = (__proxyFeeBps || 30);
     __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
     __proxyFeeLoaded = false;
-  }
-}
-
-async function connectWallet(){
-  try{
-    if (typeof window.ethereum === 'undefined') {
-      if (isMobile) { openMetaMaskDeepLink(); return; }
-      await uiAlert("No wallet detected",
-        "• Mobile: open this site in MetaMask in-app browser.\n• Desktop: install MetaMask extension.");
-      return;
-    }
-    ensureWeb3();
-
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts || !accounts.length) throw new Error('No accounts returned');
-
-    userAddress = accounts[0];
-    document.getElementById('wAddr').textContent = short(userAddress);
-
-    ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el){
-        el.textContent = 'Connected';
-        el.classList.add('ghost');
-      }
-    });
-
-    await ensureMainnet();
-    await loadProxyFeeParams();
-    await refreshAllBalances();
-    updatePricePreview();
-
-    if (window.ethereum.on) {
-      window.ethereum.on('accountsChanged', async acc=>{
-        userAddress = acc && acc.length ? acc[0] : null;
-        document.getElementById('wAddr').textContent = short(userAddress);
-        __proxyFeeLoaded = false;
-        await loadProxyFeeParams();
-        await refreshAllBalances();
-        updatePricePreview();
-      });
-      window.ethereum.on('chainChanged', _=> location.reload());
-    }
-
-  }catch(e){
-    console.error('[connectWallet]', e);
-    await uiAlert('Wallet connection failed', (e?.message || 'Please check MetaMask and try again.'), {copy:true});
   }
 }
 
@@ -2304,12 +2266,9 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
 
   const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
 
-  // ✅ callValue 후보(컨트랙트 구현 차이에 대비)
-  // - token swap: flatFee or 0(일부 구현은 flatFee 미사용)
-  // - ETH sell: amountIn, 혹시 amountIn+flat(일부 구현이 flat도 요구할 수 있어 대비)
-  const callValueCandidates = sellIsEth
-    ? uniqBN([ amountInBN_raw, amountInBN_raw.add(flat) ])
-    : uniqBN([ flat, ethers.constants.Zero ]);
+  // ✅ Token swap이면 반드시 flat fee를 value로 보냄
+  // ✅ ETH sell이면 value = amountIn
+  const callValue = sellIsEth ? amountInBN_raw : flat;
 
   const userSlip = getSlipPct();
   const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
@@ -2317,18 +2276,22 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
 
   const tokenInParam = addrForPath(sellMeta);
 
-  // ✅ 2가지 모델(토큰 fee 차감 여부)을 모두 시도
   const { modelA, modelB } = getQuoteAmountsForModels({ sellIsEth, amountInBN_raw });
 
   const reasons = [];
 
   for (const path of pathCandidates){
-    // 경로 기본 검증
+
+    // ---- path validation ----
     try{
       if (sellIsEth){
-        if (path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
+        if (path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) {
+          throw new Error("BAD_PATH: For ETH sells, path[0] must be WETH.");
+        }
       }else{
-        if (path[0].toLowerCase() !== tokenInParam.toLowerCase()) throw new Error("BAD_PATH: For token sells, path[0] must equal tokenIn.");
+        if (path[0].toLowerCase() !== tokenInParam.toLowerCase()){
+          throw new Error("BAD_PATH: For token sells, path[0] must equal tokenIn.");
+        }
       }
       if (!sellIsEth && buyIsEth){
         const last = path[path.length - 1];
@@ -2344,20 +2307,22 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
     const ethReserve = await getEthReserveIfWethInvolved(path);
     const rec = recommendedSlippagePctByEthReserve(ethReserve);
 
+    // ✅ 슬리피지 후보를 더 넓힘 (얇은 풀 대응)
     const slipCandidates = [
       userSlip,
       (rec != null ? Math.max(userSlip, rec) : userSlip),
-      10, 25, 35, 50
+      10, 15, 25, 35, 50, 75
     ].map(x => Math.max(0, Math.min(95, Number(x||0))))
      .filter((v,i,arr)=>arr.indexOf(v)===i);
 
-    // ✅ 모델A/B 각각에 대해 quote → outMin → callStatic 시도
+    // ✅ 모델 A/B + (추가) outMin fee반영(C) + outMin=0(원인분리) 까지 시도
     const models = [
-      { name: "inModelA", amountForQuoteBN: modelA },
-      { name: "inModelB", amountForQuoteBN: modelB },
+      { name: "modelA", amountForQuoteBN: modelA },
+      { name: "modelB", amountForQuoteBN: modelB },
     ].filter(m => m.amountForQuoteBN && m.amountForQuoteBN.gt(0));
 
     let hadLiquidity = false;
+    let lastRevertMsg = null;
 
     for(const m of models){
       let outBN = null;
@@ -2366,52 +2331,58 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
         outBN = amts[amts.length - 1];
         hadLiquidity = true;
       }catch(e){
-        continue;
+        continue; // quote 자체 실패면 다음 모델/경로
       }
 
-      // ✅ 출력(out) 기준도 2모델 시도(출력에서 fee 차감하는 구현 대비)
-      const outModels = [
-        { name: "outRaw", out: outBN },
-        { name: "outMinusFee", out: applyPctFeeToOutputAmount(outBN) }
-      ].filter(x => x.out && x.out.gt(0));
+      for (const slipPct of slipCandidates){
+        const outMinBase = calcOutMin(outBN, slipPct);
 
-      for(const outM of outModels){
-        for (const slipPct of slipCandidates){
-          const outMinBN = calcOutMin(outM.out, slipPct);
+        // ✅ outMin variants:
+        // 1) 정상 outMin
+        // 2) output fee까지 반영해 더 낮춘 outMin (모델C)
+        // 3) outMin=0 (슬리피지인지/컨트랙트 조건인지 원인 분리)
+        const outMinVariants = [
+          { tag: "outMin",   v: outMinBase },
+          { tag: "outMinC",  v: applyOutFeeToOutMin(outMinBase) },
+          { tag: "outMin0",  v: ethers.constants.Zero },
+        ];
 
-          // ✅ callValue 후보도 모두 시도
-          for(const callValue of callValueCandidates){
-            try{
-              await tryCallStaticLite({
-                sellIsEth, buyIsEth,
-                tokenInParam,
-                amountInBN_raw,   // tx에는 raw 그대로 (컨트랙트 내부 fee 차감 가능)
-                outMinBN,
-                path,
-                to, deadline,
-                callValue
-              });
+        for (const om of outMinVariants){
+          try{
+            await tryCallStaticLite({
+              sellIsEth, buyIsEth,
+              tokenInParam,
+              amountInBN_raw,          // ✅ tx에는 raw (컨트랙트 내부 fee 대응)
+              outMinBN: om.v,
+              path,
+              to, deadline,
+              callValue                // ✅ overrides는 여기 (마지막 인자)
+            });
 
-              return {
-                slipPct,
-                outMinBN,
-                path,
-                callValue,
-                rec,
-                modelUsed: `${m.name}+${outM.name}`,
-              };
-            }catch(e){
-              // 계속
-            }
+            // ✅ 성공 플랜
+            return {
+              slipPct,
+              outMinBN: om.v,
+              path,
+              callValue,
+              rec,
+              modelUsed: m.name,
+              outMinModel: om.tag
+            };
+
+          }catch(e){
+            lastRevertMsg = e?.error?.message || e?.reason || e?.data?.message || e?.message || String(e);
+            // 다음 outMin variant / slippage / model / path 계속
           }
         }
       }
     }
 
+    const routeTxt = path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ');
     if(!hadLiquidity){
-      reasons.push(`NO_LIQUIDITY: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
+      reasons.push(`NO_LIQUIDITY: ${routeTxt}`);
     }else{
-      reasons.push(`REVERTED: ${path.map(p=>p.slice(0,6)+'…'+p.slice(-4)).join(' > ')}`);
+      reasons.push(`REVERTED: ${routeTxt}${lastRevertMsg ? ` (last: ${String(lastRevertMsg).slice(0,120)})` : ""}`);
     }
   }
 
@@ -2419,7 +2390,9 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
 
   throw new Error(
     `No working swap plan found (liquidity/slippage/value/approval).\n` +
-    `${recTxt}\n\nTried routes:\n- ${reasons.slice(0,10).join("\n- ")}`
+    `${recTxt}\n\nTried routes:\n- ${reasons.slice(0,10).join("\n- ")}\n\n` +
+    `Tip:\n` +
+    `- If outMin=0 also reverts, it's NOT slippage. Check msg.value(flatFeeWei), approvals, or ProxyRouter internal rules.\n`
   );
 }
 
@@ -2691,3 +2664,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
