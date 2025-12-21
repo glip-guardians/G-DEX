@@ -2328,10 +2328,25 @@ async function ensureSufficientEthForValue(callValue){
 
 async function executeSwap() {
   try {
+// ===== SWAP DEBUG : ENTRY =====
+console.log("=== SWAP CLICK ===");
+console.log("userAddress:", userAddress);
+console.log("sell input raw:", document.getElementById("sell")?.value);
+console.log("sellMeta:", getSelectedMeta(document.getElementById("sells")));
+console.log("buyMeta:", getSelectedMeta(document.getElementById("buys")));
+console.log("===================");
+
+if (!userAddress) { await uiAlert("Swap", "Please connect your wallet"); return; }
+ensureWeb3();
+await ensureMainnet();
+await loadProxyFeeParams();    
     if (!userAddress) { await uiAlert("Swap", "Please connect your wallet first."); return; }
     ensureWeb3();
     await ensureMainnet();
     await loadProxyFeeParams();
+console.log("[PROXY FEE]");
+console.log("flatFeeWei:", proxyFlatFeeWei?.toString());
+console.log("feeRecipient:", proxyFeeRecipient);
 
     const sellValStr = String(document.getElementById("sell").value || "").trim();
     if (!sellValStr || Number(sellValStr) <= 0) { await uiAlert("Swap", "Enter an amount to swap."); return; }
@@ -2526,4 +2541,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
