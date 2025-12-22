@@ -2165,7 +2165,7 @@ function setSwapBusy(isBusy){
 
 async function ensureSufficientEthForValue(callValue){
   const bal = await provider.getBalance(userAddress);
-  const buffer = ethers.utils.parseEther("0.003");
+const buffer = ethers.constants.Zero;
   const need = callValue.add(buffer);
   if (bal.lt(need)){
     throw new Error(
@@ -2610,3 +2610,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
