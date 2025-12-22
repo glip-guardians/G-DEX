@@ -17,7 +17,7 @@
 <meta name="theme-color" content="#ffffff" />
 <script>
   // ✅ SW 캐시로 인해 "모바일만 옛버전"이 계속 뜨는 경우가 많아서 버전 쿼리 추가
-  const SW_VER = "20251222_1";
+  const SW_VER = "20251222_2";
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js?v=' + SW_VER).catch(console.error);
@@ -585,7 +585,7 @@ h3::before{content:""; display:none;}
 #tokModal header{
   padding:14px 16px;
   border-bottom:1px solid rgba(12,25,45,.12);
-  fonta-weight:900;
+  font-weight:900; /* ✅ typo fix */
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   background:rgba(255,255,255,.82);
 }
@@ -1135,7 +1135,7 @@ h3::before{content:""; display:none;}
   "recentPoolsText": "GLIP–ETH - SushiSwap V2",
   "volume24hUsd": "$ 10,580.18",
   "glipPriceUsd": "0.0556",
-  "poolManualNote": "Manual: 1 GLIP \u2248 0.000017 ETH\nInitial GLIP–ETH pool on SushiSwap V2",
+  "poolManualNote": "Manual: 1 GLIP \\u2248 0.000017 ETH\\nInitial GLIP–ETH pool on SushiSwap V2",
   "poolFooterNote": "G-DEX Pool v1 shows the GLIP–ETH pool created on SushiSwap V2. Metrics are updated manually during the early launch phase."
 }
 </script>
@@ -1154,10 +1154,11 @@ const SWAP_SILENT = true;
    - Wallet confirm timeout guard
    - Safe gasLimit fallback when estimateGas fails
    ============================================================ */
-await tx.wait(1); // timeout 없음
-
 const SAFE_GAS_PROXY  = 650000;
 const SAFE_GAS_DIRECT = 450000;
+
+/* ✅ (FIX) Wallet confirm timeout constant was missing */
+const WALLET_CONFIRM_TIMEOUT_MS = 45000;
 
 function withTimeout(promise, ms, tag="timeout"){
   let timer;
@@ -1305,21 +1306,13 @@ let gdexPoolConfig = {};
 })();
 function applyManualPoolConfig(){
   const cfg = gdexPoolConfig || {};
-  const poolsEl  = document.getElementById('metricPoolsText');
   const volEl    = document.getElementById('metricVolumeText');
-  const priceEl  = document.getElementById('metricGlipPrice');
   const noteEl   = document.getElementById('pManualNote');
   const footEl   = document.getElementById('poolFooterNote');
 
-  const hasTicker = !!document.getElementById('poolsTicker');
-  if(poolsEl && cfg.recentPoolsText && !hasTicker) poolsEl.textContent = cfg.recentPoolsText;
-  if(volEl   && cfg.volume24hUsd)    volEl.textContent   = cfg.volume24hUsd;
-
-  const hasDexTools = !!(priceEl && priceEl.querySelector('#dextools-widget'));
-  if(priceEl && cfg.glipPriceUsd && !hasDexTools) priceEl.textContent = '$ ' + cfg.glipPriceUsd;
-
-  if(noteEl  && cfg.poolManualNote)  noteEl.textContent  = cfg.poolManualNote;
-  if(footEl  && cfg.poolFooterNote)  footEl.textContent  = cfg.poolFooterNote;
+  if(volEl && cfg.volume24hUsd) volEl.textContent = cfg.volume24hUsd;
+  if(noteEl && cfg.poolManualNote) noteEl.textContent = cfg.poolManualNote;
+  if(footEl && cfg.poolFooterNote) footEl.textContent = cfg.poolFooterNote;
 }
 
 /* ============================================================
@@ -1737,7 +1730,7 @@ async function handleInstallClick(){
   await uiAlert('Install', 'Use browser menu → "Add to home screen".');
 }
 
-/* ===== Analytics demo (same as before; omitted here for brevity) ===== */
+/* ===== Analytics demo ===== */
 const demoAnalytics = {
   rebateRate: 12, feeNet: 420000,
   split: { users: 0.70, esg: 0.20, treasury: 0.10 },
@@ -1745,7 +1738,6 @@ const demoAnalytics = {
   turnout: 38, transparency: 92,
   co2: { current: 152, target: 220 }
 };
-// --- (draw functions는 기존 그대로라 생략하지 않고 유지해야 하지만, 길이 때문에 여기선 그대로 아래에 이어집니다) ---
 function fillKpis(d){
   const {rebateRate, feeNet, split, turnout, transparency} = d;
   const returned = feeNet * (rebateRate/100) * split.users;
@@ -1834,7 +1826,7 @@ function drawGauge(d){
 }
 
 /* ============================================================
-   ✅ Balance helpers (same as before)
+   ✅ Balance helpers
    ============================================================ */
 function hexToBigInt(hex){ return (!hex) ? 0n : BigInt(hex); }
 function formatUnitsBigInt(bn, decimals){
@@ -1923,7 +1915,7 @@ async function refreshAllBalances(){
 }
 
 /* ============================================================
-   ✅ Router helpers (same as before)
+   ✅ Router helpers
    ============================================================ */
 function addrForPath(meta){
   return metaIsETH(meta) ? WETH_MAINNET : meta.address;
@@ -2164,26 +2156,22 @@ function setSwapBusy(isBusy){
   if(conn) conn.disabled = !!isBusy;
 }
 
-async function ensureSufficientEthForValue(callValue, txReq){
+/* ✅ (FIX) txReq optional so it never crashes */
+async function ensureSufficientEthForValue(callValue, txReq = null){
   const bal = await provider.getBalance(userAddress);
 
-  // 1) 기본 필요값 = callValue (proxy flat fee 등)
   let need = callValue ?? ethers.constants.Zero;
 
-  // 2) 가스비 추정(가능할 때만)
   try{
-    const gas = await provider.estimateGas({ from:userAddress, ...txReq, value: callValue });
+    const req = txReq ? { from:userAddress, ...txReq, value: callValue } : { from:userAddress, value: callValue };
+    const gas = await provider.estimateGas(req);
     const fee = await provider.getFeeData();
-
-    // EIP-1559 우선
     const gasPrice = fee.maxFeePerGas || fee.gasPrice;
     if (gasPrice){
       const gasCost = gas.mul(gasPrice);
-      // 여유 10%만
       need = need.add(gasCost.mul(110).div(100));
     }
   }catch(e){
-    // estimateGas가 실패할 수 있으니, 이 경우에는 최소 버퍼만
     need = need.add(ethers.utils.parseEther("0.0002"));
   }
 
@@ -2356,7 +2344,7 @@ async function safeEstimateOrDefault(estimatePromiseFn, defaultGas){
 async function executeSwap() {
   try {
     setSwapStatus("");
-    if (!userAddress) { 
+    if (!userAddress) {
       setSwapStatus("Please connect your wallet first.");
       return;
     }
@@ -2366,27 +2354,27 @@ async function executeSwap() {
     await loadProxyFeeParams();
 
     const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if (!sellValStr || Number(sellValStr) <= 0) { 
+    if (!sellValStr || Number(sellValStr) <= 0) {
       setSwapStatus("Enter an amount to swap.");
       return;
     }
 
     const sellMeta = getSelectedMeta(document.getElementById("sellS"));
     const buyMeta  = getSelectedMeta(document.getElementById("buyS"));
-    if (!sellMeta || !buyMeta) { 
+    if (!sellMeta || !buyMeta) {
       setSwapStatus("Token metadata not found.");
       return;
     }
 
     const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if (amountInBN_raw.lte(0)) { 
+    if (amountInBN_raw.lte(0)) {
       setSwapStatus("Invalid amount.");
       return;
     }
 
     const sellIsEth = metaIsETH(sellMeta);
     const buyIsEth  = metaIsETH(buyMeta);
-    if (sellIsEth && buyIsEth) { 
+    if (sellIsEth && buyIsEth) {
       setSwapStatus("ETH → ETH swap is not supported.");
       return;
     }
@@ -2399,7 +2387,6 @@ async function executeSwap() {
 
     await ensureSufficientTokenBalance(sellMeta, amountInBN_raw);
 
-    // approvals for proxy mode first (spender = proxy router)
     if (!sellIsEth){
       setSwapStatus("Checking approval…");
       await ensureAllowance(sellMeta, amountInBN_raw, GDEX_PROXY_ROUTER);
@@ -2412,7 +2399,6 @@ async function executeSwap() {
     setSwapBusy(true);
     setSwapStatus("Preparing route…");
 
-    // 1) Try proxy router plan
     let plan = null;
     let mode = "proxy";
 
@@ -2425,7 +2411,6 @@ async function executeSwap() {
       });
       mode = "proxy";
     }catch(proxyErr){
-      // Auto Direct fallback
       try{
         if (!sellIsEth){
           setSwapStatus("Proxy failed. Switching to Direct mode… Checking Sushi approval…");
@@ -2450,24 +2435,20 @@ async function executeSwap() {
 
     setSwapStatus(`Please confirm in your wallet… (${mode === "proxy" ? "Proxy" : "Direct"})`);
 
-    // 2) estimate gas (safe fallback) + send (wallet timeout guard)
     let tx;
     if(mode === "proxy"){
-      const sellIsEth2 = sellIsEth, buyIsEth2 = buyIsEth;
       const tokenInParam = addrForPath(sellMeta);
 
+      const fn =
+        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensWithFee"
+        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHWithFee"
+        : "swapExactTokensForTokensWithFee";
+
       const gas = await safeEstimateOrDefault(
-        ()=> proxyRouter.estimateGas[
-          sellIsEth2 && !buyIsEth2 ? "swapExactETHForTokensWithFee"
-          : (!sellIsEth2 && buyIsEth2 ? "swapExactTokensForETHWithFee"
-          : "swapExactTokensForTokensWithFee")
-        ](
-          ...(sellIsEth2 && !buyIsEth2
+        ()=> proxyRouter.estimateGas[fn](
+          ...(sellIsEth && !buyIsEth
             ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            : (!sellIsEth2 && buyIsEth2
-              ? [tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-              : [tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            )
+            : [tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
           )
         ),
         SAFE_GAS_PROXY
@@ -2476,9 +2457,9 @@ async function executeSwap() {
       const gasLimit = gas.mul(125).div(100);
 
       tx = await withTimeout(
-        (sellIsEth2 && !buyIsEth2)
+        (sellIsEth && !buyIsEth)
           ? proxyRouter.swapExactETHForTokensWithFee(plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-          : (!sellIsEth2 && buyIsEth2)
+          : (!sellIsEth && buyIsEth)
             ? proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
             : proxyRouter.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }),
         WALLET_CONFIRM_TIMEOUT_MS,
@@ -2486,18 +2467,16 @@ async function executeSwap() {
       );
 
     }else{
+      const fn =
+        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
+        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
+        : "swapExactTokensForTokensSupportingFeeOnTransferTokens";
+
       const gas = await safeEstimateOrDefault(
-        ()=> sushiRouterRW.estimateGas[
-          (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
-          : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
-          : "swapExactTokensForTokensSupportingFeeOnTransferTokens"
-        ](
+        ()=> sushiRouterRW.estimateGas[fn](
           ...(sellIsEth && !buyIsEth
             ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            : (!sellIsEth && buyIsEth
-              ? [amountInBN_raw, plan.outMinBN, plan.path, to, deadline]
-              : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline]
-            )
+            : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline]
           )
         ),
         SAFE_GAS_DIRECT
@@ -2518,12 +2497,16 @@ async function executeSwap() {
 
     pushRecentTx(tx.hash);
     setSwapStatus(`TX sent: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`);
+
+    /* ✅ (FIX) tx.wait was wrongly placed at top-level before. Put it here if you want confirmations.
+       - It is optional; leaving it out keeps UI snappy on mobile. */
+    // await tx.wait(1);
+
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
 
   } catch (err) {
     console.error("executeSwap error:", err);
 
-    // ✅ Mobile “멈춤” 대표 케이스: 지갑 확인창이 안뜨거나 사용자가 confirm을 안한 상태
     if (String(err?.message||"").includes("WALLET_CONFIRM_TIMEOUT")) {
       setSwapStatus("Wallet confirmation timeout. Please open MetaMask and confirm the transaction.");
       const ok = await uiConfirm(
@@ -2534,9 +2517,7 @@ async function executeSwap() {
         "Press Continue to open MetaMask (mobile).",
         { okText:"Continue", cancelText:"Close", copy:false }
       );
-      if (ok && isMobile) {
-        openMetaMaskDeepLink();
-      }
+      if (ok && isMobile) openMetaMaskDeepLink();
       return;
     }
 
@@ -2624,11 +2605,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   }catch(e){
     console.error('[boot]', e);
+    setSwapStatus("Boot failed. Open console for details.");
   }
 });
 </script>
 </body>
 </html>
-
-
-
