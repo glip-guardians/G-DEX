@@ -1154,7 +1154,8 @@ const SWAP_SILENT = true;
    - Wallet confirm timeout guard
    - Safe gasLimit fallback when estimateGas fails
    ============================================================ */
-const WALLET_CONFIRM_TIMEOUT_MS = 45000; // 45s
+await tx.wait(1); // timeout 없음
+
 const SAFE_GAS_PROXY  = 650000;
 const SAFE_GAS_DIRECT = 450000;
 
@@ -2628,5 +2629,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
 
