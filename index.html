@@ -2163,16 +2163,34 @@ function setSwapBusy(isBusy){
   if(conn) conn.disabled = !!isBusy;
 }
 
-async function ensureSufficientEthForValue(callValue){
+async function ensureSufficientEthForValue(callValue, txReq){
   const bal = await provider.getBalance(userAddress);
-const buffer = ethers.constants.Zero;
-  const need = callValue.add(buffer);
+
+  // 1) 기본 필요값 = callValue (proxy flat fee 등)
+  let need = callValue ?? ethers.constants.Zero;
+
+  // 2) 가스비 추정(가능할 때만)
+  try{
+    const gas = await provider.estimateGas({ from:userAddress, ...txReq, value: callValue });
+    const fee = await provider.getFeeData();
+
+    // EIP-1559 우선
+    const gasPrice = fee.maxFeePerGas || fee.gasPrice;
+    if (gasPrice){
+      const gasCost = gas.mul(gasPrice);
+      // 여유 10%만
+      need = need.add(gasCost.mul(110).div(100));
+    }
+  }catch(e){
+    // estimateGas가 실패할 수 있으니, 이 경우에는 최소 버퍼만
+    need = need.add(ethers.utils.parseEther("0.0002"));
+  }
+
   if (bal.lt(need)){
     throw new Error(
-      `Insufficient ETH for required value + gas buffer.\n\n`+
-      `Required (value+buffer): ${ethers.utils.formatEther(need)} ETH\n`+
-      `Balance: ${ethers.utils.formatEther(bal)} ETH\n\n`+
-      `Tip: Token swaps (proxy mode) require flat ETH fee (msg.value) + gas.`
+      `Insufficient ETH.\n\n`+
+      `Required (est.): ${ethers.utils.formatEther(need)} ETH\n`+
+      `Balance: ${ethers.utils.formatEther(bal)} ETH`
     );
   }
 }
@@ -2610,4 +2628,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
