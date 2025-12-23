@@ -835,23 +835,18 @@ h3::before{content:""; display:none;}
           </div>
         </div>
 
-        <div class="card metric">
-          <h4>24h Volume</h4>
-          <div class="v" id="metricVolumeText">$ —</div>
-        </div>
+<div class="card metric">
+  <h4>Major Coin Prices</h4>
+  <div class="v" id="metricPricesText">
+    <div class="poolsTicker" id="pricesTicker" aria-label="Major coin prices ticker">
+      <a class="poolsItem" id="pricesTickerLink" href="https://www.coingecko.com" target="_blank" rel="noopener">
+        <span class="pair" id="pricesTickerPair">—</span>
+        <span class="meta" id="pricesTickerMeta"></span>
+      </a>
+    </div>
+  </div>
+</div>
 
-        <div class="card metric">
-          <h4>GLIP Price</h4>
-          <div class="v" id="metricGlipPrice">
-            <div class="chartFrame">
-              <iframe id="dextools-widget"
-                title="DEXTools Trading Chart"
-                width="500" height="400"
-                loading="lazy"
-                src="https://www.dextools.io/widget-chart/en/ether/pe-light/0xd304b9c49f389f27c5e75e1469e903da5320d3b4?theme=light&chartType=2&chartResolution=30&drawingToolbars=false"></iframe>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- Swap -->
@@ -1432,6 +1427,138 @@ function openMetaMaskDeepLink() {
   const deepLink = `https://metamask.app.link/dapp/${target}`;
   window.location.href = deepLink;
 }
+
+/* ============================================================
+   ✅ Major Coin Prices Ticker (Rolling)
+   ============================================================ */
+let __pricesItems = [];
+let __pricesIdx = 0;
+let __pricesTimer = null;
+
+function setPricesTicker(item){
+  const wrap = document.getElementById('pricesTicker');
+  const link = document.getElementById('pricesTickerLink');
+  const pair = document.getElementById('pricesTickerPair');
+  const meta = document.getElementById('pricesTickerMeta');
+  if(!wrap || !link || !pair || !meta) return;
+
+  link.href = item?.url || "https://www.coingecko.com";
+  pair.textContent = item?.label || "—";
+  meta.textContent = item?.meta || "";
+}
+
+function formatUSD(n){
+  if(n == null || !Number.isFinite(Number(n))) return "—";
+  const v = Number(n);
+  // 큰 값은 소수점 줄이기
+  const opt =
+    v >= 1000 ? { maximumFractionDigits: 2 } :
+    v >= 1    ? { maximumFractionDigits: 4 } :
+                { maximumFractionDigits: 8 };
+  return "$ " + v.toLocaleString(undefined, opt);
+}
+
+function formatPct(p){
+  if(p == null || !Number.isFinite(Number(p))) return "";
+  const v = Number(p);
+  const sign = v >= 0 ? "+" : "";
+  return `${sign}${v.toFixed(2)}%`;
+}
+
+// CoinGecko IDs (major coins)
+const PRICE_TICKER_COINS = [
+  { id:"bitcoin",  sym:"BTC", url:"https://www.coingecko.com/en/coins/bitcoin" },
+  { id:"ethereum", sym:"ETH", url:"https://www.coingecko.com/en/coins/ethereum" },
+  { id:"tether",   sym:"USDT",url:"https://www.coingecko.com/en/coins/tether" },
+  { id:"usd-coin", sym:"USDC",url:"https://www.coingecko.com/en/coins/usd-coin" },
+  { id:"binancecoin", sym:"BNB", url:"https://www.coingecko.com/en/coins/bnb" },
+  { id:"solana",   sym:"SOL", url:"https://www.coingecko.com/en/coins/solana" },
+  { id:"ripple",   sym:"XRP", url:"https://www.coingecko.com/en/coins/xrp" }
+];
+
+async function fetchMajorCoinPrices(){
+  const ids = PRICE_TICKER_COINS.map(x=>x.id).join(",");
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true`;
+  const r = await fetch(url, { method:"GET" });
+  const j = await r.json().catch(()=> ({}));
+
+  const items = [];
+  for(const c of PRICE_TICKER_COINS){
+    const row = j?.[c.id];
+    const px = row?.usd;
+    const ch = row?.usd_24h_change;
+    items.push({
+      label: `${c.sym} · ${formatUSD(px)}`,
+      meta: `24h ${formatPct(ch)}`,
+      url: c.url
+    });
+  }
+  return items.filter(x=>x && x.label);
+}
+
+function rotatePricesTicker(){
+  if(!__pricesItems.length) return;
+  const wrap = document.getElementById('pricesTicker');
+  if(!wrap) return;
+
+  wrap.classList.remove('fadeIn');
+  wrap.classList.add('fadeOut');
+
+  setTimeout(()=>{
+    __pricesIdx = (__pricesIdx + 1) % __pricesItems.length;
+    setPricesTicker(__pricesItems[__pricesIdx]);
+    wrap.classList.remove('fadeOut');
+    wrap.classList.add('fadeIn');
+  }, 220);
+}
+
+function setPricesFallback(){
+  // 네트워크가 잠깐 막혀도 UI는 깔끔하게 유지
+  __pricesItems = [
+    { label:"BTC · —", meta:"24h —", url:"https://www.coingecko.com" },
+    { label:"ETH · —", meta:"24h —", url:"https://www.coingecko.com" },
+    { label:"USDT · —", meta:"24h —", url:"https://www.coingecko.com" }
+  ];
+  __pricesIdx = 0;
+  setPricesTicker(__pricesItems[0]);
+}
+
+async function bootMajorCoinPricesTicker(){
+  const wrap = document.getElementById('pricesTicker');
+  if(!wrap) return;
+
+  try{
+    const items = await fetchMajorCoinPrices();
+    if(items && items.length){
+      __pricesItems = items;
+      __pricesIdx = 0;
+      setPricesTicker(__pricesItems[0]);
+
+      if(__pricesTimer) clearInterval(__pricesTimer);
+      __pricesTimer = setInterval(rotatePricesTicker, 3000);
+
+      // 60초마다 값 새로고침 (회전은 계속)
+      setInterval(async ()=>{
+        try{
+          const fresh = await fetchMajorCoinPrices();
+          if(fresh && fresh.length){
+            __pricesItems = fresh;
+            __pricesIdx = 0;
+            setPricesTicker(__pricesItems[0]);
+          }
+        }catch{
+          // 조용히 유지
+        }
+      }, 60000);
+
+      return;
+    }
+    setPricesFallback();
+  }catch{
+    setPricesFallback();
+  }
+}
+  
 
 /* ===== token list ===== */
 const tokenList = [
@@ -2634,5 +2761,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
 
