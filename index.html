@@ -2565,7 +2565,7 @@ async function executeSwap() {
           setSwapStatus("Best route selected automatically");
           await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
         }else{
-          setSwapStatus("Proxy failed. Switching to Direct mode…");
+          setSwapStatus("Best route selected automatically");
         }
         const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
         await ensureSufficientEthForValue(expectedValueDirect);
@@ -2761,6 +2761,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </body>
 </html>
 <br><br>
+
 
 
 
