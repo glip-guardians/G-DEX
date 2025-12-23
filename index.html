@@ -2435,7 +2435,7 @@ async function executeSwap() {
     }catch(proxyErr){
       try{
         if (!sellIsEth){
-          setSwapStatus("Proxy failed. Switching to Direct mode… Checking Sushi approval…");
+          setSwapStatus("Best route selected automatically");
           await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
         }else{
           setSwapStatus("Proxy failed. Switching to Direct mode…");
@@ -2633,4 +2633,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
