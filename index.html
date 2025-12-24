@@ -17,7 +17,7 @@
 <meta name="theme-color" content="#ffffff" />
 <script>
   // ✅ SW 캐시로 인해 "모바일만 옛버전"이 계속 뜨는 경우가 많아서 버전 쿼리 추가
-  const SW_VER = "20251222_2";
+  const SW_VER = "20251225_statuspanel_1";
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js?v=' + SW_VER).catch(console.error);
@@ -101,7 +101,6 @@ body::after{
   overflow:hidden;
   background:linear-gradient(180deg, rgba(123,183,255,.18) 0%, rgba(255,255,255,.92) 55%, rgba(255,255,255,1) 100%);
 }
-
 /* ✅ 하단 흰색(언덕) 제거 */
 .hero::before{ content:none !important; }
 
@@ -117,7 +116,6 @@ body::after{
   z-index:0;
   pointer-events:none;
 }
-
 /* Keep DOM but hide characters */
 .heroCharacters{display:none !important;}
 
@@ -585,7 +583,7 @@ h3::before{content:""; display:none;}
 #tokModal header{
   padding:14px 16px;
   border-bottom:1px solid rgba(12,25,45,.12);
-  font-weight:900; /* ✅ typo fix */
+  font-weight:900;
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   background:rgba(255,255,255,.82);
 }
@@ -766,6 +764,78 @@ h3::before{content:""; display:none;}
 }
 #swapStatus a{color:rgba(11,18,32,.90); font-weight:900; text-decoration:none}
 #swapStatus a:hover{text-decoration:underline}
+
+/* ============================================================
+   ✅ NEW: Status Panel ("G-DEX 상태판")
+   ============================================================ */
+.statusGrid{
+  display:grid;
+  gap:12px;
+  grid-template-columns:repeat(2,1fr);
+}
+@media (max-width:900px){
+  .statusGrid{grid-template-columns:1fr;}
+}
+.statusItem{
+  padding:12px;
+  border-radius:18px;
+  border:1px solid rgba(12,25,45,.14);
+  background:rgba(255,255,255,.72);
+  box-shadow:0 12px 22px rgba(9,18,33,.10);
+}
+.statusItem .label{
+  font-weight:900;
+  color:rgba(11,18,32,.72);
+  font-size:12px;
+}
+.statusItem .val{
+  margin-top:6px;
+  font-weight:900;
+  color:rgba(11,18,32,.92);
+  word-break:break-word;
+}
+.statusItem .sub{
+  margin-top:6px;
+  font-size:12px;
+  color:rgba(11,18,32,.62);
+  opacity:.92;
+}
+#txLog{
+  margin-top:12px;
+  padding:12px;
+  border-radius:18px;
+  border:1px solid rgba(12,25,45,.14);
+  background:rgba(255,255,255,.72);
+  box-shadow:0 12px 22px rgba(9,18,33,.10);
+  max-height:260px;
+  overflow:auto;
+  font-size:12px;
+  line-height:1.45;
+  color:rgba(11,18,32,.78);
+}
+.txLine{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:6px 0;
+  border-bottom:1px dashed rgba(12,25,45,.12);
+}
+.txLine:last-child{border-bottom:0}
+.txLine .t{opacity:.72; min-width:66px}
+.txLine a{color:rgba(11,18,32,.90); font-weight:900; text-decoration:none}
+.txLine a:hover{text-decoration:underline}
+.smallPill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 10px;border-radius:999px;
+  border:1px solid rgba(12,25,45,.14);
+  background:rgba(255,255,255,.70);
+  font-weight:900;
+  font-size:12px;
+  color:rgba(11,18,32,.86);
+  box-shadow:0 10px 18px rgba(9,18,33,.08);
+}
+.smallPill.ok{border-color:rgba(57,217,138,.35)}
+.smallPill.bad{border-color:rgba(255,120,120,.35)}
 </style>
 </head>
 
@@ -835,17 +905,18 @@ h3::before{content:""; display:none;}
           </div>
         </div>
 
-<div class="card metric">
-  <h4>Major Coin Prices</h4>
-  <div class="v" id="metricPricesText">
-    <div class="poolsTicker" id="pricesTicker" aria-label="Major coin prices ticker">
-      <a class="poolsItem" id="pricesTickerLink" href="https://www.coingecko.com" target="_blank" rel="noopener">
-        <span class="pair" id="pricesTickerPair">—</span>
-        <span class="meta" id="pricesTickerMeta"></span>
-      </a>
-    </div>
-  </div>
-</div>
+        <div class="card metric">
+          <h4>Major Coin Prices</h4>
+          <div class="v" id="metricPricesText">
+            <div class="poolsTicker" id="pricesTicker" aria-label="Major coin prices ticker">
+              <a class="poolsItem" id="pricesTickerLink" href="https://www.coingecko.com" target="_blank" rel="noopener">
+                <span class="pair" id="pricesTickerPair">—</span>
+                <span class="meta" id="pricesTickerMeta"></span>
+              </a>
+            </div>
+          </div>
+        </div>
+
         <div class="card metric">
           <h4>GLIP Price</h4>
           <div class="v" id="metricGlipPrice">
@@ -868,7 +939,7 @@ h3::before{content:""; display:none;}
           <div class="balTag" id="sellBal">Bal: —</div>
           <input id="sell" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
           <button class="maxBtn" id="swapMax" type="button">MAX</button>
-          <button class="tokenBtn" id="sellBtn"><img id="sellI" src="" alt=""><span id="sellS" data-address="">ETH</span></button>
+          <button class="tokenBtn" id="sellBtn" type="button"><img id="sellI" src="" alt=""><span id="sellS" data-address="">ETH</span></button>
         </div>
 
         <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
@@ -876,7 +947,7 @@ h3::before{content:""; display:none;}
         <div class="input" id="swapBuyWrap">
           <div class="balTag" id="buyBal">Bal: —</div>
           <input id="buy" placeholder="0.0" type="number" disabled>
-          <button class="tokenBtn" id="buyBtn"><img id="buyI" src="" alt=""><span id="buyS" data-address="">GLIP</span></button>
+          <button class="tokenBtn" id="buyBtn" type="button"><img id="buyI" src="" alt=""><span id="buyS" data-address="">GLIP</span></button>
         </div>
 
         <div class="helper">
@@ -884,13 +955,78 @@ h3::before{content:""; display:none;}
             Slippage <input id="slip" type="number" value="2" min="0" max="50" step="0.1"> %
             <span id="slipHint" style="font-size:12px;opacity:.68;margin-left:6px;"></span>
           </div>
-          <button class="btn" id="swapConnect">Connect Wallet</button>
+          <button class="btn" id="swapConnect" type="button">Connect Wallet</button>
         </div>
         <div style="height:10px"></div>
-        <button class="btn" id="swapBtn" style="width:100%">Swap</button>
+        <button class="btn" id="swapBtn" type="button" style="width:100%">Swap</button>
 
         <!-- ✅ silent mode status line -->
         <div id="swapStatus"></div>
+      </section>
+
+      <!-- ✅ REPLACED: Recent Transactions -> G-DEX 상태판 -->
+      <section class="card recent" id="status">
+        <h3>G-DEX 상태판</h3>
+
+        <div class="statusGrid">
+          <div class="statusItem">
+            <div class="label">Boot / UI</div>
+            <div class="val" id="stBoot">—</div>
+            <div class="sub" id="stBootSub">—</div>
+          </div>
+
+          <div class="statusItem">
+            <div class="label">Wallet</div>
+            <div class="val" id="stWallet">—</div>
+            <div class="sub" id="stWalletSub">—</div>
+          </div>
+
+          <div class="statusItem">
+            <div class="label">Network</div>
+            <div class="val" id="stNet">—</div>
+            <div class="sub" id="stNetSub">—</div>
+          </div>
+
+          <div class="statusItem">
+            <div class="label">Routing</div>
+            <div class="val" id="stRoute">—</div>
+            <div class="sub" id="stRouteSub">—</div>
+          </div>
+
+          <div class="statusItem">
+            <div class="label">Proxy Fees</div>
+            <div class="val" id="stFee">—</div>
+            <div class="sub" id="stFeeSub">—</div>
+          </div>
+
+          <div class="statusItem">
+            <div class="label">Data Sources</div>
+            <div class="val" id="stSources">—</div>
+            <div class="sub" id="stSourcesSub">—</div>
+          </div>
+        </div>
+
+        <div class="row" style="justify-content:space-between;margin-top:12px;gap:10px">
+          <div class="row" style="gap:8px">
+            <span class="smallPill" id="pillWallet">Wallet</span>
+            <span class="smallPill" id="pillNet">Mainnet</span>
+            <span class="smallPill" id="pillBackend">Backend</span>
+            <span class="smallPill" id="pillCG">CoinGecko</span>
+          </div>
+          <div class="row" style="gap:8px;justify-content:flex-end">
+            <button class="btn ghost" id="btnRefreshStatus" type="button" style="min-width:auto;padding:10px 14px">Refresh</button>
+            <button class="btn" id="btnCopyDiag" type="button" style="min-width:auto;padding:10px 14px">Copy Diagnostic</button>
+          </div>
+        </div>
+
+        <div id="txLog" aria-label="Recent TX log">
+          <div style="opacity:.78">No recent transactions yet.</div>
+        </div>
+
+        <div class="ribbon" style="margin-top:12px">
+          <strong>Tip:</strong> If token images or token selector don’t respond, it usually means the boot script stopped due to a runtime error.
+          Use <b>Copy Diagnostic</b> and check the browser console.
+        </div>
       </section>
 
       <!-- Pool -->
@@ -911,14 +1047,14 @@ h3::before{content:""; display:none;}
         </div>
 
         <div class="row" style="gap:8px;margin-bottom:6px">
-          <button class="btn" style="min-width:auto;padding:10px 14px">Add</button>
-          <button class="btn ghost" style="min-width:auto;padding:10px 14px">Remove</button>
-          <button class="btn ghost" style="min-width:auto;padding:10px 14px">My Positions</button>
+          <button class="btn" type="button" style="min-width:auto;padding:10px 14px">Add</button>
+          <button class="btn ghost" type="button" style="min-width:auto;padding:10px 14px">Remove</button>
+          <button class="btn ghost" type="button" style="min-width:auto;padding:10px 14px">My Positions</button>
         </div>
 
         <div class="input leftToken" id="pool0Wrap">
           <div class="balTag" id="pBal0">Bal: —</div>
-          <button class="tokenBtn" id="pT0Btn"><img id="pT0Img" src="" alt=""><span id="pT0Sym" data-address="">ETH</span></button>
+          <button class="tokenBtn" id="pT0Btn" type="button"><img id="pT0Img" src="" alt=""><span id="pT0Sym" data-address="">ETH</span></button>
           <input id="pAmt0" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
         </div>
 
@@ -926,7 +1062,7 @@ h3::before{content:""; display:none;}
 
         <div class="input leftToken" id="pool1Wrap">
           <div class="balTag" id="pBal1">Bal: —</div>
-          <button class="tokenBtn" id="pT1Btn"><img id="pT1Img" src="" alt=""><span id="pT1Sym" data-address="">GLIP</span></button>
+          <button class="tokenBtn" id="pT1Btn" type="button"><img id="pT1Img" src="" alt=""><span id="pT1Sym" data-address="">GLIP</span></button>
           <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
         </div>
 
@@ -950,31 +1086,12 @@ h3::before{content:""; display:none;}
         <div class="helper">
           <div>Slippage <input id="pSlip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
           <div style="display:flex;gap:10px;align-items:center">
-            <button class="btn" id="poolConnect">Connect Wallet</button>
-            <button class="btn" id="poolSupply">Supply</button>
+            <button class="btn" id="poolConnect" type="button">Connect Wallet</button>
+            <button class="btn" id="poolSupply" type="button">Supply</button>
           </div>
         </div>
 
         <p id="poolFooterNote" style="margin-top:12px;font-size:12px;opacity:.72"></p>
-      </section>
-
-      <!-- Recent -->
-      <section class="card recent">
-        <h3>Recent Transactions</h3>
-        <div id="recentList">
-          <div style="opacity:.78">0xc1454917262a.....2aa2d7bcd6ef05e4a</div>
-          <div style="opacity:.78">0x36f7124b90c2.....bb87c2ac5c9cee93f</div>
-          <div style="opacity:.78">0x3cc5be0bd8e8.....1d6a34c2b3e282cc</div>
-          <div style="opacity:.78">0x06df8924cac6.....6454e919a15a1a92</div>
-          <div style="opacity:.78">0x6a46add4a801.....f1d28935c88a5ecb6</div>
-          <div style="opacity:.78">0x5c8f0a373168.....dce51b2a5c33b4c3</div>
-          <div style="opacity:.78">0xbb2f6b65c098.....5732e6225866d278</div>
-          <div style="opacity:.78">0x4fb5bbacac14.....10ddc3a6fcece872</div>
-          <div style="opacity:.78">0x76791324fd9c.....ecd146856564b3f2</div>
-          <div style="opacity:.78">0xaffa21a4ef68.....9d0655371a932899</div>
-          <div style="opacity:.78">0xc96075ee276d.....899d34732ee9fdd32</div>
-          <div style="opacity:.78">0xa4ca2b808b36.....251733c3aac548882</div>
-        </div>
       </section>
 
       <!-- Notes -->
@@ -1077,8 +1194,8 @@ h3::before{content:""; display:none;}
         </div>
 
         <div class="tabs">
-          <button class="btn" id="tabStake">Stake</button>
-          <button class="btn ghost" id="tabUnstake">Unstake</button>
+          <button class="btn" id="tabStake" type="button">Stake</button>
+          <button class="btn ghost" id="tabUnstake" type="button">Unstake</button>
         </div>
 
         <div class="amountBox">
@@ -1090,13 +1207,13 @@ h3::before{content:""; display:none;}
           <div style="margin-top:6px; opacity:.72; font-size:12px;">Wallet balance: <span id="stakeBalText">—</span></div>
 
           <div class="stake-actions">
-            <button class="btn" id="btnConn">Connect Wallet</button>
-            <button class="btn" id="btnStake">Stake GLIP</button>
+            <button class="btn" id="btnConn" type="button">Connect Wallet</button>
+            <button class="btn" id="btnStake" type="button">Stake GLIP</button>
           </div>
           <div style="margin-top:10px">Est. Rewards (30d): <span id="est30">—</span></div>
         </div>
 
-        <div class="claimRow"><button class="btn ghost" id="btnClaim">Claim Rewards</button></div>
+        <div class="claimRow"><button class="btn ghost" id="btnClaim" type="button">Claim Rewards</button></div>
         <div style="margin-top:12px;opacity:.76">Note: Rewards stream per block. (Demo data)</div>
       </section>
     </main>
@@ -1112,7 +1229,7 @@ h3::before{content:""; display:none;}
 <dialog id="tokModal">
   <header>
     <input id="tokSearch" type="text" placeholder="Search token by name, symbol, or address" autocomplete="off">
-    <button id="tokClose" title="Close">✕</button>
+    <button id="tokClose" title="Close" type="button">✕</button>
   </header>
   <div class="content" style="padding:16px">
     <div id="tokList"></div>
@@ -1123,7 +1240,7 @@ h3::before{content:""; display:none;}
 <dialog id="uiModal">
   <header>
     <div id="uiTitle">Notice</div>
-    <button id="uiClose" title="Close">✕</button>
+    <button id="uiClose" title="Close" type="button">✕</button>
   </header>
   <div id="uiBody">
     <pre id="uiMessage"></pre>
@@ -1151,6 +1268,14 @@ h3::before{content:""; display:none;}
 
 <script>
 /* ============================================================
+   ✅ HARDENED BOOT (prevents "all — / token modal dead")
+   - Boot runs even if DOMContentLoaded already fired
+   - Each init step isolated so one failure doesn't break all
+   ============================================================ */
+let __bootOk = false;
+let __bootErr = null;
+
+/* ============================================================
    ✅ SILENT SWAP MODE
    ============================================================ */
 const SWAP_SILENT = true;
@@ -1163,7 +1288,7 @@ const SWAP_SILENT = true;
 const SAFE_GAS_PROXY  = 650000;
 const SAFE_GAS_DIRECT = 450000;
 
-/* ✅ (FIX) Wallet confirm timeout constant was missing */
+/* ✅ Wallet confirm timeout */
 const WALLET_CONFIRM_TIMEOUT_MS = 450000;
 
 function withTimeout(promise, ms, tag="timeout"){
@@ -1312,11 +1437,8 @@ let gdexPoolConfig = {};
 })();
 function applyManualPoolConfig(){
   const cfg = gdexPoolConfig || {};
-  const volEl    = document.getElementById('metricVolumeText');
   const noteEl   = document.getElementById('pManualNote');
   const footEl   = document.getElementById('poolFooterNote');
-
-  if(volEl && cfg.volume24hUsd) volEl.textContent = cfg.volume24hUsd;
   if(noteEl && cfg.poolManualNote) noteEl.textContent = cfg.poolManualNote;
   if(footEl && cfg.poolFooterNote) footEl.textContent = cfg.poolFooterNote;
 }
@@ -1327,6 +1449,8 @@ function applyManualPoolConfig(){
 let __sushiPools = [];
 let __sushiTickerIdx = 0;
 let __sushiTickerTimer = null;
+let __backendOk = null;
+let __backendLastAt = null;
 
 function setPoolsTicker(item){
   const wrap = document.getElementById('poolsTicker');
@@ -1384,6 +1508,8 @@ async function bootSushiPoolsTicker(){
 
   try{
     __sushiPools = await fetchSushiPools(5);
+    __backendOk = true; __backendLastAt = Date.now();
+
     if(!__sushiPools.length){
       setPoolsTickerFallbackFromManual();
       return;
@@ -1397,19 +1523,26 @@ async function bootSushiPoolsTicker(){
     setInterval(async ()=>{
       try{
         const fresh = await fetchSushiPools(5);
+        __backendOk = true; __backendLastAt = Date.now();
         if(Array.isArray(fresh) && fresh.length){
           __sushiPools = fresh;
           __sushiTickerIdx = 0;
           setPoolsTicker(__sushiPools[0]);
         }
       }catch(e){
+        __backendOk = false;
         console.warn('[sushi ticker refresh] failed', e);
+      }finally{
+        updateStatusBoard();
       }
     }, 60000);
 
   }catch(e){
+    __backendOk = false;
     console.warn('[bootSushiPoolsTicker] failed', e);
     setPoolsTickerFallbackFromManual();
+  }finally{
+    updateStatusBoard();
   }
 }
 
@@ -1445,6 +1578,8 @@ function openMetaMaskDeepLink() {
 let __pricesItems = [];
 let __pricesIdx = 0;
 let __pricesTimer = null;
+let __cgOk = null;
+let __cgLastAt = null;
 
 function setPricesTicker(item){
   const wrap = document.getElementById('pricesTicker');
@@ -1461,7 +1596,6 @@ function setPricesTicker(item){
 function formatUSD(n){
   if(n == null || !Number.isFinite(Number(n))) return "—";
   const v = Number(n);
-  // 큰 값은 소수점 줄이기
   const opt =
     v >= 1000 ? { maximumFractionDigits: 2 } :
     v >= 1    ? { maximumFractionDigits: 4 } :
@@ -1524,7 +1658,6 @@ function rotatePricesTicker(){
 }
 
 function setPricesFallback(){
-  // 네트워크가 잠깐 막혀도 UI는 깔끔하게 유지
   __pricesItems = [
     { label:"BTC · —", meta:"24h —", url:"https://www.coingecko.com" },
     { label:"ETH · —", meta:"24h —", url:"https://www.coingecko.com" },
@@ -1540,6 +1673,7 @@ async function bootMajorCoinPricesTicker(){
 
   try{
     const items = await fetchMajorCoinPrices();
+    __cgOk = true; __cgLastAt = Date.now();
     if(items && items.length){
       __pricesItems = items;
       __pricesIdx = 0;
@@ -1548,17 +1682,19 @@ async function bootMajorCoinPricesTicker(){
       if(__pricesTimer) clearInterval(__pricesTimer);
       __pricesTimer = setInterval(rotatePricesTicker, 3000);
 
-      // 60초마다 값 새로고침 (회전은 계속)
       setInterval(async ()=>{
         try{
           const fresh = await fetchMajorCoinPrices();
+          __cgOk = true; __cgLastAt = Date.now();
           if(fresh && fresh.length){
             __pricesItems = fresh;
             __pricesIdx = 0;
             setPricesTicker(__pricesItems[0]);
           }
         }catch{
-          // 조용히 유지
+          __cgOk = false;
+        }finally{
+          updateStatusBoard();
         }
       }, 60000);
 
@@ -1566,12 +1702,14 @@ async function bootMajorCoinPricesTicker(){
     }
     setPricesFallback();
   }catch{
+    __cgOk = false;
     setPricesFallback();
+  }finally{
+    updateStatusBoard();
   }
 }
-  
 
-/* ===== token list ===== */
+/* ===== token list (UNCHANGED) ===== */
 const tokenList = [
   {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
   {symbol:"GLIP", name:"GLIP Token", address:GLIP_TOKEN_ADDRESS, decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
@@ -1610,6 +1748,7 @@ const tokenList = [
   {symbol:"NEAR", name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24, logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg"},
   {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
 ];
+
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
     t.symbol === symbolOrAddress ||
@@ -1632,13 +1771,20 @@ function getSelectedMeta(symEl){
   return null;
 }
 
+/* ✅ small helper to prevent broken images from breaking UX */
+function safeSetImg(imgEl, src){
+  if(!imgEl) return;
+  imgEl.onerror = ()=>{ imgEl.src = "G_DEX_icon.png"; };
+  imgEl.src = src || "G_DEX_icon.png";
+}
+
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
   const GLIP = getTokenMeta("GLIP");
-  $('#sellI').src = ETH.logo;  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
-  $('#buyI').src  = GLIP.logo; $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP.address;
-  $('#pT0Img').src = ETH.logo;  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
-  $('#pT1Img').src = GLIP.logo; $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP.address;
+  safeSetImg($('#sellI'), ETH?.logo);  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
+  safeSetImg($('#buyI'),  GLIP?.logo); $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP?.address || GLIP_TOKEN_ADDRESS;
+  safeSetImg($('#pT0Img'), ETH?.logo);  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
+  safeSetImg($('#pT1Img'), GLIP?.logo); $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP?.address || GLIP_TOKEN_ADDRESS;
 }
 
 /* ===== token modal ===== */
@@ -1646,6 +1792,10 @@ const dlg  = document.getElementById('tokModal');
 const list = document.getElementById('tokList');
 const tokSearchInput = document.getElementById('tokSearch');
 let target = null;
+
+function dialogSupported(d){
+  return !!(d && typeof d.showModal === "function");
+}
 
 function renderTokenList(query=""){
   const q = query.trim().toLowerCase();
@@ -1661,7 +1811,7 @@ function renderTokenList(query=""){
   list.innerHTML = filtered.map(t=>`
     <div class="item" data-sym="${t.symbol}"
          style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
-      <img src="${t.logo}" alt="">
+      <img src="${t.logo}" onerror="this.src='G_DEX_icon.png'" alt="">
       <strong>${t.symbol}</strong>
       <span style="margin-left:6px;opacity:.85">${t.name}</span>
       <span style="margin-left:auto;opacity:.7">${
@@ -1669,31 +1819,46 @@ function renderTokenList(query=""){
       }</span>
     </div>`).join('');
 }
+
 function openFor(imgEl, symEl){
   target = {imgEl, symEl};
   if (tokSearchInput) tokSearchInput.value = "";
   renderTokenList("");
-  dlg.showModal();
-  setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); }, 10);
+  if(dialogSupported(dlg)){
+    dlg.showModal();
+    setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); }, 10);
+  }else{
+    // fallback (rare): just alert list count, prevent dead UI
+    uiAlert("Token selector", "Your browser does not support <dialog>. Please open on a modern browser.", {copy:false});
+  }
 }
-list.onclick = async e=>{
-  const row = e.target.closest('.item'); if(!row||!target) return;
-  const t = tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
-  target.imgEl.src = t.logo;
-  target.symEl.textContent = t.symbol;
-  target.symEl.dataset.address = t.address;
-  dlg.close();
-  setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); }, 50);
-};
-document.getElementById('tokClose').onclick = ()=>dlg.close();
-dlg.addEventListener('click',e=>{ if(e.target===dlg) dlg.close(); });
-function bindTokenButtons(){
-  $('#sellBtn').onclick = ()=>openFor($('#sellI'), $('#sellS'));
-  $('#buyBtn').onclick  = ()=>openFor($('#buyI'),  $('#buyS'));
-  $('#pT0Btn').onclick  = ()=>openFor($('#pT0Img'),$('#pT0Sym'));
-  $('#pT1Btn').onclick  = ()=>openFor($('#pT1Img'),$('#pT1Sym'));
+
+if(list){
+  list.onclick = async e=>{
+    const row = e.target.closest('.item'); if(!row||!target) return;
+    const t = tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
+    safeSetImg(target.imgEl, t.logo);
+    target.symEl.textContent = t.symbol;
+    target.symEl.dataset.address = t.address;
+    try{ dlg.close(); }catch{}
+    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); updateStatusBoard(); }, 50);
+  };
 }
+const tokCloseBtn = document.getElementById('tokClose');
+if(tokCloseBtn) tokCloseBtn.onclick = ()=>{ try{ dlg.close(); }catch{} };
+if(dlg) dlg.addEventListener('click',e=>{ if(e.target===dlg) { try{ dlg.close(); }catch{} } });
 if (tokSearchInput) tokSearchInput.addEventListener('input', e=> renderTokenList(e.target.value));
+
+function bindTokenButtons(){
+  const sellBtn = document.getElementById('sellBtn');
+  const buyBtn  = document.getElementById('buyBtn');
+  const pT0Btn  = document.getElementById('pT0Btn');
+  const pT1Btn  = document.getElementById('pT1Btn');
+  if(sellBtn) sellBtn.addEventListener('click', ()=>openFor($('#sellI'), $('#sellS')));
+  if(buyBtn)  buyBtn.addEventListener('click',  ()=>openFor($('#buyI'),  $('#buyS')));
+  if(pT0Btn)  pT0Btn.addEventListener('click',  ()=>openFor($('#pT0Img'),$('#pT0Sym')));
+  if(pT1Btn)  pT1Btn.addEventListener('click',  ()=>openFor($('#pT1Img'),$('#pT1Sym')));
+}
 
 /* Flip */
 function flipTokenMeta(imgA, symA, imgB, symB){
@@ -1702,14 +1867,16 @@ function flipTokenMeta(imgA, symA, imgB, symB){
   const a=symA.dataset.address, b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
 }
 function bindFlip(){
-  $('#flip').onclick  = ()=>{
+  const flipBtn = document.getElementById('flip');
+  const pFlipBtn = document.getElementById('pFlip');
+  if(flipBtn) flipBtn.addEventListener('click', ()=>{
     flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
-    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); }, 50);
-  };
-  $('#pFlip').onclick  = ()=>{
+    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); updateStatusBoard(); }, 50);
+  });
+  if(pFlipBtn) pFlipBtn.addEventListener('click', ()=>{
     flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
-    setTimeout(()=> refreshAllBalances(), 50);
-  };
+    setTimeout(()=>{ refreshAllBalances(); updateStatusBoard(); }, 50);
+  });
 }
 
 /* ===== Wallet Connect (MetaMask) ===== */
@@ -1726,6 +1893,8 @@ let __proxyFeeLoaded = false;
 let __proxyFeeBps = 0;
 let __proxyFlatFeeWei = null;
 let __proxyFeeWallet = null;
+
+let __lastSwapMode = "—";
 
 const SUSHI_ROUTER_RO_ABI = [
   "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
@@ -1790,9 +1959,13 @@ async function loadProxyFeeParams(){
     __proxyFeeLoaded = true;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
-    __proxyFeeBps = (__proxyFeeBps || 30);
-    __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+    try{
+      __proxyFeeBps = (__proxyFeeBps || 30);
+      __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+    }catch{}
     __proxyFeeLoaded = false;
+  }finally{
+    updateStatusBoard();
   }
 }
 
@@ -1810,7 +1983,8 @@ async function connectWallet(){
     if (!accounts || !accounts.length) throw new Error('No accounts returned');
 
     userAddress = accounts[0];
-    document.getElementById('wAddr').textContent = short(userAddress);
+    const wAddrEl = document.getElementById('wAddr');
+    if(wAddrEl) wAddrEl.textContent = short(userAddress);
 
     ['poolConnect','btnConn','swapConnect'].forEach(id=>{
       const el = document.getElementById(id);
@@ -1824,15 +1998,18 @@ async function connectWallet(){
     await loadProxyFeeParams();
     await refreshAllBalances();
     updatePricePreview();
+    updateStatusBoard();
 
     if (window.ethereum.on) {
       window.ethereum.on('accountsChanged', async acc=>{
         userAddress = acc && acc.length ? acc[0] : null;
-        document.getElementById('wAddr').textContent = short(userAddress);
+        const wAddrEl2 = document.getElementById('wAddr');
+        if(wAddrEl2) wAddrEl2.textContent = short(userAddress);
         __proxyFeeLoaded = false;
         await loadProxyFeeParams();
         await refreshAllBalances();
         updatePricePreview();
+        updateStatusBoard();
       });
       window.ethereum.on('chainChanged', _=> location.reload());
     }
@@ -1840,6 +2017,8 @@ async function connectWallet(){
   }catch(e){
     console.error('[connectWallet]', e);
     await uiAlert('Wallet connection failed', (e?.message || 'Please check MetaMask and try again.'), {copy:true});
+  }finally{
+    updateStatusBoard();
   }
 }
 
@@ -1986,7 +2165,7 @@ function drawGauge(d){
 }
 
 /* ============================================================
-   ✅ Balance helpers
+   ✅ Balance helpers (unchanged logic)
    ============================================================ */
 function hexToBigInt(hex){ return (!hex) ? 0n : BigInt(hex); }
 function formatUnitsBigInt(bn, decimals){
@@ -2043,6 +2222,7 @@ async function refreshAllBalances(){
     setBalText('pBal0',   $('#pT0Sym')?.textContent || '', null);
     setBalText('pBal1',   $('#pT1Sym')?.textContent || '', null);
     const sb = document.getElementById('stakeBalText'); if(sb) sb.textContent = '—';
+    updateStatusBoard();
     return;
   }
 
@@ -2072,10 +2252,11 @@ async function refreshAllBalances(){
   if(sb){
     sb.textContent = (!glipBalStr) ? '—' : `${Number(glipBalStr).toLocaleString(undefined,{maximumFractionDigits:6})} GLIP`;
   }
+  updateStatusBoard();
 }
 
 /* ============================================================
-   ✅ Router helpers
+   ✅ Router helpers (unchanged)
    ============================================================ */
 function addrForPath(meta){
   return metaIsETH(meta) ? WETH_MAINNET : meta.address;
@@ -2270,6 +2451,8 @@ async function updatePricePreview() {
       console.warn("[quote] failed", err);
       buyInput.value = "";
       if (hint) hint.textContent = "";
+    }finally{
+      updateStatusBoard();
     }
   }, 120);
 }
@@ -2316,10 +2499,8 @@ function setSwapBusy(isBusy){
   if(conn) conn.disabled = !!isBusy;
 }
 
-/* ✅ (FIX) txReq optional so it never crashes */
 async function ensureSufficientEthForValue(callValue, txReq = null){
   const bal = await provider.getBalance(userAddress);
-
   let need = callValue ?? ethers.constants.Zero;
 
   try{
@@ -2344,19 +2525,43 @@ async function ensureSufficientEthForValue(callValue, txReq = null){
   }
 }
 
+/* ✅ NEW target for TX log */
 function pushRecentTx(hash){
   try{
-    const wrap = document.getElementById("recentList");
+    const wrap = document.getElementById("txLog");
     if(!wrap) return;
+
+    if(wrap.querySelector(".txLine") == null){
+      wrap.innerHTML = "";
+    }
+
     const div = document.createElement("div");
-    div.style.opacity = ".78";
-    div.textContent = hash;
+    div.className = "txLine";
+
+    const t = document.createElement("div");
+    t.className = "t";
+    const now = new Date();
+    t.textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    const a = document.createElement("a");
+    a.href = "https://etherscan.io/tx/" + hash;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = hash.slice(0,10) + "…" + hash.slice(-8);
+
+    const m = document.createElement("div");
+    m.style.flex = "1";
+    m.appendChild(a);
+
+    div.appendChild(t);
+    div.appendChild(m);
+
     wrap.prepend(div);
   }catch{}
 }
 
 /* ============================================================
-   ✅ Proxy Router send helpers
+   ✅ Proxy Router send helpers (unchanged)
    ============================================================ */
 async function tryCallStaticLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
   if (sellIsEth && !buyIsEth) {
@@ -2427,7 +2632,7 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
 }
 
 /* ============================================================
-   ✅ Direct Sushi fallback plan
+   ✅ Direct Sushi fallback plan (unchanged)
    ============================================================ */
 async function tryCallStaticDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
   if (sellIsEth && !buyIsEth) {
@@ -2485,7 +2690,7 @@ async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, toke
 }
 
 /* ============================================================
-   ✅ NEW: estimateGas fallback -> safe gas limit
+   ✅ estimateGas fallback -> safe gas limit
    ============================================================ */
 async function safeEstimateOrDefault(estimatePromiseFn, defaultGas){
   try{
@@ -2593,6 +2798,9 @@ async function executeSwap() {
       }
     }
 
+    __lastSwapMode = mode;
+    updateStatusBoard();
+
     setSwapStatus(`Please confirm in your wallet… (${mode === "proxy" ? "Proxy" : "Direct"})`);
 
     let tx;
@@ -2658,11 +2866,7 @@ async function executeSwap() {
     pushRecentTx(tx.hash);
     setSwapStatus(`TX sent: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`);
 
-    /* ✅ (FIX) tx.wait was wrongly placed at top-level before. Put it here if you want confirmations.
-       - It is optional; leaving it out keeps UI snappy on mobile. */
-    // await tx.wait(1);
-
-    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
+    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); updateStatusBoard(); }, 1500);
 
   } catch (err) {
     console.error("executeSwap error:", err);
@@ -2693,6 +2897,7 @@ async function executeSwap() {
     );
   } finally {
     setSwapBusy(false);
+    updateStatusBoard();
   }
 }
 
@@ -2737,37 +2942,213 @@ function bindConnect(){
       document.getElementById('sell').value = balStr;
     }
     updatePricePreview();
+    updateStatusBoard();
   };
 }
 
-/* ===== Boot ===== */
-document.addEventListener('DOMContentLoaded', ()=>{
+/* ============================================================
+   ✅ Status Panel logic
+   ============================================================ */
+function pill(elId, ok){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  el.classList.remove("ok","bad");
+  el.classList.add(ok ? "ok" : "bad");
+}
+function fmtAgo(ts){
+  if(!ts) return "—";
+  const s = Math.max(0, Math.floor((Date.now()-ts)/1000));
+  if(s < 60) return `${s}s ago`;
+  const m = Math.floor(s/60);
+  if(m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  return `${h}h ago`;
+}
+async function getNetInfoSafe(){
   try{
-    initDefaults();
-    bindTokenButtons();
-    bindFlip();
-    bindConnect();
-    bindSwapLogic();
-    bindPoolSupplyButton();
-    bindTop();
-    document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick));
-
-    applyManualPoolConfig();
-    bootSushiPoolsTicker();
-    bootMajorCoinPricesTicker();
-    fillKpis(demoAnalytics);
-    drawSpark(demoAnalytics);
-    drawDonut(demoAnalytics);
-    drawGauge(demoAnalytics);
-
-    if(SWAP_SILENT){
-      setSwapStatus("Ready. (Silent swap mode enabled)");
-    }
-  }catch(e){
-    console.error('[boot]', e);
-    setSwapStatus("Boot failed. Open console for details.");
+    if(!provider) return null;
+    return await provider.getNetwork();
+  }catch{
+    return null;
   }
-});
+}
+function updateStatusBoard(){
+  const boot = document.getElementById("stBoot");
+  const bootSub = document.getElementById("stBootSub");
+  const w = document.getElementById("stWallet");
+  const wSub = document.getElementById("stWalletSub");
+  const net = document.getElementById("stNet");
+  const netSub = document.getElementById("stNetSub");
+  const route = document.getElementById("stRoute");
+  const routeSub = document.getElementById("stRouteSub");
+  const fee = document.getElementById("stFee");
+  const feeSub = document.getElementById("stFeeSub");
+  const src = document.getElementById("stSources");
+  const srcSub = document.getElementById("stSourcesSub");
+
+  if(boot){
+    boot.textContent = __bootOk ? "OK" : "Boot issue";
+  }
+  if(bootSub){
+    const dm = isStandaloneMode() ? "standalone" : "browser";
+    bootSub.textContent = `SW_VER=${typeof SW_VER!=="undefined"?SW_VER:"—"} · display=${dm}`;
+  }
+
+  if(w){
+    w.textContent = userAddress ? short(userAddress) : "Disconnected";
+  }
+  if(wSub){
+    const mm = window.ethereum ? (window.ethereum.isMetaMask ? "MetaMask" : "Injected wallet") : "No wallet";
+    wSub.textContent = `${mm} · token modal=${dialogSupported(dlg)?"dialog":"fallback"}`;
+  }
+
+  // network info (safe)
+  (async ()=>{
+    if(!net || !netSub) return;
+    const info = await getNetInfoSafe();
+    if(!info){
+      net.textContent = "—";
+      netSub.textContent = "Not connected";
+      pill("pillNet", false);
+      return;
+    }
+    net.textContent = `${info.name || "network"} (chainId=${info.chainId})`;
+    netSub.textContent = (info.chainId===1) ? "Ethereum Mainnet" : "Wrong network";
+    pill("pillNet", info.chainId===1);
+  })();
+
+  if(route){
+    route.textContent = `Last mode: ${__lastSwapMode}`;
+  }
+  if(routeSub){
+    routeSub.textContent = `Proxy=${short(GDEX_PROXY_ROUTER)} · Sushi=${short(SUSHI_ROUTER_V2)}`;
+  }
+
+  if(fee){
+    const pct = (__proxyFeeBps||0)/100;
+    const flat = (()=>{ try{ return __proxyFlatFeeWei ? `${ethers.utils.formatEther(__proxyFlatFeeWei)} ETH` : "—"; }catch{return "—"} })();
+    fee.textContent = __proxyFeeLoaded ? `${pct.toFixed(2)}% · ${flat}` : `— (not loaded)`;
+  }
+  if(feeSub){
+    feeSub.textContent = `feeWallet=${__proxyFeeWallet?short(__proxyFeeWallet):"—"}`;
+  }
+
+  if(src){
+    const b = (__backendOk==null) ? "unknown" : (__backendOk ? "ok" : "fail");
+    const c = (__cgOk==null) ? "unknown" : (__cgOk ? "ok" : "fail");
+    src.textContent = `Backend: ${b} · CoinGecko: ${c}`;
+  }
+  if(srcSub){
+    srcSub.textContent = `Backend last: ${fmtAgo(__backendLastAt)} · CoinGecko last: ${fmtAgo(__cgLastAt)}`;
+  }
+
+  pill("pillWallet", !!userAddress);
+  pill("pillBackend", (__backendOk==null) ? false : !!__backendOk);
+  pill("pillCG", (__cgOk==null) ? false : !!__cgOk);
+
+  const pw = document.getElementById("pillWallet");
+  if(pw) pw.textContent = userAddress ? "Wallet: ON" : "Wallet: OFF";
+  const pn = document.getElementById("pillNet");
+  if(pn) pn.textContent = "Mainnet";
+  const pb = document.getElementById("pillBackend");
+  if(pb) pb.textContent = "Backend";
+  const pc = document.getElementById("pillCG");
+  if(pc) pc.textContent = "CoinGecko";
+}
+
+/* ============================================================
+   ✅ Status Panel actions
+   ============================================================ */
+function buildDiagnostic(){
+  const lines = [];
+  lines.push(`G-DEX Diagnostic`);
+  lines.push(`- SW_VER: ${typeof SW_VER!=="undefined"?SW_VER:"—"}`);
+  lines.push(`- URL: ${location.href}`);
+  lines.push(`- Standalone: ${isStandaloneMode()}`);
+  lines.push(`- UA: ${navigator.userAgent}`);
+  lines.push(`- Wallet present: ${!!window.ethereum}`);
+  lines.push(`- MetaMask: ${!!(window.ethereum && window.ethereum.isMetaMask)}`);
+  lines.push(`- Address: ${userAddress || "—"}`);
+  lines.push(`- Proxy Router: ${GDEX_PROXY_ROUTER}`);
+  lines.push(`- Sushi Router: ${SUSHI_ROUTER_V2}`);
+  lines.push(`- Backend URL: ${BACKEND_URL}`);
+  lines.push(`- Backend ok: ${__backendOk} (last ${fmtAgo(__backendLastAt)})`);
+  lines.push(`- CoinGecko ok: ${__cgOk} (last ${fmtAgo(__cgLastAt)})`);
+  lines.push(`- Fee loaded: ${__proxyFeeLoaded}`);
+  lines.push(`- Fee bps: ${__proxyFeeBps}`);
+  try{
+    const flat = __proxyFlatFeeWei ? ethers.utils.formatEther(__proxyFlatFeeWei) : "—";
+    lines.push(`- Flat fee: ${flat} ETH`);
+  }catch{}
+  if(__bootErr){
+    lines.push(`- Boot error: ${String(__bootErr?.message||__bootErr)}`);
+  }
+  return lines.join("\n");
+}
+
+function bindStatusPanel(){
+  const r = document.getElementById("btnRefreshStatus");
+  if(r) r.addEventListener("click", async ()=>{
+    try{
+      if(userAddress){
+        await refreshAllBalances();
+        await loadProxyFeeParams();
+      }
+    }catch{}
+    updateStatusBoard();
+  });
+
+  const c = document.getElementById("btnCopyDiag");
+  if(c) c.addEventListener("click", async ()=>{
+    const txt = buildDiagnostic();
+    try{
+      await navigator.clipboard.writeText(txt);
+      await uiAlert("Copied", "Diagnostic info copied to clipboard.", {copy:false});
+    }catch{
+      await uiAlert("Diagnostic", txt, {copy:true});
+    }
+  });
+}
+
+/* ===== Boot ===== */
+function boot(){
+  __bootOk = false;
+  __bootErr = null;
+
+  // IMPORTANT: isolate each step so one failure doesn't kill everything
+  try{ initDefaults(); }catch(e){ console.error("[boot:initDefaults]", e); __bootErr = __bootErr || e; }
+  try{ bindTokenButtons(); }catch(e){ console.error("[boot:bindTokenButtons]", e); __bootErr = __bootErr || e; }
+  try{ bindFlip(); }catch(e){ console.error("[boot:bindFlip]", e); __bootErr = __bootErr || e; }
+  try{ bindConnect(); }catch(e){ console.error("[boot:bindConnect]", e); __bootErr = __bootErr || e; }
+  try{ bindSwapLogic(); }catch(e){ console.error("[boot:bindSwapLogic]", e); __bootErr = __bootErr || e; }
+  try{ bindPoolSupplyButton(); }catch(e){ console.error("[boot:bindPoolSupplyButton]", e); __bootErr = __bootErr || e; }
+  try{ bindTop(); }catch(e){ console.error("[boot:bindTop]", e); __bootErr = __bootErr || e; }
+  try{ bindStatusPanel(); }catch(e){ console.error("[boot:bindStatusPanel]", e); __bootErr = __bootErr || e; }
+  try{ document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick)); }catch(e){ console.error("[boot:install]", e); __bootErr = __bootErr || e; }
+
+  try{ applyManualPoolConfig(); }catch(e){ console.error("[boot:manualConfig]", e); __bootErr = __bootErr || e; }
+  try{ bootSushiPoolsTicker(); }catch(e){ console.error("[boot:sushiTicker]", e); __bootErr = __bootErr || e; }
+  try{ bootMajorCoinPricesTicker(); }catch(e){ console.error("[boot:pricesTicker]", e); __bootErr = __bootErr || e; }
+
+  // analytics demo should never break swap/token UI
+  try{ fillKpis(demoAnalytics); }catch(e){ console.error("[boot:fillKpis]", e); }
+  try{ drawSpark(demoAnalytics); }catch(e){ console.error("[boot:drawSpark]", e); }
+  try{ drawDonut(demoAnalytics); }catch(e){ console.error("[boot:drawDonut]", e); }
+  try{ drawGauge(demoAnalytics); }catch(e){ console.error("[boot:drawGauge]", e); }
+
+  __bootOk = !__bootErr;
+  updateStatusBoard();
+
+  if(SWAP_SILENT){
+    setSwapStatus("Ready. (Silent swap mode enabled)");
+  }
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener('DOMContentLoaded', boot);
+}else{
+  boot();
+}
 </script>
 </body>
 </html>
