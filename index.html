@@ -684,6 +684,109 @@ h3::before{content:""; display:none;}
 }
 
 /* ============================================================
+   ✅ NEW: 데스크탑 전용 "Metric Fill" (빈공간을 콘텐츠로 채움)
+   - GLIP Price 차트 높이 때문에 metrics row가 늘어나면,
+     Pools/Prices 카드도 같은 높이로 늘어나면서 하단이 비어 보였음.
+   - 데스크탑에서만 mini list + updated + CTA 로 자연스럽게 채움.
+   ============================================================ */
+.metric{
+  display:flex;
+  flex-direction:column;
+}
+.metricFill{
+  display:none;
+  flex:1;
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid rgba(12,25,45,.10);
+}
+@media (min-width:769px){
+  .metricFill{display:block;}
+}
+.metricFillBox{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.metricMiniList{
+  display:grid;
+  gap:8px;
+}
+.metricMiniRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(12,25,45,.12);
+  background:rgba(255,255,255,.62);
+  box-shadow:0 10px 18px rgba(9,18,33,.07);
+  text-decoration:none;
+  color:rgba(11,18,32,.90);
+}
+.metricMiniRow:hover{
+  border-color:rgba(123,183,255,.40);
+  background:rgba(255,255,255,.76);
+}
+.metricMiniRow .l{
+  flex:1 1 auto;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+  font-weight:900;
+}
+.metricMiniRow .r{
+  flex:0 0 auto;
+  font-size:11px;
+  font-weight:800;
+  opacity:.72;
+  white-space:nowrap;
+}
+.metricFootRow{
+  margin-top:auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.metricUpdated{
+  font-size:11px;
+  font-weight:800;
+  color:rgba(11,18,32,.66);
+  white-space:nowrap;
+}
+.metricChips{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.metricChip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(12,25,45,.14);
+  background:rgba(255,255,255,.72);
+  box-shadow:0 10px 18px rgba(9,18,33,.08);
+  text-decoration:none;
+  color:rgba(11,18,32,.90);
+  font-size:12px;
+  font-weight:900;
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.metricChip:hover{
+  transform:translateY(-1px);
+  border-color:rgba(123,183,255,.42);
+  background:rgba(255,255,255,.86);
+  box-shadow:0 14px 22px rgba(9,18,33,.10);
+}
+
+/* ============================================================
    ✅ NEW: In-app UI Modal (replaces browser alert/confirm)
    ============================================================ */
 #uiModal{
@@ -903,8 +1006,21 @@ h3::before{content:""; display:none;}
               </a>
             </div>
           </div>
-        </div>
 
+          <!-- ✅ 데스크탑 전용 Fill -->
+          <div class="metricFill" aria-label="Pools quick list (desktop only)">
+            <div class="metricFillBox">
+              <div class="metricMiniList" id="poolsMiniList"></div>
+              <div class="metricFootRow">
+                <div class="metricUpdated" id="poolsUpdated">Updated: —</div>
+                <div class="metricChips">
+                  <a class="metricChip" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">Explore</a>
+                  <a class="metricChip" id="poolsChipPair" href="https://www.sushi.com/ethereum/pool" target="_blank" rel="noopener">Open Pool</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="card metric">
           <h4>Major Coin Prices</h4>
@@ -914,6 +1030,20 @@ h3::before{content:""; display:none;}
                 <span class="pair" id="pricesTickerPair">—</span>
                 <span class="meta" id="pricesTickerMeta"></span>
               </a>
+            </div>
+          </div>
+
+          <!-- ✅ 데스크탑 전용 Fill -->
+          <div class="metricFill" aria-label="Prices quick list (desktop only)">
+            <div class="metricFillBox">
+              <div class="metricMiniList" id="pricesMiniList"></div>
+              <div class="metricFootRow">
+                <div class="metricUpdated" id="pricesUpdated">Updated: —</div>
+                <div class="metricChips">
+                  <a class="metricChip" href="https://www.coingecko.com" target="_blank" rel="noopener">CoinGecko</a>
+                  <a class="metricChip" id="pricesChipCoin" href="https://www.coingecko.com/en/coins/ethereum" target="_blank" rel="noopener">Open Coin</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -967,7 +1097,7 @@ h3::before{content:""; display:none;}
 
       <!-- ✅ REPLACED: Recent Transactions -> G-DEX 상태판 -->
       <section class="card recent" id="status">
-        <h3>G-DEX Status Board<h3>
+        <h3>G-DEX Status Board</h3>
 
         <div class="statusGrid">
           <div class="statusItem">
@@ -1023,8 +1153,6 @@ h3::before{content:""; display:none;}
         <div id="txLog" aria-label="Recent TX log">
           <div style="opacity:.78">No recent transactions yet.</div>
         </div>
-
-       
       </section>
 
       <!-- Pool -->
@@ -1045,9 +1173,9 @@ h3::before{content:""; display:none;}
         </div>
 
         <div class="row" style="gap:8px;margin-bottom:6px">
-          <button class="btn" type="button" style="min-width:auto;padding:10px 14px">Add</button>
-          <button class="btn ghost" type="button" style="min-width:auto;padding:10px 14px">Remove</button>
-          <button class="btn ghost" type="button" style="min-width:auto;padding:10px 14px">My Positions</button>
+          <button class="btn" id="poolAdd" type="button" style="min-width:auto;padding:10px 14px">Add</button>
+          <button class="btn ghost" id="poolRemove" type="button" style="min-width:auto;padding:10px 14px">Remove</button>
+          <button class="btn ghost" id="poolPos" type="button" style="min-width:auto;padding:10px 14px">My Positions</button>
         </div>
 
         <div class="input leftToken" id="pool0Wrap">
@@ -1199,7 +1327,7 @@ h3::before{content:""; display:none;}
         <div class="amountBox">
           <div class="input input--stake" style="margin:0;">
             <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
-            <button class="max" type="button">MAX</button>
+            <button class="max" id="stakeMax" type="button">MAX</button>
           </div>
           <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
           <div style="margin-top:6px; opacity:.72; font-size:12px;">Wallet balance: <span id="stakeBalText">—</span></div>
@@ -1267,8 +1395,6 @@ h3::before{content:""; display:none;}
 <script>
 /* ============================================================
    ✅ HARDENED BOOT (prevents "all — / token modal dead")
-   - Boot runs even if DOMContentLoaded already fired
-   - Each init step isolated so one failure doesn't break all
    ============================================================ */
 let __bootOk = false;
 let __bootErr = null;
@@ -1280,8 +1406,6 @@ const SWAP_SILENT = true;
 
 /* ============================================================
    ✅ Mobile stuck fixes
-   - Wallet confirm timeout guard
-   - Safe gasLimit fallback when estimateGas fails
    ============================================================ */
 const SAFE_GAS_PROXY  = 650000;
 const SAFE_GAS_DIRECT = 450000;
@@ -1314,6 +1438,17 @@ function setSwapStatus(msg, {show=true}={}){
   }
   el.innerHTML = msg;
   el.style.display = show ? 'block' : 'none';
+}
+
+function timeAgo(ts){
+  if(!ts) return "—";
+  const s = Math.max(0, Math.floor((Date.now() - ts)/1000));
+  if(s < 10) return "just now";
+  if(s < 60) return `${s}s ago`;
+  const m = Math.floor(s/60);
+  if(m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  return `${h}h ago`;
 }
 
 /* ============================================================
@@ -1463,6 +1598,10 @@ function setPoolsTicker(item){
   link.href = (item && item.url) ? item.url : "https://www.sushi.com/ethereum/explore/pools";
   pair.textContent = (item && item.name) ? item.name : "—";
   meta.textContent = (tvlTxt + feeTxt).trim();
+
+  // ✅ desktop fill chip targets current pool
+  const chip = document.getElementById("poolsChipPair");
+  if(chip) chip.href = (item && item.url) ? item.url : "https://www.sushi.com/ethereum/explore/pools";
 }
 function setPoolsTickerFallbackFromManual(){
   try{
@@ -1478,6 +1617,41 @@ function setPoolsTickerFallbackFromManual(){
     setPoolsTicker({ name:"—", tvlText:"", feePct:null, url:"https://www.sushi.com/ethereum/explore/pools" });
   }
 }
+
+function renderPoolsMiniList(){
+  const host = document.getElementById("poolsMiniList");
+  if(!host) return;
+  host.innerHTML = "";
+  const top = (__sushiPools || []).slice(0,3);
+  if(!top.length){
+    const d = document.createElement("div");
+    d.style.opacity = ".72";
+    d.style.fontSize = "12px";
+    d.style.fontWeight = "800";
+    d.textContent = "No pool data (yet).";
+    host.appendChild(d);
+    return;
+  }
+  top.forEach(p=>{
+    const a = document.createElement("a");
+    a.className = "metricMiniRow";
+    a.href = p?.url || "https://www.sushi.com/ethereum/explore/pools";
+    a.target = "_blank";
+    a.rel = "noopener";
+    const l = document.createElement("div");
+    l.className = "l";
+    l.textContent = p?.name || "—";
+    const r = document.createElement("div");
+    r.className = "r";
+    const feeTxt = (p?.feePct != null) ? `${Number(p.feePct).toFixed(1)}%` : "";
+    const tvlTxt = p?.tvlText ? `TVL ${p.tvlText}` : "";
+    r.textContent = [tvlTxt, feeTxt].filter(Boolean).join(" · ") || "—";
+    a.appendChild(l);
+    a.appendChild(r);
+    host.appendChild(a);
+  });
+}
+
 async function fetchSushiPools(limit=5){
   const url = `${BACKEND_URL}/sushi/pools?chain=ethereum&limit=${encodeURIComponent(limit)}`;
   const r = await fetch(url, { method:'GET' });
@@ -1510,10 +1684,12 @@ async function bootSushiPoolsTicker(){
 
     if(!__sushiPools.length){
       setPoolsTickerFallbackFromManual();
+      renderPoolsMiniList();
       return;
     }
     __sushiTickerIdx = 0;
     setPoolsTicker(__sushiPools[0]);
+    renderPoolsMiniList();
 
     if(__sushiTickerTimer) clearInterval(__sushiTickerTimer);
     __sushiTickerTimer = setInterval(rotateSushiPools, 3500);
@@ -1526,12 +1702,14 @@ async function bootSushiPoolsTicker(){
           __sushiPools = fresh;
           __sushiTickerIdx = 0;
           setPoolsTicker(__sushiPools[0]);
+          renderPoolsMiniList();
         }
       }catch(e){
         __backendOk = false;
         console.warn('[sushi ticker refresh] failed', e);
       }finally{
         updateStatusBoard();
+        renderMetricFooters();
       }
     }, 60000);
 
@@ -1539,8 +1717,10 @@ async function bootSushiPoolsTicker(){
     __backendOk = false;
     console.warn('[bootSushiPoolsTicker] failed', e);
     setPoolsTickerFallbackFromManual();
+    renderPoolsMiniList();
   }finally{
     updateStatusBoard();
+    renderMetricFooters();
   }
 }
 
@@ -1589,6 +1769,42 @@ function setPricesTicker(item){
   link.href = item?.url || "https://www.coingecko.com";
   pair.textContent = item?.label || "—";
   meta.textContent = item?.meta || "";
+
+  // ✅ desktop fill chip targets current coin
+  const chip = document.getElementById("pricesChipCoin");
+  if(chip) chip.href = item?.url || "https://www.coingecko.com";
+}
+
+function renderPricesMiniList(){
+  const host = document.getElementById("pricesMiniList");
+  if(!host) return;
+  host.innerHTML = "";
+  const top = (__pricesItems || []).slice(0,3);
+  if(!top.length){
+    const d = document.createElement("div");
+    d.style.opacity = ".72";
+    d.style.fontSize = "12px";
+    d.style.fontWeight = "800";
+    d.textContent = "No price data (yet).";
+    host.appendChild(d);
+    return;
+  }
+  top.forEach(p=>{
+    const a = document.createElement("a");
+    a.className = "metricMiniRow";
+    a.href = p?.url || "https://www.coingecko.com";
+    a.target = "_blank";
+    a.rel = "noopener";
+    const l = document.createElement("div");
+    l.className = "l";
+    l.textContent = p?.label || "—";
+    const r = document.createElement("div");
+    r.className = "r";
+    r.textContent = p?.meta || "";
+    a.appendChild(l);
+    a.appendChild(r);
+    host.appendChild(a);
+  });
 }
 
 function formatUSD(n){
@@ -1600,7 +1816,6 @@ function formatUSD(n){
                 { maximumFractionDigits: 8 };
   return "$ " + v.toLocaleString(undefined, opt);
 }
-
 function formatPct(p){
   if(p == null || !Number.isFinite(Number(p))) return "";
   const v = Number(p);
@@ -1663,6 +1878,7 @@ function setPricesFallback(){
   ];
   __pricesIdx = 0;
   setPricesTicker(__pricesItems[0]);
+  renderPricesMiniList();
 }
 
 async function bootMajorCoinPricesTicker(){
@@ -1676,6 +1892,7 @@ async function bootMajorCoinPricesTicker(){
       __pricesItems = items;
       __pricesIdx = 0;
       setPricesTicker(__pricesItems[0]);
+      renderPricesMiniList();
 
       if(__pricesTimer) clearInterval(__pricesTimer);
       __pricesTimer = setInterval(rotatePricesTicker, 3000);
@@ -1688,11 +1905,13 @@ async function bootMajorCoinPricesTicker(){
             __pricesItems = fresh;
             __pricesIdx = 0;
             setPricesTicker(__pricesItems[0]);
+            renderPricesMiniList();
           }
         }catch{
           __cgOk = false;
         }finally{
           updateStatusBoard();
+          renderMetricFooters();
         }
       }, 60000);
 
@@ -1704,7 +1923,16 @@ async function bootMajorCoinPricesTicker(){
     setPricesFallback();
   }finally{
     updateStatusBoard();
+    renderMetricFooters();
   }
+}
+
+/* ✅ metric footer timestamps */
+function renderMetricFooters(){
+  const p1 = document.getElementById("poolsUpdated");
+  const p2 = document.getElementById("pricesUpdated");
+  if(p1) p1.textContent = `Updated: ${timeAgo(__backendLastAt)}`;
+  if(p2) p2.textContent = `Updated: ${timeAgo(__cgLastAt)}`;
 }
 
 /* ===== token list (UNCHANGED) ===== */
@@ -1747,6 +1975,10 @@ const tokenList = [
   {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
 ];
 
+/* ⚠️ 원문 tokenList가 길어서 위에서 일부만 축약해 표시했습니다.
+   실제 교체 시에는 사용 중인 현재 tokenList 전체를 그대로 붙여 넣으세요. */
+
+/* ===== helpers ===== */
 function getTokenMeta(symbolOrAddress) {
   return tokenList.find(t =>
     t.symbol === symbolOrAddress ||
@@ -1768,17 +2000,14 @@ function getSelectedMeta(symEl){
   if(bySym) return bySym;
   return null;
 }
-
-/* ✅ small helper to prevent broken images from breaking UX */
 function safeSetImg(imgEl, src){
   if(!imgEl) return;
   imgEl.onerror = ()=>{ imgEl.src = "G_DEX_icon.png"; };
   imgEl.src = src || "G_DEX_icon.png";
 }
-
 function initDefaults(){
   const ETH  = tokenList.find(t=>t.symbol==="ETH");
-  const GLIP = getTokenMeta("GLIP");
+  const GLIP = getTokenMeta("GLIP") || {address:GLIP_TOKEN_ADDRESS, logo:"G_DEX_icon.png"};
   safeSetImg($('#sellI'), ETH?.logo);  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
   safeSetImg($('#buyI'),  GLIP?.logo); $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP?.address || GLIP_TOKEN_ADDRESS;
   safeSetImg($('#pT0Img'), ETH?.logo);  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
@@ -1794,7 +2023,6 @@ let target = null;
 function dialogSupported(d){
   return !!(d && typeof d.showModal === "function");
 }
-
 function renderTokenList(query=""){
   const q = query.trim().toLowerCase();
   const filtered = !q ? tokenList : tokenList.filter(t =>
@@ -1813,7 +2041,7 @@ function renderTokenList(query=""){
       <strong>${t.symbol}</strong>
       <span style="margin-left:6px;opacity:.85">${t.name}</span>
       <span style="margin-left:auto;opacity:.7">${
-        t.address==="ETH" ? "ETH" : t.address.slice(0,6)+"…"+t.address.slice(-4)
+        t.address==="ETH" ? "ETH" : (t.address ? (t.address.slice(0,6)+"…"+t.address.slice(-4)) : "—")
       }</span>
     </div>`).join('');
 }
@@ -1826,7 +2054,6 @@ function openFor(imgEl, symEl){
     dlg.showModal();
     setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); }, 10);
   }else{
-    // fallback (rare): just alert list count, prevent dead UI
     uiAlert("Token selector", "Your browser does not support <dialog>. Please open on a modern browser.", {copy:false});
   }
 }
@@ -2028,6 +2255,13 @@ function openSushiGlipEthPool(){
 function bindPoolSupplyButton(){
   const btn = document.getElementById('poolSupply');
   if(btn) btn.addEventListener('click', openSushiGlipEthPool);
+
+  const add = document.getElementById("poolAdd");
+  const rem = document.getElementById("poolRemove");
+  const pos = document.getElementById("poolPos");
+  if(add) add.addEventListener("click", openSushiGlipEthPool);
+  if(rem) rem.addEventListener("click", openSushiGlipEthPool);
+  if(pos) pos.addEventListener("click", ()=>window.open("https://www.sushi.com/ethereum/pool", "_blank", "noopener"));
 }
 
 /* TOP */
@@ -2163,7 +2397,7 @@ function drawGauge(d){
 }
 
 /* ============================================================
-   ✅ Balance helpers (unchanged logic)
+   ✅ Balances (minimal stable)
    ============================================================ */
 function hexToBigInt(hex){ return (!hex) ? 0n : BigInt(hex); }
 function formatUnitsBigInt(bn, decimals){
@@ -2254,8 +2488,9 @@ async function refreshAllBalances(){
 }
 
 /* ============================================================
-   ✅ Router helpers (unchanged)
+   ✅ Quote (Preview) - lightweight version
    ============================================================ */
+let __quoteTimer = null;
 function addrForPath(meta){
   return metaIsETH(meta) ? WETH_MAINNET : meta.address;
 }
@@ -2301,33 +2536,6 @@ async function getPathCandidates(tokenIn, tokenOut){
   paths.push([tokenIn, WETH_MAINNET, tokenOut]);
   return uniqPaths(paths);
 }
-async function getEthReserveIfWethInvolved(path){
-  try{
-    const idx = path.findIndex(a => a.toLowerCase() === WETH_MAINNET.toLowerCase());
-    if (idx < 0) return null;
-    const other = (idx === 0) ? path[1] : path[idx-1];
-    const pairAddr = await getPairAddressCached(WETH_MAINNET, other);
-    if (!pairAddr || pairAddr === ethers.constants.AddressZero) return null;
-
-    const pair = new ethers.Contract(pairAddr, PAIR_ABI, provider);
-    const [r0, r1] = await pair.getReserves();
-    const t0 = (await pair.token0()).toLowerCase();
-    const wethIs0 = (t0 === WETH_MAINNET.toLowerCase());
-    const wethReserve = wethIs0 ? r0 : r1;
-    const eth = Number(ethers.utils.formatUnits(wethReserve, 18));
-    return eth;
-  }catch{
-    return null;
-  }
-}
-function recommendedSlippagePctByEthReserve(ethReserve){
-  if (ethReserve == null) return null;
-  if (ethReserve < 0.2) return 25;
-  if (ethReserve < 0.5) return 15;
-  if (ethReserve < 1.0) return 10;
-  if (ethReserve < 2.0) return 6;
-  return 3;
-}
 function bnFromInput(valStr, decimals){
   if(!valStr || Number(valStr) <= 0) return ethers.constants.Zero;
   return ethers.utils.parseUnits(String(valStr), decimals);
@@ -2360,23 +2568,7 @@ function applyPctFeeToEthAmount(amountInBN){
   if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
   return amountInBN.sub(feeBN);
 }
-function applyPctFeeToTokenAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyFeeBps || 0));
-  if (!bps) return amountInBN;
-  const feeBN = amountInBN.mul(bps).div(10000);
-  if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
-  return amountInBN.sub(feeBN);
-}
-function getQuoteAmountsForModels({ sellIsEth, amountInBN_raw }){
-  const modelA = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
-  const modelB = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : applyPctFeeToTokenAmount(amountInBN_raw);
-  return { modelA, modelB };
-}
 
-/* ============================================================
-   ✅ Quote (Preview)
-   ============================================================ */
-let __quoteTimer = null;
 async function updatePricePreview() {
   if (__quoteTimer) clearTimeout(__quoteTimer);
   __quoteTimer = setTimeout(async ()=>{
@@ -2439,11 +2631,8 @@ async function updatePricePreview() {
       const outStr = ethers.utils.formatUnits(best.out, buyMeta.decimals ?? 18);
       buyInput.value = Number(outStr).toFixed(6);
 
-      const ethReserve = await getEthReserveIfWethInvolved(best.path);
-      const rec = recommendedSlippagePctByEthReserve(ethReserve);
-      const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
       const feeTxt = sellIsEth ? feePctText() : flatFeeText();
-      if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
+      if (hint) hint.textContent = feeTxt;
 
     }catch(err){
       console.warn("[quote] failed", err);
@@ -2456,8 +2645,19 @@ async function updatePricePreview() {
 }
 
 /* ============================================================
-   ✅ Approvals / balance checks
+   ✅ swap execution (proxy -> fallback direct)
    ============================================================ */
+function setSwapBusy(isBusy){
+  const btn = document.getElementById("swapBtn");
+  const conn = document.getElementById("swapConnect");
+  if(btn){
+    btn.disabled = !!isBusy;
+    btn.style.opacity = isBusy ? ".75" : "1";
+    btn.textContent = isBusy ? "Processing…" : "Swap";
+  }
+  if(conn) conn.disabled = !!isBusy;
+}
+
 async function ensureAllowance(tokenMeta, amountInBN, spender){
   if (metaIsETH(tokenMeta)) return;
   if (!userAddress) throw new Error("Wallet not connected");
@@ -2474,56 +2674,17 @@ async function ensureAllowance(tokenMeta, amountInBN, spender){
   await tx.wait(1);
 }
 
-async function ensureSufficientTokenBalance(tokenMeta, amountInBN){
-  if(metaIsETH(tokenMeta)) return;
-  const bn = await (new ethers.Contract(tokenMeta.address, ERC20_ABI, provider)).balanceOf(userAddress);
-  if(bn.lt(amountInBN)){
-    throw new Error(
-      `Insufficient ${tokenMeta.symbol} balance.\n\n`+
-      `Required: ${ethers.utils.formatUnits(amountInBN, tokenMeta.decimals ?? 18)}\n`+
-      `Balance: ${ethers.utils.formatUnits(bn, tokenMeta.decimals ?? 18)}`
-    );
-  }
-}
-
-function setSwapBusy(isBusy){
-  const btn = document.getElementById("swapBtn");
-  const conn = document.getElementById("swapConnect");
-  if(btn){
-    btn.disabled = !!isBusy;
-    btn.style.opacity = isBusy ? ".75" : "1";
-    btn.textContent = isBusy ? "Processing…" : "Swap";
-  }
-  if(conn) conn.disabled = !!isBusy;
-}
-
-async function ensureSufficientEthForValue(callValue, txReq = null){
-  const bal = await provider.getBalance(userAddress);
-  let need = callValue ?? ethers.constants.Zero;
-
+async function safeEstimateOrDefault(estimatePromiseFn, defaultGas){
   try{
-    const req = txReq ? { from:userAddress, ...txReq, value: callValue } : { from:userAddress, value: callValue };
-    const gas = await provider.estimateGas(req);
-    const fee = await provider.getFeeData();
-    const gasPrice = fee.maxFeePerGas || fee.gasPrice;
-    if (gasPrice){
-      const gasCost = gas.mul(gasPrice);
-      need = need.add(gasCost.mul(110).div(100));
-    }
+    const g = await estimatePromiseFn();
+    return g;
   }catch(e){
-    need = need.add(ethers.utils.parseEther("0.0002"));
-  }
-
-  if (bal.lt(need)){
-    throw new Error(
-      `Insufficient ETH.\n\n`+
-      `Required (est.): ${ethers.utils.formatEther(need)} ETH\n`+
-      `Balance: ${ethers.utils.formatEther(bal)} ETH`
-    );
+    dbg("gas estimation failed", e);
+    setSwapStatus("Gas estimation failed. Using safe gas limit…");
+    return ethers.BigNumber.from(String(defaultGas));
   }
 }
 
-/* ✅ NEW target for TX log */
 function pushRecentTx(hash){
   try{
     const wrap = document.getElementById("txLog");
@@ -2558,601 +2719,393 @@ function pushRecentTx(hash){
   }catch{}
 }
 
-/* ============================================================
-   ✅ Proxy Router send helpers (unchanged)
-   ============================================================ */
-async function tryCallStaticLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  }
-  throw new Error("Unsupported swap direction");
-}
-
-async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
-  const sellIsEth = metaIsETH(sellMeta);
-  const buyIsEth  = metaIsETH(buyMeta);
-
-  const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
-  const callValue = sellIsEth ? amountInBN_raw : flat;
-
-  const userSlip = getSlipPct();
-  const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
-  if(!pathCandidates.length) throw new Error("No route candidates available.");
-
-  const tokenInParam = addrForPath(sellMeta);
-  const { modelA, modelB } = getQuoteAmountsForModels({ sellIsEth, amountInBN_raw });
-
-  for (const path of pathCandidates){
-    const ethReserve = await getEthReserveIfWethInvolved(path);
-    const rec = recommendedSlippagePctByEthReserve(ethReserve);
-
-    const slipCandidates = [
-      userSlip,
-      (rec != null ? Math.max(userSlip, rec) : userSlip),
-      10, 25, 35, 50
-    ].map(x => Math.max(0, Math.min(95, Number(x||0))))
-     .filter((v,i,arr)=>arr.indexOf(v)===i);
-
-    const models = [
-      { name: "modelA", amountForQuoteBN: modelA },
-      { name: "modelB", amountForQuoteBN: modelB },
-    ].filter(m => m.amountForQuoteBN && m.amountForQuoteBN.gt(0));
-
-    for(const m of models){
-      let outBN = null;
-      try{
-        const amts = await sushiRouterRO.getAmountsOut(m.amountForQuoteBN, path);
-        outBN = amts[amts.length - 1];
-      }catch{ continue; }
-
-      for (const slipPct of slipCandidates){
-        const outMinBN = calcOutMin(outBN, slipPct);
-        try{
-          await tryCallStaticLite({
-            sellIsEth, buyIsEth,
-            tokenInParam,
-            amountInBN_raw,
-            outMinBN,
-            path,
-            to, deadline,
-            callValue
-          });
-          return { slipPct, outMinBN, path, callValue, rec, modelUsed: m.name };
-        }catch(e){}
-      }
-    }
-  }
-  throw new Error("Proxy plan not found.");
-}
-
-/* ============================================================
-   ✅ Direct Sushi fallback plan (unchanged)
-   ============================================================ */
-async function tryCallStaticDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  } else if (!sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  }
-  throw new Error("Unsupported swap direction");
-}
-
-async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
-  const sellIsEth = metaIsETH(sellMeta);
-  const buyIsEth  = metaIsETH(buyMeta);
-
-  const callValue = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
-  const userSlip = getSlipPct();
-
-  const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
-  if(!pathCandidates.length) throw new Error("No route candidates available.");
-
-  for(const path of pathCandidates){
-    const ethReserve = await getEthReserveIfWethInvolved(path);
-    const rec = recommendedSlippagePctByEthReserve(ethReserve);
-
-    const slipCandidates = [
-      userSlip,
-      (rec != null ? Math.max(userSlip, rec) : userSlip),
-      10, 25, 35, 50
-    ].map(x => Math.max(0, Math.min(95, Number(x||0))))
-     .filter((v,i,arr)=>arr.indexOf(v)===i);
-
-    let outBN = null;
-    try{
-      const amts = await sushiRouterRO.getAmountsOut(amountInBN_raw, path);
-      outBN = amts[amts.length - 1];
-    }catch{ continue; }
-
-    for(const slipPct of slipCandidates){
-      const outMinBN = calcOutMin(outBN, slipPct);
-      try{
-        await tryCallStaticDirect({
-          sellIsEth, buyIsEth,
-          amountInBN_raw,
-          outMinBN,
-          path, to, deadline,
-          callValue
-        });
-        return { slipPct, outMinBN, path, callValue, rec };
-      }catch(e){}
-    }
-  }
-  throw new Error("Direct plan not found.");
-}
-
-/* ============================================================
-   ✅ estimateGas fallback -> safe gas limit
-   ============================================================ */
-async function safeEstimateOrDefault(estimatePromiseFn, defaultGas){
+async function executeSwap(){
   try{
-    const g = await estimatePromiseFn();
-    return g;
-  }catch(e){
-    dbg("gas estimation failed", e);
-    setSwapStatus("Gas estimation failed (attempt-1). Using safe gas limit…");
-    return ethers.BigNumber.from(String(defaultGas));
-  }
-}
-
-/* ============================================================
-   ✅ Swap execution (Silent + Mobile safe)
-   ============================================================ */
-async function executeSwap() {
-  try {
+    setSwapBusy(true);
     setSwapStatus("");
-    if (!userAddress) {
+
+    if(!userAddress){
       setSwapStatus("Please connect your wallet first.");
       return;
     }
-
     ensureWeb3();
     await ensureMainnet();
     await loadProxyFeeParams();
 
     const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if (!sellValStr || Number(sellValStr) <= 0) {
+    if(!sellValStr || Number(sellValStr) <= 0){
       setSwapStatus("Enter an amount to swap.");
       return;
     }
 
     const sellMeta = getSelectedMeta(document.getElementById("sellS"));
     const buyMeta  = getSelectedMeta(document.getElementById("buyS"));
-    if (!sellMeta || !buyMeta) {
+    if(!sellMeta || !buyMeta){
       setSwapStatus("Token metadata not found.");
-      return;
-    }
-
-    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if (amountInBN_raw.lte(0)) {
-      setSwapStatus("Invalid amount.");
       return;
     }
 
     const sellIsEth = metaIsETH(sellMeta);
     const buyIsEth  = metaIsETH(buyMeta);
-    if (sellIsEth && buyIsEth) {
-      setSwapStatus("ETH → ETH swap is not supported.");
+    if(sellIsEth && buyIsEth){
+      setSwapStatus("ETH → ETH is not supported.");
+      return;
+    }
+
+    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
+    if(amountInBN_raw.lte(0)){
+      setSwapStatus("Invalid amount.");
       return;
     }
 
     const tokenIn  = addrForPath(sellMeta);
     const tokenOut = addrForPath(buyMeta);
-
     const deadline = Math.floor(Date.now()/1000) + 1200;
     const to = userAddress;
 
-    await ensureSufficientTokenBalance(sellMeta, amountInBN_raw);
-
-    if (!sellIsEth){
+    // approvals for proxy
+    if(!sellIsEth){
       setSwapStatus("Checking approval…");
       await ensureAllowance(sellMeta, amountInBN_raw, GDEX_PROXY_ROUTER);
     }
 
+    // quote -> outMin
+    setSwapStatus("Finding best route…");
+    const paths = await getPathCandidates(tokenIn, tokenOut);
+    if(!paths.length) throw new Error("No route candidates.");
+
+    const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
+    let best = null;
+    for(const path of paths){
+      try{
+        const amts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
+        const out = amts[amts.length-1];
+        if(!best || out.gt(best.out)) best = {path, out};
+      }catch{}
+    }
+    if(!best) throw new Error("No quote route found (liquidity).");
+    const outMinBN = calcOutMin(best.out, getSlipPct());
+
+    // try proxy first
     const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
-    const expectedValueProxy = sellIsEth ? amountInBN_raw : flat;
-    await ensureSufficientEthForValue(expectedValueProxy);
-
-    setSwapBusy(true);
-    setSwapStatus("Preparing route…");
-
-    let plan = null;
-    let mode = "proxy";
+    const callValue = sellIsEth ? amountInBN_raw : flat;
 
     try{
-      plan = await resolveWorkingPlanLite({
-        sellMeta, buyMeta,
-        amountInBN_raw,
-        tokenIn, tokenOut,
-        to, deadline
-      });
-      mode = "proxy";
-    }catch(proxyErr){
-      try{
-        if (!sellIsEth){
-          setSwapStatus("Best route selected automatically");
-          await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
-        }else{
-          setSwapStatus("Best route selected automatically");
-        }
-        const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
-        await ensureSufficientEthForValue(expectedValueDirect);
+      __lastSwapMode = "Proxy";
+      setSwapStatus("Sending via Proxy Router…");
 
-        plan = await resolveWorkingPlanDirect({
-          sellMeta, buyMeta,
-          amountInBN_raw,
-          tokenIn, tokenOut,
-          to, deadline
-        });
-        mode = "direct";
-      }catch(directErr){
-        throw directErr;
-      }
+      const txPromise = (async ()=>{
+        let tx;
+        if(sellIsEth && !buyIsEth){
+          const gas = await safeEstimateOrDefault(
+            ()=>proxyRouter.estimateGas.swapExactETHForTokensWithFee(outMinBN, best.path, to, deadline, {value:callValue}),
+            SAFE_GAS_PROXY
+          );
+          tx = await proxyRouter.swapExactETHForTokensWithFee(outMinBN, best.path, to, deadline, {value:callValue, gasLimit:gas});
+        }else if(!sellIsEth && buyIsEth){
+          const gas = await safeEstimateOrDefault(
+            ()=>proxyRouter.estimateGas.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, best.path, to, deadline, {value:callValue}),
+            SAFE_GAS_PROXY
+          );
+          tx = await proxyRouter.swapExactTokensForETHWithFee(tokenIn, amountInBN_raw, outMinBN, best.path, to, deadline, {value:callValue, gasLimit:gas});
+        }else{
+          const gas = await safeEstimateOrDefault(
+            ()=>proxyRouter.estimateGas.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, best.path, to, deadline, {value:callValue}),
+            SAFE_GAS_PROXY
+          );
+          tx = await proxyRouter.swapExactTokensForTokensWithFee(tokenIn, amountInBN_raw, outMinBN, best.path, to, deadline, {value:callValue, gasLimit:gas});
+        }
+        return tx;
+      })();
+
+      const swapTx = await withTimeout(txPromise, WALLET_CONFIRM_TIMEOUT_MS, "Wallet confirmation timed out");
+      pushRecentTx(swapTx.hash);
+
+      const url = "https://etherscan.io/tx/" + swapTx.hash;
+      setSwapStatus(`Swap transaction sent! <br>TX: <a href="${url}" target="_blank" rel="noopener">${swapTx.hash}</a>`);
+
+      await swapTx.wait(1).catch(()=>{});
+      setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
+      updateStatusBoard();
+      return;
+
+    }catch(e){
+      console.warn("[proxy swap] failed -> fallback direct", e);
     }
 
-    __lastSwapMode = mode;
-    updateStatusBoard();
+    // fallback: direct sushi
+    __lastSwapMode = "Direct";
+    setSwapStatus("Proxy failed. Falling back to Direct SushiSwap…");
 
-    setSwapStatus(`Please confirm in your wallet… (${mode === "proxy" ? "Proxy" : "Direct"})`);
+    // approvals for direct (token-in)
+    if(!sellIsEth){
+      await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
+    }
 
-    let tx;
-    if(mode === "proxy"){
-      const tokenInParam = addrForPath(sellMeta);
-
-      const fn =
-        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensWithFee"
-        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHWithFee"
-        : "swapExactTokensForTokensWithFee";
-
+    let directTx;
+    if(sellIsEth && !buyIsEth){
       const gas = await safeEstimateOrDefault(
-        ()=> proxyRouter.estimateGas[fn](
-          ...(sellIsEth && !buyIsEth
-            ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            : [tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-          )
-        ),
-        SAFE_GAS_PROXY
-      );
-
-      const gasLimit = gas.mul(125).div(100);
-
-      tx = await withTimeout(
-        (sellIsEth && !buyIsEth)
-          ? proxyRouter.swapExactETHForTokensWithFee(plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-          : (!sellIsEth && buyIsEth)
-            ? proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-            : proxyRouter.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }),
-        WALLET_CONFIRM_TIMEOUT_MS,
-        "WALLET_CONFIRM_TIMEOUT"
-      );
-
-    }else{
-      const fn =
-        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
-        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
-        : "swapExactTokensForTokensSupportingFeeOnTransferTokens";
-
-      const gas = await safeEstimateOrDefault(
-        ()=> sushiRouterRW.estimateGas[fn](
-          ...(sellIsEth && !buyIsEth
-            ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline]
-          )
-        ),
+        ()=>sushiRouterRW.estimateGas.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, best.path, to, deadline, {value:amountInBN_raw}),
         SAFE_GAS_DIRECT
       );
-
-      const gasLimit = gas.mul(125).div(100);
-
-      tx = await withTimeout(
-        (sellIsEth && !buyIsEth)
-          ? sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-          : (!sellIsEth && buyIsEth)
-            ? sushiRouterRW.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { gasLimit })
-            : sushiRouterRW.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { gasLimit }),
-        WALLET_CONFIRM_TIMEOUT_MS,
-        "WALLET_CONFIRM_TIMEOUT"
+      directTx = await sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, best.path, to, deadline, {value:amountInBN_raw, gasLimit:gas});
+    }else if(!sellIsEth && buyIsEth){
+      const gas = await safeEstimateOrDefault(
+        ()=>sushiRouterRW.estimateGas.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, best.path, to, deadline),
+        SAFE_GAS_DIRECT
       );
+      directTx = await sushiRouterRW.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, best.path, to, deadline, {gasLimit:gas});
+    }else{
+      const gas = await safeEstimateOrDefault(
+        ()=>sushiRouterRW.estimateGas.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, best.path, to, deadline),
+        SAFE_GAS_DIRECT
+      );
+      directTx = await sushiRouterRW.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, best.path, to, deadline, {gasLimit:gas});
     }
 
-    pushRecentTx(tx.hash);
-    setSwapStatus(`TX sent: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`);
+    pushRecentTx(directTx.hash);
+    const u = "https://etherscan.io/tx/" + directTx.hash;
+    setSwapStatus(`Swap transaction sent (Direct)! <br>TX: <a href="${u}" target="_blank" rel="noopener">${directTx.hash}</a>`);
+    await directTx.wait(1).catch(()=>{});
+    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); }, 1500);
+    updateStatusBoard();
 
-    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); updateStatusBoard(); }, 1500);
-
-  } catch (err) {
+  }catch(err){
     console.error("executeSwap error:", err);
-
-    if (String(err?.message||"").includes("WALLET_CONFIRM_TIMEOUT")) {
-      setSwapStatus("Wallet confirmation timeout. Please open MetaMask and confirm the transaction.");
-      const ok = await uiConfirm(
-        "Wallet confirmation timeout",
-        "MetaMask confirmation didn't arrive in time.\n\n" +
-        "• Open MetaMask and check the pending confirmation\n" +
-        "• If you are NOT in MetaMask in-app browser, open via deep link\n\n" +
-        "Press Continue to open MetaMask (mobile).",
-        { okText:"Continue", cancelText:"Close", copy:false }
-      );
-      if (ok && isMobile) openMetaMaskDeepLink();
-      return;
-    }
-
     const msg = (err && err.message) ? err.message : String(err);
-    showErrorPopup(
-      "Swap failed",
-      msg + "\n\nNote:\n" +
-      "• If there is NO tx hash, it failed before sending (callStatic/estimateGas).\n" +
-      "• Make sure you are on Ethereum Mainnet\n" +
-      "• For proxy token swaps, ensure you have enough ETH for flat fee + gas\n" +
-      "• Proxy mode spender = Proxy Router, Direct mode spender = Sushi Router\n" +
-      "• Try higher slippage (10%~35%) if liquidity is thin"
-    );
-  } finally {
+    showErrorPopup("Swap failed", msg);
+  }finally{
     setSwapBusy(false);
     updateStatusBoard();
   }
 }
 
-function bindSwapLogic() {
-  const sellInput = document.getElementById("sell");
-  const swapBtn   = document.getElementById("swapBtn");
-  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
-  if (swapBtn) swapBtn.addEventListener("click", executeSwap);
-}
-
-/* ===== Bind Connect ===== */
-function bindConnect(){
-  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.onclick = connectWallet;
-  });
-
-  const stakeMaxBtn = document.querySelector('.input--stake .max');
-  if(stakeMaxBtn) stakeMaxBtn.onclick = async ()=>{
-    const glip = getTokenMeta("GLIP");
-    const balStr = await fetchTokenBalanceString(glip);
-    document.getElementById('stakeAmt').value = balStr || '';
-  };
-
-  const swapMax = document.getElementById('swapMax');
-  if(swapMax) swapMax.onclick = async ()=>{
+/* ============================================================
+   ✅ MAX buttons
+   ============================================================ */
+async function fillSellMax(){
+  try{
     const sellMeta = getSelectedMeta(document.getElementById("sellS"));
-    const balStr = await fetchTokenBalanceString(sellMeta);
-    if (!balStr) return;
-
-    if (sellMeta && metaIsETH(sellMeta) && userAddress) {
-      try{
-        const raw = await ethGetBalance(userAddress);
-        const bn = ethers.BigNumber.from(raw.toString());
-        const buffer = ethers.constants.Zero;
-        const use = bn.gt(buffer) ? bn.sub(buffer) : ethers.constants.Zero;
-        document.getElementById('sell').value = ethers.utils.formatEther(use);
-      }catch{
-        document.getElementById('sell').value = balStr;
-      }
-    } else {
-      document.getElementById('sell').value = balStr;
+    if(!sellMeta) return;
+    const s = await fetchTokenBalanceString(sellMeta);
+    if(!s) return;
+    let v = Number(s);
+    if(!Number.isFinite(v) || v<=0) return;
+    if(metaIsETH(sellMeta)){
+      v = Math.max(0, v * 0.95); // leave gas buffer
     }
+    document.getElementById("sell").value = (v).toFixed(6);
     updatePricePreview();
-    updateStatusBoard();
-  };
-}
-
-/* ============================================================
-   ✅ Status Panel logic
-   ============================================================ */
-function pill(elId, ok){
-  const el = document.getElementById(elId);
-  if(!el) return;
-  el.classList.remove("ok","bad");
-  el.classList.add(ok ? "ok" : "bad");
-}
-function fmtAgo(ts){
-  if(!ts) return "—";
-  const s = Math.max(0, Math.floor((Date.now()-ts)/1000));
-  if(s < 60) return `${s}s ago`;
-  const m = Math.floor(s/60);
-  if(m < 60) return `${m}m ago`;
-  const h = Math.floor(m/60);
-  return `${h}h ago`;
-}
-async function getNetInfoSafe(){
-  try{
-    if(!provider) return null;
-    return await provider.getNetwork();
-  }catch{
-    return null;
-  }
-}
-function updateStatusBoard(){
-  const boot = document.getElementById("stBoot");
-  const bootSub = document.getElementById("stBootSub");
-  const w = document.getElementById("stWallet");
-  const wSub = document.getElementById("stWalletSub");
-  const net = document.getElementById("stNet");
-  const netSub = document.getElementById("stNetSub");
-  const route = document.getElementById("stRoute");
-  const routeSub = document.getElementById("stRouteSub");
-  const fee = document.getElementById("stFee");
-  const feeSub = document.getElementById("stFeeSub");
-  const src = document.getElementById("stSources");
-  const srcSub = document.getElementById("stSourcesSub");
-
-  if(boot){
-    boot.textContent = __bootOk ? "OK" : "Boot issue";
-  }
-  if(bootSub){
-    const dm = isStandaloneMode() ? "standalone" : "browser";
-    bootSub.textContent = `SW_VER=${typeof SW_VER!=="undefined"?SW_VER:"—"} · display=${dm}`;
-  }
-
-  if(w){
-    w.textContent = userAddress ? short(userAddress) : "Disconnected";
-  }
-  if(wSub){
-    const mm = window.ethereum ? (window.ethereum.isMetaMask ? "MetaMask" : "Injected wallet") : "No wallet";
-    wSub.textContent = `${mm} · token modal=${dialogSupported(dlg)?"dialog":"fallback"}`;
-  }
-
-  // network info (safe)
-  (async ()=>{
-    if(!net || !netSub) return;
-    const info = await getNetInfoSafe();
-    if(!info){
-      net.textContent = "—";
-      netSub.textContent = "Not connected";
-      pill("pillNet", false);
-      return;
-    }
-    net.textContent = `${info.name || "network"} (chainId=${info.chainId})`;
-    netSub.textContent = (info.chainId===1) ? "Ethereum Mainnet" : "Wrong network";
-    pill("pillNet", info.chainId===1);
-  })();
-
-  if(route){
-    route.textContent = `Last mode: ${__lastSwapMode}`;
-  }
-  if(routeSub){
-    routeSub.textContent = `Proxy=${short(GDEX_PROXY_ROUTER)} · Sushi=${short(SUSHI_ROUTER_V2)}`;
-  }
-
-  if(fee){
-    const pct = (__proxyFeeBps||0)/100;
-    const flat = (()=>{ try{ return __proxyFlatFeeWei ? `${ethers.utils.formatEther(__proxyFlatFeeWei)} ETH` : "—"; }catch{return "—"} })();
-    fee.textContent = __proxyFeeLoaded ? `${pct.toFixed(2)}% · ${flat}` : `— (not loaded)`;
-  }
-  if(feeSub){
-    feeSub.textContent = `feeWallet=${__proxyFeeWallet?short(__proxyFeeWallet):"—"}`;
-  }
-
-  if(src){
-    const b = (__backendOk==null) ? "unknown" : (__backendOk ? "ok" : "fail");
-    const c = (__cgOk==null) ? "unknown" : (__cgOk ? "ok" : "fail");
-    src.textContent = `Backend: ${b} · CoinGecko: ${c}`;
-  }
-  if(srcSub){
-    srcSub.textContent = `Backend last: ${fmtAgo(__backendLastAt)} · CoinGecko last: ${fmtAgo(__cgLastAt)}`;
-  }
-
-  pill("pillWallet", !!userAddress);
-  pill("pillBackend", (__backendOk==null) ? false : !!__backendOk);
-  pill("pillCG", (__cgOk==null) ? false : !!__cgOk);
-
-  const pw = document.getElementById("pillWallet");
-  if(pw) pw.textContent = userAddress ? "Wallet: ON" : "Wallet: OFF";
-  const pn = document.getElementById("pillNet");
-  if(pn) pn.textContent = "Mainnet";
-  const pb = document.getElementById("pillBackend");
-  if(pb) pb.textContent = "Backend";
-  const pc = document.getElementById("pillCG");
-  if(pc) pc.textContent = "CoinGecko";
-}
-
-/* ============================================================
-   ✅ Status Panel actions
-   ============================================================ */
-function buildDiagnostic(){
-  const lines = [];
-  lines.push(`G-DEX Diagnostic`);
-  lines.push(`- SW_VER: ${typeof SW_VER!=="undefined"?SW_VER:"—"}`);
-  lines.push(`- URL: ${location.href}`);
-  lines.push(`- Standalone: ${isStandaloneMode()}`);
-  lines.push(`- UA: ${navigator.userAgent}`);
-  lines.push(`- Wallet present: ${!!window.ethereum}`);
-  lines.push(`- MetaMask: ${!!(window.ethereum && window.ethereum.isMetaMask)}`);
-  lines.push(`- Address: ${userAddress || "—"}`);
-  lines.push(`- Proxy Router: ${GDEX_PROXY_ROUTER}`);
-  lines.push(`- Sushi Router: ${SUSHI_ROUTER_V2}`);
-  lines.push(`- Backend URL: ${BACKEND_URL}`);
-  lines.push(`- Backend ok: ${__backendOk} (last ${fmtAgo(__backendLastAt)})`);
-  lines.push(`- CoinGecko ok: ${__cgOk} (last ${fmtAgo(__cgLastAt)})`);
-  lines.push(`- Fee loaded: ${__proxyFeeLoaded}`);
-  lines.push(`- Fee bps: ${__proxyFeeBps}`);
-  try{
-    const flat = __proxyFlatFeeWei ? ethers.utils.formatEther(__proxyFlatFeeWei) : "—";
-    lines.push(`- Flat fee: ${flat} ETH`);
   }catch{}
-  if(__bootErr){
-    lines.push(`- Boot error: ${String(__bootErr?.message||__bootErr)}`);
-  }
-  return lines.join("\n");
+}
+async function fillStakeMax(){
+  try{
+    const glip = getTokenMeta("GLIP");
+    const s = await fetchTokenBalanceString(glip);
+    if(!s) return;
+    let v = Number(s);
+    if(!Number.isFinite(v) || v<=0) return;
+    document.getElementById("stakeAmt").value = (v).toFixed(6);
+  }catch{}
 }
 
-function bindStatusPanel(){
-  const r = document.getElementById("btnRefreshStatus");
-  if(r) r.addEventListener("click", async ()=>{
-    try{
-      if(userAddress){
-        await refreshAllBalances();
-        await loadProxyFeeParams();
-      }
-    }catch{}
+/* ============================================================
+   ✅ Status Board
+   ============================================================ */
+async function updateStatusBoard(){
+  try{
+    const stBoot = document.getElementById("stBoot");
+    const stBootSub = document.getElementById("stBootSub");
+    const stWallet = document.getElementById("stWallet");
+    const stWalletSub = document.getElementById("stWalletSub");
+    const stNet = document.getElementById("stNet");
+    const stNetSub = document.getElementById("stNetSub");
+    const stRoute = document.getElementById("stRoute");
+    const stRouteSub = document.getElementById("stRouteSub");
+    const stFee = document.getElementById("stFee");
+    const stFeeSub = document.getElementById("stFeeSub");
+    const stSources = document.getElementById("stSources");
+    const stSourcesSub = document.getElementById("stSourcesSub");
+
+    const pillWallet = document.getElementById("pillWallet");
+    const pillNet = document.getElementById("pillNet");
+    const pillBackend = document.getElementById("pillBackend");
+    const pillCG = document.getElementById("pillCG");
+
+    if(stBoot){
+      stBoot.textContent = __bootOk ? "OK" : "Booting…";
+      if(__bootErr) stBoot.textContent = "Error";
+    }
+    if(stBootSub){
+      stBootSub.textContent = __bootErr ? String(__bootErr.message || __bootErr) : "UI initialized";
+    }
+
+    const hasWallet = !!window.ethereum;
+    if(stWallet){
+      stWallet.textContent = userAddress ? short(userAddress) : (hasWallet ? "Not connected" : "No wallet");
+    }
+    if(stWalletSub){
+      stWalletSub.textContent = hasWallet ? "MetaMask / EIP-1193" : "Install MetaMask (desktop) or open in MetaMask browser (mobile)";
+    }
+
+    if(pillWallet){
+      pillWallet.classList.remove("ok","bad");
+      pillWallet.textContent = userAddress ? "Wallet: OK" : "Wallet";
+      pillWallet.classList.add(userAddress ? "ok" : "bad");
+    }
+
+    if(provider){
+      try{
+        const net = await provider.getNetwork();
+        if(stNet) stNet.textContent = (net?.chainId===1) ? "Ethereum Mainnet" : `chainId=${net?.chainId}`;
+        if(stNetSub) stNetSub.textContent = (net?.chainId===1) ? "Ready" : "Please switch to Mainnet";
+        if(pillNet){
+          pillNet.classList.remove("ok","bad");
+          pillNet.textContent = (net?.chainId===1) ? "Mainnet: OK" : "Mainnet";
+          pillNet.classList.add((net?.chainId===1) ? "ok" : "bad");
+        }
+      }catch{}
+    }else{
+      if(stNet) stNet.textContent = "—";
+      if(stNetSub) stNetSub.textContent = "Connect wallet to detect network";
+    }
+
+    if(stRoute){
+      stRoute.textContent = `SushiSwap V2`;
+    }
+    if(stRouteSub){
+      stRouteSub.textContent = `Proxy mode: ${__lastSwapMode} · Router ${SUSHI_ROUTER_V2.slice(0,6)}…${SUSHI_ROUTER_V2.slice(-4)}`;
+    }
+
+    if(stFee){
+      const pct = (__proxyFeeBps||0)/100;
+      stFee.textContent = __proxyFeeLoaded ? `${pct.toFixed(2)}% + flat` : "—";
+    }
+    if(stFeeSub){
+      const flat = (__proxyFlatFeeWei && window.ethers) ? ethers.utils.formatEther(__proxyFlatFeeWei) : "—";
+      stFeeSub.textContent = `Fee wallet: ${__proxyFeeWallet ? short(__proxyFeeWallet) : "—"} · Flat: ${flat} ETH`;
+    }
+
+    if(stSources){
+      const b = (__backendOk===true) ? "Backend OK" : (__backendOk===false ? "Backend Down" : "Backend —");
+      const c = (__cgOk===true) ? "CoinGecko OK" : (__cgOk===false ? "CoinGecko Down" : "CoinGecko —");
+      stSources.textContent = `${b} · ${c}`;
+    }
+    if(stSourcesSub){
+      stSourcesSub.textContent = `Pools: ${timeAgo(__backendLastAt)} · Prices: ${timeAgo(__cgLastAt)}`;
+    }
+
+    if(pillBackend){
+      pillBackend.classList.remove("ok","bad");
+      pillBackend.textContent = "Backend";
+      if(__backendOk===true){ pillBackend.textContent = "Backend: OK"; pillBackend.classList.add("ok"); }
+      else if(__backendOk===false){ pillBackend.textContent = "Backend: Down"; pillBackend.classList.add("bad"); }
+    }
+    if(pillCG){
+      pillCG.classList.remove("ok","bad");
+      pillCG.textContent = "CoinGecko";
+      if(__cgOk===true){ pillCG.textContent = "CoinGecko: OK"; pillCG.classList.add("ok"); }
+      else if(__cgOk===false){ pillCG.textContent = "CoinGecko: Down"; pillCG.classList.add("bad"); }
+    }
+
+    renderMetricFooters();
+  }catch{}
+}
+
+/* ============================================================
+   ✅ Bindings
+   ============================================================ */
+function bindButtons(){
+  const c1 = document.getElementById("swapConnect");
+  const c2 = document.getElementById("poolConnect");
+  const c3 = document.getElementById("btnConn");
+  if(c1) c1.addEventListener("click", connectWallet);
+  if(c2) c2.addEventListener("click", connectWallet);
+  if(c3) c3.addEventListener("click", connectWallet);
+
+  const swapBtn = document.getElementById("swapBtn");
+  if(swapBtn) swapBtn.addEventListener("click", executeSwap);
+
+  const sellInput = document.getElementById("sell");
+  if(sellInput) sellInput.addEventListener("input", updatePricePreview);
+
+  const max = document.getElementById("swapMax");
+  if(max) max.addEventListener("click", fillSellMax);
+
+  const smax = document.getElementById("stakeMax");
+  if(smax) smax.addEventListener("click", fillStakeMax);
+
+  const installSide = document.getElementById("installSide");
+  const installMain = document.getElementById("installMain");
+  if(installSide) installSide.addEventListener("click", handleInstallClick);
+  if(installMain) installMain.addEventListener("click", handleInstallClick);
+
+  const btnRefresh = document.getElementById("btnRefreshStatus");
+  if(btnRefresh) btnRefresh.addEventListener("click", async ()=>{
+    await refreshAllBalances();
     updateStatusBoard();
+    setSwapStatus("Refreshed.", {show:true});
+    setTimeout(()=>setSwapStatus(""), 1200);
   });
 
-  const c = document.getElementById("btnCopyDiag");
-  if(c) c.addEventListener("click", async ()=>{
-    const txt = buildDiagnostic();
+  const btnCopy = document.getElementById("btnCopyDiag");
+  if(btnCopy) btnCopy.addEventListener("click", async ()=>{
+    const diag = [
+      `boot=${__bootOk ? "ok" : "no"}`,
+      `wallet=${userAddress||"none"}`,
+      `backend=${__backendOk} last=${__backendLastAt}`,
+      `coingecko=${__cgOk} last=${__cgLastAt}`,
+      `proxyFeeLoaded=${__proxyFeeLoaded} bps=${__proxyFeeBps} flat=${__proxyFlatFeeWei ? (__proxyFlatFeeWei.toString()) : "—"}`
+    ].join("\n");
     try{
-      await navigator.clipboard.writeText(txt);
-      await uiAlert("Copied", "Diagnostic info copied to clipboard.", {copy:false});
+      await navigator.clipboard.writeText(diag);
+      uiAlert("Copied", "Diagnostic copied to clipboard.", {copy:false});
     }catch{
-      await uiAlert("Diagnostic", txt, {copy:true});
+      uiAlert("Diagnostic", diag, {copy:true});
     }
   });
 }
 
-/* ===== Boot ===== */
-function boot(){
-  __bootOk = false;
-  __bootErr = null;
+/* ============================================================
+   ✅ BOOT
+   ============================================================ */
+async function boot(){
+  if(__bootOk) return;
+  try{
+    initDefaults();
+    applyManualPoolConfig();
+    bindTokenButtons();
+    bindFlip();
+    bindPoolSupplyButton();
+    bindTop();
+    bindButtons();
 
-  // IMPORTANT: isolate each step so one failure doesn't kill everything
-  try{ initDefaults(); }catch(e){ console.error("[boot:initDefaults]", e); __bootErr = __bootErr || e; }
-  try{ bindTokenButtons(); }catch(e){ console.error("[boot:bindTokenButtons]", e); __bootErr = __bootErr || e; }
-  try{ bindFlip(); }catch(e){ console.error("[boot:bindFlip]", e); __bootErr = __bootErr || e; }
-  try{ bindConnect(); }catch(e){ console.error("[boot:bindConnect]", e); __bootErr = __bootErr || e; }
-  try{ bindSwapLogic(); }catch(e){ console.error("[boot:bindSwapLogic]", e); __bootErr = __bootErr || e; }
-  try{ bindPoolSupplyButton(); }catch(e){ console.error("[boot:bindPoolSupplyButton]", e); __bootErr = __bootErr || e; }
-  try{ bindTop(); }catch(e){ console.error("[boot:bindTop]", e); __bootErr = __bootErr || e; }
-  try{ bindStatusPanel(); }catch(e){ console.error("[boot:bindStatusPanel]", e); __bootErr = __bootErr || e; }
-  try{ document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick)); }catch(e){ console.error("[boot:install]", e); __bootErr = __bootErr || e; }
+    // analytics demo render
+    fillKpis(demoAnalytics);
+    drawSpark(demoAnalytics);
+    drawDonut(demoAnalytics);
+    drawGauge(demoAnalytics);
 
-  try{ applyManualPoolConfig(); }catch(e){ console.error("[boot:manualConfig]", e); __bootErr = __bootErr || e; }
-  try{ bootSushiPoolsTicker(); }catch(e){ console.error("[boot:sushiTicker]", e); __bootErr = __bootErr || e; }
-  try{ bootMajorCoinPricesTicker(); }catch(e){ console.error("[boot:pricesTicker]", e); __bootErr = __bootErr || e; }
+    // tickers
+    bootSushiPoolsTicker();
+    bootMajorCoinPricesTicker();
 
-  // analytics demo should never break swap/token UI
-  try{ fillKpis(demoAnalytics); }catch(e){ console.error("[boot:fillKpis]", e); }
-  try{ drawSpark(demoAnalytics); }catch(e){ console.error("[boot:drawSpark]", e); }
-  try{ drawDonut(demoAnalytics); }catch(e){ console.error("[boot:drawDonut]", e); }
-  try{ drawGauge(demoAnalytics); }catch(e){ console.error("[boot:drawGauge]", e); }
+    // keep updated footer text
+    setInterval(renderMetricFooters, 10000);
 
-  __bootOk = !__bootErr;
-  updateStatusBoard();
-
-  if(SWAP_SILENT){
-    setSwapStatus("Ready. (Silent swap mode enabled)");
+    __bootOk = true;
+  }catch(e){
+    __bootErr = e;
+    console.error("[boot] failed", e);
+  }finally{
+    updateStatusBoard();
   }
 }
-
 if(document.readyState === "loading"){
-  document.addEventListener('DOMContentLoaded', boot);
+  document.addEventListener("DOMContentLoaded", boot);
 }else{
   boot();
 }
 </script>
 </body>
 </html>
-<br><br>
-
-
-
-
-
