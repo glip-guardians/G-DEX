@@ -1650,7 +1650,10 @@ function setPoolsTicker(item){
   link.href = (item && item.url) ? item.url : "https://www.sushi.com/ethereum/explore/pools";
   pair.textContent = (item && item.name) ? item.name : "—";
   meta.textContent = (tvlTxt + feeTxt).trim();
+  renderPoolsMiniList();
 }
+
+
 function setPoolsTickerFallbackFromManual(){
   try{
     const cfg = gdexPoolConfig || {};
@@ -1918,6 +1921,8 @@ function setPricesTicker(item){
   link.href = item?.url || "https://www.coingecko.com";
   pair.textContent = item?.label || "—";
   meta.textContent = item?.meta || "";
+  renderPricesMiniGrid();
+
 }
 
 function formatUSD(n){
@@ -3462,6 +3467,11 @@ function boot(){
   try{ drawSpark(demoAnalytics); }catch(e){ console.error("[boot:drawSpark]", e); }
   try{ drawDonut(demoAnalytics); }catch(e){ console.error("[boot:drawDonut]", e); }
   try{ drawGauge(demoAnalytics); }catch(e){ console.error("[boot:drawGauge]", e); }
+  
+  try{ bindMetricFillActions(); }catch(e){ console.error("[boot:bindMetricFillActions]", e); __bootErr = __bootErr || e; }
+try{ bindPoolQuickButtons(); }catch(e){ console.error("[boot:bindPoolQuickButtons]", e); __bootErr = __bootErr || e; }
+try{ bindDemoButtons(); }catch(e){ console.error("[boot:bindDemoButtons]", e); __bootErr = __bootErr || e; }
+
 
   __bootOk = !__bootErr;
   updateStatusBoard();
