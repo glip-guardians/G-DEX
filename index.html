@@ -2293,7 +2293,7 @@ async function loadProxyFeeParams(){
     console.warn('[proxy fee params] failed', e);
     try{
       __proxyFeeBps = (__proxyFeeBps || 30);
-      __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+      __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
     }catch{}
     __proxyFeeLoaded = false;
   }finally{
@@ -2910,7 +2910,7 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
-  const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+  const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
   const callValue = sellIsEth ? amountInBN_raw : flat;
 
   const userSlip = getSlipPct();
@@ -3089,7 +3089,7 @@ async function executeSwap() {
       await ensureAllowance(sellMeta, amountInBN_raw, GDEX_PROXY_ROUTER);
     }
 
-    const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
+    const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
     const expectedValueProxy = sellIsEth ? amountInBN_raw : flat;
     await ensureSufficientEthForValue(expectedValueProxy);
 
@@ -3490,6 +3490,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
