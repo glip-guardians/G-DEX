@@ -836,6 +836,157 @@ h3::before{content:""; display:none;}
 }
 .smallPill.ok{border-color:rgba(57,217,138,.35)}
 .smallPill.bad{border-color:rgba(255,120,120,.35)}
+/* ============================================================
+   ✅ NEW: Metrics card bottom fill (prevents "empty bottom")
+   ============================================================ */
+.metric{display:flex;flex-direction:column}
+.metric .v{flex:0 0 auto}
+.metricFill{
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px dashed rgba(12,25,45,.14);
+}
+.miniTitleRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.miniTitle{
+  font-weight:900;
+  font-size:12px;
+  color:rgba(11,18,32,.78);
+}
+.miniHint{
+  font-size:12px;
+  color:rgba(11,18,32,.58);
+  font-weight:800;
+  white-space:nowrap;
+  opacity:.95;
+}
+
+.miniList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.miniRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(12,25,45,.12);
+  background:rgba(255,255,255,.68);
+  box-shadow:0 10px 18px rgba(9,18,33,.08);
+  text-decoration:none;
+  color:rgba(11,18,32,.92);
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.miniRow:hover{
+  transform:translateY(-1px);
+  background:rgba(255,255,255,.86);
+  border-color:rgba(123,183,255,.38);
+  box-shadow:0 14px 24px rgba(9,18,33,.10);
+}
+.miniRow .l{
+  font-weight:900;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:70%;
+}
+.miniRow .r{
+  font-size:12px;
+  font-weight:800;
+  opacity:.72;
+  white-space:nowrap;
+}
+.miniEmpty{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(12,25,45,.10);
+  background:rgba(255,255,255,.55);
+  color:rgba(11,18,32,.62);
+  font-size:12px;
+  font-weight:800;
+}
+
+.priceGrid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+@media (max-width:520px){
+  .priceGrid{grid-template-columns:1fr}
+}
+.priceMini{
+  display:block;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(12,25,45,.12);
+  background:rgba(255,255,255,.68);
+  box-shadow:0 10px 18px rgba(9,18,33,.08);
+  text-decoration:none;
+  color:rgba(11,18,32,.92);
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.priceMini:hover{
+  transform:translateY(-1px);
+  background:rgba(255,255,255,.86);
+  border-color:rgba(123,183,255,.38);
+  box-shadow:0 14px 24px rgba(9,18,33,.10);
+}
+.priceMini .sym{font-weight:900; opacity:.92}
+.priceMini .price{margin-top:4px; font-weight:900; font-size:13px; opacity:.92}
+.priceMini .chg{
+  margin-top:4px;
+  font-size:12px;
+  font-weight:900;
+  opacity:.88;
+}
+.priceMini .chg.up{color:rgba(57,217,138,.90)}
+.priceMini .chg.down{color:rgba(255,120,120,.90)}
+
+.miniActions{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+}
+.miniBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:14px;
+  font-weight:900;
+  font-size:12px;
+  border:1px solid rgba(12,25,45,.14);
+  background:rgba(255,255,255,.78);
+  box-shadow:0 10px 18px rgba(9,18,33,.08);
+  color:rgba(11,18,32,.90);
+  text-decoration:none;
+  cursor:pointer;
+  min-width:110px;
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.miniBtn:hover{
+  transform:translateY(-1px);
+  background:rgba(255,255,255,.92);
+  border-color:rgba(123,183,255,.38);
+  box-shadow:0 14px 24px rgba(9,18,33,.10);
+}
+.miniBtn.ghost{
+  background:rgba(255,255,255,.62);
+}
+
 </style>
 </head>
 
@@ -1579,6 +1730,148 @@ async function bootSushiPoolsTicker(){
     updateStatusBoard();
   }
 }
+function renderPoolsMiniList(){
+  const box = document.getElementById("poolsMiniList");
+  const upd = document.getElementById("poolsUpdated");
+  if(!box) return;
+
+  const items = (Array.isArray(__sushiPools) && __sushiPools.length)
+    ? __sushiPools.slice(0,3)
+    : [{
+        name: (gdexPoolConfig?.recentPoolsText || "GLIP–ETH - SushiSwap V2"),
+        tvlText: "$—",
+        url: "https://www.sushi.com/ethereum/explore/pools"
+      }];
+
+  box.innerHTML = items.map(it=>`
+    <a class="miniRow" href="${it.url || "https://www.sushi.com/ethereum/explore/pools"}" target="_blank" rel="noopener">
+      <span class="l">${(it.name || "—")}</span>
+      <span class="r">${it.tvlText ? ("TVL " + it.tvlText) : ""}</span>
+    </a>
+  `).join("");
+
+  if(upd){
+    upd.textContent = __backendLastAt ? (`Updated ${fmtAgo(__backendLastAt)}`) : "Updated —";
+  }
+}
+
+function renderPricesMiniGrid(){
+  const box = document.getElementById("pricesMiniGrid");
+  const upd = document.getElementById("pricesUpdated");
+  if(!box) return;
+
+  const items = (Array.isArray(__pricesItems) && __pricesItems.length)
+    ? __pricesItems.slice(0,4)
+    : [
+        { label:"BTC · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/bitcoin" },
+        { label:"ETH · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/ethereum" },
+        { label:"USDT · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/tether" },
+        { label:"SOL · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/solana" },
+      ];
+
+  box.innerHTML = items.map(it=>{
+    const parts = String(it.label||"—").split("·").map(s=>s.trim());
+    const sym = parts[0] || "—";
+    const price = parts[1] || "—";
+    const ch = String(it.meta||"").replace("24h","").trim();
+    const isUp = ch && !ch.startsWith("-");
+    return `
+      <a class="priceMini" href="${it.url || "https://www.coingecko.com"}" target="_blank" rel="noopener">
+        <div class="sym">${sym}</div>
+        <div class="price">${price}</div>
+        <div class="chg ${isUp ? "up" : "down"}">${ch || "—"}</div>
+      </a>
+    `;
+  }).join("");
+
+  if(upd){
+    upd.textContent = __cgLastAt ? (`Updated ${fmtAgo(__cgLastAt)}`) : "Updated —";
+  }
+}
+
+function bindMetricFillActions(){
+  const pr = document.getElementById("poolsRefreshBtn");
+  if(pr) pr.addEventListener("click", async ()=>{
+    try{
+      const fresh = await fetchSushiPools(5);
+      __backendOk = true; __backendLastAt = Date.now();
+      if(Array.isArray(fresh) && fresh.length){
+        __sushiPools = fresh;
+        __sushiTickerIdx = 0;
+        setPoolsTicker(__sushiPools[0]);
+      }
+    }catch(e){
+      __backendOk = false;
+    }finally{
+      renderPoolsMiniList();
+      updateStatusBoard();
+    }
+  });
+
+  const cr = document.getElementById("pricesRefreshBtn");
+  if(cr) cr.addEventListener("click", async ()=>{
+    try{
+      const fresh = await fetchMajorCoinPrices();
+      __cgOk = true; __cgLastAt = Date.now();
+      if(Array.isArray(fresh) && fresh.length){
+        __pricesItems = fresh;
+        __pricesIdx = 0;
+        setPricesTicker(__pricesItems[0]);
+      }
+    }catch(e){
+      __cgOk = false;
+    }finally{
+      renderPricesMiniGrid();
+      updateStatusBoard();
+    }
+  });
+}
+
+function bindPoolQuickButtons(){
+  const add = document.getElementById("poolAdd");
+  const rm  = document.getElementById("poolRemove");
+  const pos = document.getElementById("poolPositions");
+
+  const go = ()=>{
+    openSushiGlipEthPool();
+    // “Remove/Positions”도 Sushi가 내부에서 탭 제공하는 경우가 많아 동일 진입으로 처리
+  };
+
+  if(add) add.addEventListener("click", go);
+  if(rm)  rm.addEventListener("click", go);
+  if(pos) pos.addEventListener("click", go);
+}
+
+function bindDemoButtons(){
+  // Stake demo buttons: 클릭은 되되, 아직 기능 미구현이면 안내 모달
+  const tabStake = document.getElementById("tabStake");
+  const tabUnstake = document.getElementById("tabUnstake");
+  const btnStake = document.getElementById("btnStake");
+  const btnClaim = document.getElementById("btnClaim");
+
+  if(tabStake) tabStake.addEventListener("click", ()=>{
+    tabStake.classList.remove("ghost");
+    tabUnstake && tabUnstake.classList.add("ghost");
+  });
+  if(tabUnstake) tabUnstake.addEventListener("click", ()=>{
+    tabUnstake.classList.remove("ghost");
+    tabStake && tabStake.classList.add("ghost");
+  });
+
+  const comingSoon = async (title)=> uiAlert(title, "This section is currently in preview mode.\nStaking actions will be enabled in G-DEX v2.", {copy:false});
+
+  if(btnStake) btnStake.addEventListener("click", async ()=>{
+    if(!userAddress) return connectWallet();
+    return comingSoon("Stake");
+  });
+
+  if(btnClaim) btnClaim.addEventListener("click", async ()=>{
+    if(!userAddress) return connectWallet();
+    return comingSoon("Claim");
+  });
+}
+
+
 
 /* DApp host */
 const DAPP_HOST = 'gdex-app.com';
