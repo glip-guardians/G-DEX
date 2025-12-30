@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>G-DEX — GLIP</title>
 
-<!-- ✅ Legacy backend constant (kept for compatibility; NOT used in direct-router mode) -->
+<!-- ✅ Legacy backend constant (kept for compatibility; NOT used here) -->
 <script>
   const BACKEND_URL = "https://gdex-backend.onrender.com".replace(/\/$/, "");
 </script>
@@ -15,3140 +15,990 @@
 <link rel="icon" href="G_DEX_icon.png">
 <link rel="apple-touch-icon" href="G_DEX_icon.png">
 <meta name="theme-color" content="#ffffff" />
+
 <script>
-  // ✅ SW 캐시로 인해 "모바일만 옛버전"이 계속 뜨는 경우가 많아서 버전 쿼리 추가
-  const SW_VER = "20251225_statuspanel_1";
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=' + SW_VER).catch(console.error);
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(console.error);
     });
   }
 </script>
 
+<!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Ethers (wallet connect) -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-:root{
-  --bg0:#ffffff;
-  --bg1:#f6fbff;
-  --bg2:#f3f7fb;
+  :root{
+    --headerH: 84px;
 
-  --panel:rgba(255,255,255,.72);
-  --panel-2:rgba(255,255,255,.82);
-  --inner:rgba(255,255,255,.62);
+    --bg0:#050A0C;
+    --bg1:#071317;
+    --card:rgba(255,255,255,0.06);
+    --card2:rgba(255,255,255,0.08);
+    --line:rgba(255,255,255,0.10);
 
-  --text:#0b1220;
-  --muted:rgba(11,18,32,.68);
+    --ink:#EAF7F0;
+    --ink2:#D6F0E4;
+    --muted:#B8D6C8;
+    --muted2:#9ABFB0;
 
-  --accent:#7bb7ff;
-  --accent-2:#9ad7ff;
-  --line:rgba(12,25,45,.10);
-  --line-2:rgba(12,25,45,.16);
+    --acc:#00FFB3;
+    --acc2:#00C2FF;
+    --warn:#FFB000;
 
-  --shadow:0 18px 40px rgba(9,18,33,.12);
-  --shadow-soft:0 12px 26px rgba(9,18,33,.10);
-
-  --r:22px;
-}
-
-*{box-sizing:border-box}
-html,body{margin:0}
-html,body{
-  color:var(--text);
-  font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
-  background:
-    radial-gradient(1200px 700px at 20% 0%, rgba(123,183,255,.18), transparent 60%),
-    radial-gradient(900px 600px at 80% 10%, rgba(154,215,255,.14), transparent 55%),
-    radial-gradient(900px 900px at 50% 110%, rgba(255,255,255,1), rgba(243,247,251,1) 55%, rgba(246,251,255,1) 100%);
-}
-img{max-width:100%;display:block}
-body{position:relative;overflow-x:hidden}
-
-/* Subtle snow grain */
-body::before,
-body::after{
-  content:"";
-  pointer-events:none;
-  position:fixed;
-  inset:-60px;
-  z-index:0;
-  background-image:
-    radial-gradient(circle, rgba(255,255,255,.55) 0, rgba(255,255,255,0) 62%),
-    radial-gradient(circle, rgba(255,255,255,.38) 0, rgba(255,255,255,0) 60%),
-    radial-gradient(circle, rgba(255,255,255,.42) 0, rgba(255,255,255,0) 62%);
-  background-size:360px 360px, 420px 420px, 320px 320px;
-  background-position:0 -80px, 120px -140px, -80px 30px;
-  animation:snowfall 44s linear infinite;
-  opacity:.10;
-  filter:blur(.2px);
-}
-body::after{
-  animation-duration:64s;
-  background-size:460px 460px, 520px 520px, 420px 420px;
-  opacity:.06;
-}
-@keyframes snowfall{
-  0%{transform:translateY(-40px);}
-  100%{transform:translateY(90px);}
-}
-
-/* ===== HERO ===== */
-.hero{
-  position:relative;
-  height:min(34vh,420px);
-  overflow:hidden;
-  background:linear-gradient(180deg, rgba(123,183,255,.18) 0%, rgba(255,255,255,.92) 55%, rgba(255,255,255,1) 100%);
-}
-/* ✅ 하단 흰색(언덕) 제거 */
-.hero::before{ content:none !important; }
-
-.hero::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    linear-gradient(180deg, rgba(8,12,30,.35) 0%, rgba(8,12,30,.55) 55%, rgba(8,12,30,.75) 100%),
-    url("https://cdn.imweb.me/thumbnail/20251213/39a6c931679b8.png") center center / cover no-repeat;
-  filter:saturate(1.05) contrast(1.08) brightness(.92);
-  opacity:.95;
-  z-index:0;
-  pointer-events:none;
-}
-/* Keep DOM but hide characters */
-.heroCharacters{display:none !important;}
-
-.heroOverlaySnow{
-  position:absolute; inset:0;
-  pointer-events:none;
-  z-index:2;
-  background-image:
-    radial-gradient(circle at 18% 18%, rgba(255,255,255,.55) 0, transparent 55%),
-    radial-gradient(circle at 78% 22%, rgba(255,255,255,.45) 0, transparent 58%);
-  opacity:.10;
-}
-
-/* Title */
-.heroText{
-  position:absolute;
-  inset:0;
-  display:grid;
-  place-items:center;
-  z-index:3;
-  text-align:center;
-  padding:0 16px;
-}
-.heroText h2{
-  margin:0 0 10px;
-  font:800 clamp(26px,3.6vw,50px)/1.06 "Sora",system-ui;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  color:#ffffff;
-  text-shadow:0 14px 30px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.25);
-  position:relative;
-}
-.heroText h2::after{
-  content:"";
-  display:block;
-  width:168px;
-  height:4px;
-  margin:18px auto 0;
-  border-radius:999px;
-  background:linear-gradient(90deg, rgba(255,255,255,.85), rgba(123,183,255,.75), rgba(255,255,255,.85));
-  box-shadow:0 0 18px rgba(123,183,255,.32);
-}
-.heroText p{
-  margin:6px 0 0;
-  color:rgba(255,255,255,.92);
-  font-size:clamp(13px,1.7vw,16px);
-  text-shadow:0 10px 24px rgba(0,0,0,.35);
-}
-
-/* ===== HERO link bar ===== */
-.heroLinks{
-  position:relative;z-index:4;
-  background:rgba(255,255,255,.65);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border-bottom:1px solid var(--line);
-  box-shadow:0 10px 30px rgba(9,18,33,.10);
-}
-.heroLinks-inner{
-  max-width:1280px;margin:0 auto;padding:10px 16px;
-  display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end
-}
-.heroBtn{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;
-  text-decoration:none;
-  border:1px solid rgba(12,25,45,.14);
-  background:rgba(255,255,255,.75);
-  color:rgba(11,18,32,.92);
-  cursor:pointer;
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  box-shadow:0 6px 16px rgba(9,18,33,.08);
-  transition:background .18s ease,border-color .18s ease,transform .15s ease,box-shadow .15s ease;
-}
-.heroBtn .icon{font-size:13px;opacity:.82}
-.heroBtn:hover{
-  background:rgba(255,255,255,.92);
-  border-color:rgba(123,183,255,.42);
-  transform:translateY(-1px);
-  box-shadow:0 10px 22px rgba(9,18,33,.12);
-}
-@media (max-width:768px){
-  .heroLinks-inner{justify-content:center}
-}
-
-/* ===== LAYOUT ===== */
-.wrapper{width:100%;max-width:1280px;margin:0 auto;padding:0 16px; position:relative; z-index:1;}
-.grid{display:grid;gap:24px;grid-template-columns:260px 1fr;align-items:start}
-
-/* LEFT NAV */
-.nav{
-  position:relative;
-  background:rgba(255,255,255,.70);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border-radius:var(--r);
-  padding:16px;
-  border:1px solid var(--line-2);
-  box-shadow:var(--shadow);
-  overflow:hidden;
-}
-.nav::before{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  background:
-    radial-gradient(700px 240px at 30% 0%, rgba(123,183,255,.18), transparent 60%),
-    radial-gradient(700px 240px at 80% 10%, rgba(255,255,255,.28), transparent 55%);
-  opacity:.8;
-  pointer-events:none;
-}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px; position:relative;}
-.brand img{
-  width:34px;height:34px;border-radius:50%;object-fit:cover;
-  box-shadow:0 0 0 3px rgba(255,255,255,.95), 0 10px 18px rgba(9,18,33,.12);
-}
-.brand h1{margin:0;font:800 20px/1 "Sora",sans-serif;letter-spacing:.18em;}
-.nav a{
-  display:block;padding:12px 14px;border-radius:999px;margin-bottom:10px;
-  text-decoration:none;color:rgba(11,18,32,.92);
-  background:rgba(255,255,255,.72);
-  border:1px solid rgba(12,25,45,.12);
-  text-align:center;
-  font-weight:800;
-  box-shadow:0 6px 16px rgba(9,18,33,.08);
-  transition:transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
-  position:relative;
-}
-.nav a:is(:hover,:focus){
-  background:rgba(255,255,255,.90);
-  border-color:rgba(123,183,255,.40);
-  transform:translateY(-1px);
-  box-shadow:0 10px 22px rgba(9,18,33,.12);
-}
-.nav .note{margin-top:8px;font-size:12px;line-height:1.4;color:var(--muted)}
-.install-cta{display:none;min-width:auto;width:100%;margin-top:10px;padding:10px 12px;font-size:13px;justify-content:center}
-
-/* RIGHT CONTENT */
-.main{
-  display:grid;gap:24px;
-  grid-template-areas:
-    "metrics metrics"
-    "swap recent"
-    "pool pool"
-    "notes notes"
-    "analytics analytics"
-    "stake stake";
-  grid-template-columns:1fr 1fr
-}
-.card{
-  position:relative;
-  background:var(--panel-2);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border-radius:var(--r);
-  padding:16px;
-  border:1px solid var(--line-2);
-  box-shadow:var(--shadow);
-  overflow:hidden;
-}
-.card::before{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  background:
-    radial-gradient(700px 240px at 20% 0%, rgba(123,183,255,.16), transparent 60%),
-    radial-gradient(700px 240px at 80% 10%, rgba(255,255,255,.24), transparent 55%);
-  opacity:.85;
-  pointer-events:none;
-  z-index:0;
-}
-.card > *{position:relative; z-index:1;}
-
-h3{
-  margin:0 0 12px;
-  font:900 20px/1.25 "Sora",sans-serif;
-  color:rgba(11,18,32,.92);
-  letter-spacing:.02em;
-}
-h3::before{content:""; display:none;}
-
-.metrics{grid-area:metrics;display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
-.metric h4{margin:0 0 6px;font-weight:800;color:rgba(11,18,32,.78)}
-.metric .v{font-weight:900;font-size:18px;color:rgba(11,18,32,.92);white-space:nowrap}
-
-.pool{grid-area:pool}
-.swap{grid-area:swap}
-.recent{grid-area:recent}
-.notes{grid-area:notes}
-.analytics{grid-area:analytics}
-.stake{grid-area:stake}
-
-/* INPUTS & BUTTONS */
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-
-/* ✅ 핵심: Bal 라벨(상단) + 입력(하단) 2줄 구조 */
-.input{
-  flex:1;
-  display:flex;
-  align-items:flex-end;
-  gap:10px;
-  position:relative;
-  background:rgba(255,255,255,.72);
-  border:1px solid rgba(12,25,45,.16);
-  border-radius:18px;
-  padding:22px 12px 10px;
-  margin:10px 0;
-  min-height:66px;
-  box-shadow:0 10px 22px rgba(9,18,33,.08);
-  overflow:hidden;
-}
-.balTag{
-  position:absolute;
-  top:8px;
-  left:14px;
-  font-size:12px;
-  font-weight:800;
-  color:rgba(11,18,32,.62);
-  pointer-events:none;
-  white-space:nowrap;
-  max-width:calc(100% - 160px);
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.input.leftToken .balTag{
-  left:92px;
-  max-width:calc(100% - 240px);
-}
-.input input{
-  flex:1;
-  width:0;
-  min-width:0;
-  background:transparent;border:0;outline:0;
-  color:rgba(11,18,32,.92);
-  font-size:clamp(18px, 3.6vw, 22px);
-  font-weight:900;
-  padding:0;
-  z-index:2;
-}
-
-.maxBtn{
-  flex:0 0 auto;
-  height:40px;
-  padding:0 16px;
-  border:0;border-radius:999px;
-  font-weight:900;font-family:"Sora",sans-serif;
-  color:rgba(11,18,32,.92);
-  background:rgba(255,255,255,.88);
-  border:1px solid rgba(12,25,45,.16);
-  box-shadow:0 12px 22px rgba(9,18,33,.12);
-  cursor:pointer;
-  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-}
-.maxBtn:hover{
-  transform:translateY(-1px);
-  border-color:rgba(123,183,255,.42);
-  box-shadow:0 16px 26px rgba(9,18,33,.14);
-}
-
-.tokenBtn{
-  flex:0 0 auto;
-  display:flex;align-items:center;gap:8px;
-  padding:10px 12px;
-  border-radius:999px;
-  cursor:pointer;
-  background:rgba(255,255,255,.84);
-  border:1px solid rgba(12,25,45,.16);
-  color:rgba(11,18,32,.92);
-  white-space:nowrap;
-  box-shadow:0 8px 18px rgba(9,18,33,.08);
-  font-weight:800;
-  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
-  max-width:160px;
-}
-.tokenBtn:hover{
-  transform:translateY(-1px);
-  background:rgba(255,255,255,.94);
-  border-color:rgba(123,183,255,.42);
-  box-shadow:0 12px 24px rgba(9,18,33,.12);
-}
-.tokenBtn span{
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width:70px;
-}
-
-.tokenBtn img,
-#tokList .item img{
-  width:24px;height:24px;border-radius:50%;object-fit:cover;display:block;
-  background:#000;
-  box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 8px 14px rgba(9,18,33,.10);
-  flex:0 0 auto;
-}
-
-.flip{
-  width:40px;height:40px;border-radius:50%;
-  display:grid;place-items:center;
-  border:1px solid rgba(12,25,45,.18);
-  color:rgba(11,18,32,.85);
-  cursor:pointer;
-  background:rgba(255,255,255,.78);
-  box-shadow:0 10px 20px rgba(9,18,33,.10);
-  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-}
-.flip:hover{
-  transform:translateY(-1px);
-  border-color:rgba(123,183,255,.42);
-  box-shadow:0 14px 26px rgba(9,18,33,.12);
-}
-
-.helper{
-  display:flex;gap:12px;align-items:center;justify-content:space-between;
-  margin-top:8px;flex-wrap:wrap
-}
-.helper input{
-  width:78px;border:1px solid rgba(12,25,45,.18);background:rgba(255,255,255,.86);
-  color:rgba(11,18,32,.92);border-radius:10px;padding:7px 8px
-}
-.btn{
-  display:inline-block;min-width:140px;text-align:center;
-  padding:14px 18px;border-radius:18px;border:0;cursor:pointer;
-  background:linear-gradient(135deg, rgba(255,255,255,.92), rgba(123,183,255,.22));
-  color:rgba(11,18,32,.92);
-  font-weight:900;font-family:"Sora",sans-serif;
-  box-shadow:0 14px 28px rgba(9,18,33,.12);
-  border:1px solid rgba(12,25,45,.14);
-  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease, border-color .15s ease;
-}
-.btn:hover{
-  transform:translateY(-1px);
-  filter:brightness(1.02);
-  border-color:rgba(123,183,255,.42);
-  box-shadow:0 18px 34px rgba(9,18,33,.14);
-}
-.btn.ghost{
-  background:rgba(255,255,255,.70);
-  color:rgba(11,18,32,.88);
-  border:1px solid rgba(12,25,45,.16);
-  box-shadow:0 10px 22px rgba(9,18,33,.10);
-}
-
-/* stake: MAX 버튼 고정 */
-.input--stake{position:relative}
-.input--stake input{padding-right:92px}
-.input--stake .max{
-  position:absolute;top:50%;right:8px;transform:translateY(-50%);
-  height:40px;padding:0 16px;border:0;border-radius:999px;
-  font-weight:900;font-family:"Sora",sans-serif;color:rgba(11,18,32,.92);
-  background:rgba(255,255,255,.88);
-  border:1px solid rgba(12,25,45,.16);
-  box-shadow:0 12px 22px rgba(9,18,33,.12);
-  cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease
-}
-.input--stake .max:hover{
-  transform:translateY(-50%) translateY(-1px);
-  border-color:rgba(123,183,255,.42);
-  box-shadow:0 16px 26px rgba(9,18,33,.14);
-}
-
-.stake .statGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px}
-.stake .stat,
-.stake .amountBox,
-.kpi,
-.vizCard{
-  border:1px solid rgba(12,25,45,.16);
-  border-radius:18px;
-  background:rgba(255,255,255,.72);
-  box-shadow:0 12px 26px rgba(9,18,33,.10);
-}
-.stake .stat{padding:14px;}
-.stake .tabs{display:flex;gap:12px;margin:8px 0 10px}
-.stake .amountBox{padding:14px;}
-.stake .stake-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-.stake .stake-actions .btn{min-width:auto;width:100%}
-.stake .claimRow{display:flex;justify-content:flex-end;margin-top:12px}
-@media (max-width:560px){
-  .stake .statGrid{grid-template-columns:1fr}
-  .stake .stake-actions{grid-template-columns:1fr}
-}
-
-/* analytics */
-.kpiGrid{display:grid;gap:12px;grid-template-columns:repeat(6,1fr)}
-.kpi{padding:12px;min-height:84px}
-.kpi .label{opacity:.88;font-weight:800;margin-bottom:6px;color:rgba(11,18,32,.72)}
-.kpi .val{font-weight:900;font-size:22px;color:rgba(11,18,32,.92)}
-.kpi .sub{opacity:.72;font-size:12px;margin-top:2px;color:rgba(11,18,32,.60)}
-@media (max-width:1000px){.kpiGrid{grid-template-columns:repeat(3,1fr)}}
-@media (max-width:700px){.kpiGrid{grid-template-columns:1fr}}
-.anaGrid{display:grid;gap:16px;grid-template-columns:2fr 1fr 1fr}
-@media (max-width:1000px){.anaGrid{grid-template-columns:1fr}}
-.vizCard{padding:14px}
-.vizHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
-.vizHead .title{font-weight:900;color:rgba(11,18,32,.90)}
-.vizHead .hint{opacity:.72;font-size:12px;color:rgba(11,18,32,.62)}
-.sparkWrap{
-  height:180px;border-radius:12px;position:relative;overflow:hidden;
-  background:linear-gradient(180deg, rgba(255,255,255,.86), rgba(123,183,255,.10));
-  border:1px solid rgba(12,25,45,.10);
-}
-.sparkWrap canvas{width:100%;height:100%}
-.donutWrap,.gaugeWrap{height:220px;display:grid;place-items:center;position:relative}
-.centerStat{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
-.centerStat .big{font:900 26px/1 "Sora",sans-serif;color:rgba(11,18,32,.92)}
-.centerStat .cap{opacity:.75;font-size:12px;margin-top:4px;color:rgba(11,18,32,.62)}
-.ring{position:relative;width:200px;height:200px}
-.ring canvas{width:100%;height:100%}
-.gauge{position:relative;width:220px;height:120px}
-.gauge canvas{width:100%;height:100%}
-.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-.legend .dot{width:10px;height:10px;border-radius:50%}
-.legend .item{display:flex;align-items:center;gap:6px;opacity:.88;color:rgba(11,18,32,.78)}
-.ribbon{
-  margin-top:12px;border-radius:16px;padding:12px 14px;
-  background:rgba(255,255,255,.72);color:rgba(11,18,32,.84);
-  border:1px solid rgba(12,25,45,.14);
-  box-shadow:0 12px 22px rgba(9,18,33,.10);
-}
-
-/* 모바일 중앙 고정 */
-@media (max-width:768px){
-  .wrapper{padding:0}
-  .grid{
-    display:flex;flex-direction:column;gap:24px;
-    width:min(92vw,640px);position:relative;left:50%;transform:translateX(-50%)
+    --r:18px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
   }
-  .nav,.main{width:100%;max-width:min(92vw,640px);margin:0 auto}
-  .main{display:flex;flex-direction:column;align-items:center;gap:24px}
-  .metrics{display:flex;flex-direction:column;gap:16px;width:100%}
-  .metrics .card,.main>section,.card{width:100%;margin-left:auto;margin-right:auto}
 
-  .input{min-height:64px; padding:22px 10px 10px; gap:8px}
-  .balTag{max-width:calc(100% - 140px)}
-  .tokenBtn{max-width:138px;padding:9px 10px}
-  .tokenBtn span{max-width:62px}
-  .maxBtn{height:38px;padding:0 12px}
-  .input.leftToken .balTag{left:86px}
-}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(0,255,179,0.18), transparent 65%),
+      radial-gradient(1100px 700px at 110% 110%, rgba(0,194,255,0.14), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.05), transparent 35%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+    overflow-x:hidden;
+  }
 
-/* Notes */
-.notes .inner{
-  max-width:100%;
-  overflow:hidden;
-  position:relative;
-  background:rgba(255,255,255,.74) !important;
-  border-radius:18px !important;
-  border:1px solid rgba(12,25,45,.14) !important;
-  box-shadow:0 12px 22px rgba(9,18,33,.10);
-}
-.notes .inner::after,.notes .inner::before{display:none !important;}
-.notes .inner p{word-break:break-all;overflow-wrap:anywhere;white-space:normal}
+  a{color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding: calc(var(--headerH) + 24px) 18px 40px;}
 
-/* Token modal */
-#tokModal{
-  border:1px solid rgba(12,25,45,.18);
-  border-radius:20px;
-  background:rgba(255,255,255,.86);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  color:rgba(11,18,32,.92);
-  max-width:min(560px,92vw);
-  padding:0;
-  box-shadow:0 24px 70px rgba(9,18,33,.40);
-}
-#tokModal::backdrop{background:rgba(9,18,33,.55)}
-#tokModal header{
-  padding:14px 16px;
-  border-bottom:1px solid rgba(12,25,45,.12);
-  font-weight:900;
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  background:rgba(255,255,255,.82);
-}
-#tokSearch{
-  flex:1;
-  background:rgba(255,255,255,.92);
-  border-radius:999px;
-  border:1px solid rgba(12,25,45,.16);
-  color:rgba(11,18,32,.92);
-  padding:7px 12px;
-  font-size:14px;
-}
-#tokSearch::placeholder{color:rgba(11,18,32,.45)}
-#tokClose{
-  background:transparent;border:0;color:rgba(11,18,32,.86);cursor:pointer;
-  font-size:16px;padding:6px 10px;border-radius:10px
-}
-#tokClose:hover{background:rgba(123,183,255,.12)}
-#tokList .item:hover{background:rgba(123,183,255,.08)}
+  /* Header */
+  header{
+    position:fixed;top:0;left:0;right:0;z-index:9999;
+    height:var(--headerH);
+    display:flex;align-items:center;
+    background:rgba(5,10,12,0.62);
+    backdrop-filter: blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .hInner{max-width:1180px;margin:0 auto;width:100%;padding:0 18px;display:flex;align-items:center;gap:14px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2px}
+  .brand img{width:34px;height:34px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .nav{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:10px 12px;border-radius:999px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.06);
+    text-decoration:none;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .pill:hover{background:rgba(255,255,255,0.09)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    padding:11px 14px;border-radius:12px;
+    border:1px solid rgba(0,255,179,0.35);
+    background:linear-gradient(180deg, rgba(0,255,179,0.18), rgba(0,255,179,0.08));
+    color:var(--ink);
+    font-weight:800;
+    cursor:pointer;
+    text-decoration:none;
+    user-select:none;
+  }
+  .btn:hover{filter:brightness(1.04)}
+  .btn.secondary{
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.06);
+    font-weight:800;
+  }
 
-/* TOP 버튼 */
-#toTop{
-  position:fixed;right:14px;bottom:18px;z-index:9999;width:44px;height:44px;
-  border-radius:50%;display:grid;place-items:center;
-  background:rgba(255,255,255,.78);
-  border:1px solid rgba(12,25,45,.16);
-  backdrop-filter:blur(14px);
-  cursor:pointer;opacity:0;pointer-events:none;
-  box-shadow:0 16px 26px rgba(9,18,33,.14);
-  transition:opacity .25s ease,transform .25s ease, border-color .25s ease
-}
-#toTop svg{width:20px;height:20px;fill:rgba(11,18,32,.86)}
-#toTop.show{opacity:.92;pointer-events:auto}
-#toTop:hover{opacity:1;transform:translateY(-3px); border-color:rgba(123,183,255,.42)}
+  /* Layout */
+  .hero{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+    margin-bottom:18px;
+  }
+  .hero h1{margin:0;font-size:28px;letter-spacing:-0.3px}
+  .hero p{margin:6px 0 0;color:var(--muted);max-width:740px;line-height:1.45}
+  .grid{
+    display:grid;
+    grid-template-columns: 1.25fr .85fr;
+    gap:14px;
+    align-items:start;
+  }
+  @media (max-width: 980px){
+    .grid{grid-template-columns:1fr}
+  }
 
-/* ============================================================
-   ✅ Sushi Pools Ticker (Recently Created Pools)
-   ============================================================ */
-.metric .v #poolsTicker,
-.metric .v .poolsTicker{white-space:normal;}
-.poolsTicker{
-  position:relative;
-  overflow:hidden;
-  border-radius:14px;
-  border:1px solid rgba(12,25,45,.12);
-  background:rgba(255,255,255,.62);
-  padding:10px 12px;
-  box-shadow:0 10px 22px rgba(9,18,33,.08);
-  min-height:44px;
-}
-.poolsItem{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  text-decoration:none;
-  color:rgba(11,18,32,.92);
-  font-weight:900;
-}
-.poolsItem .pair{
-  flex:1 1 auto;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.poolsItem .meta{
-  flex:0 0 auto;
-  opacity:.78;
-  font-weight:800;
-  font-size:12px;
-  white-space:nowrap;
-}
-.poolsTicker.fadeOut{opacity:0; transform:translateY(4px); transition:opacity .22s ease, transform .22s ease;}
-.poolsTicker.fadeIn {opacity:1; transform:translateY(0);  transition:opacity .22s ease, transform .22s ease;}
+  .card{
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+    border-radius:var(--r);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .card .hd{
+    padding:14px 14px 10px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .card .hd h3{margin:0;font-size:14px;letter-spacing:.25px;text-transform:uppercase;color:var(--ink2)}
+  .card .bd{padding:14px}
+  .muted{color:var(--muted)}
+  .tiny{font-size:12px;color:var(--muted2)}
+  .sep{height:1px;background:rgba(255,255,255,0.08);margin:12px 0}
 
-/* ============================================================
-   ✅ DEXTools Chart embed (GLIP Price card)
-   ============================================================ */
-#metricGlipPrice{white-space:normal;}
-#metricGlipPrice .chartFrame{
-  border-radius:14px;
-  overflow:hidden;
-  border:1px solid rgba(12,25,45,.12);
-  background:rgba(255,255,255,.62);
-  box-shadow:0 10px 22px rgba(9,18,33,.08);
-}
-#metricGlipPrice iframe{
-  width:100% !important;
-  height:340px;
-  border:0;
-  display:block;
-}
-@media (max-width:768px){
-  #metricGlipPrice iframe{height:320px;}
-}
-@media (max-width:420px){
-  #metricGlipPrice iframe{height:300px;}
-}
+  /* Swap */
+  .swapBox{display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .field{
+    border:1px solid rgba(255,255,255,0.10);
+    background:rgba(0,0,0,0.18);
+    border-radius:14px;
+    padding:12px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .field .left{display:flex;flex-direction:column;gap:4px;min-width:140px}
+  .label{font-size:12px;color:var(--muted2);font-weight:700}
+  input.amount{
+    width:100%;
+    font-size:20px;
+    font-weight:800;
+    color:var(--ink);
+    background:transparent;
+    border:0;
+    outline:0;
+  }
+  .tokenBtn{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:10px 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.14);
+    background:rgba(255,255,255,0.06);
+    cursor:pointer;
+    font-weight:900;
+  }
+  .tokenBtn img{width:22px;height:22px;border-radius:999px}
+  .tokenBtn .sym{letter-spacing:.2px}
+  .swapActions{display:flex;gap:10px;flex-wrap:wrap}
 
-/* ============================================================
-   ✅ NEW: In-app UI Modal (replaces browser alert/confirm)
-   ============================================================ */
-#uiModal{
-  border:1px solid rgba(12,25,45,.18);
-  border-radius:22px;
-  background:rgba(255,255,255,.88);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  color:rgba(11,18,32,.92);
-  width:min(680px, 92vw);
-  padding:0;
-  box-shadow:0 24px 80px rgba(9,18,33,.45);
-}
-#uiModal::backdrop{background:rgba(9,18,33,.58)}
-#uiModal header{
-  padding:14px 16px;
-  border-bottom:1px solid rgba(12,25,45,.12);
-  font-weight:900;
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  background:rgba(255,255,255,.86);
-}
-#uiTitle{
-  font:900 14px/1.1 "Sora",sans-serif;
-  letter-spacing:.02em;
-}
-#uiClose{
-  background:transparent;border:0;color:rgba(11,18,32,.86);cursor:pointer;
-  font-size:16px;padding:6px 10px;border-radius:10px
-}
-#uiClose:hover{background:rgba(123,183,255,.12)}
-#uiBody{
-  padding:14px 16px 4px;
-}
-#uiMessage{
-  margin:0;
-  padding:12px 12px;
-  border-radius:14px;
-  border:1px solid rgba(12,25,45,.12);
-  background:rgba(255,255,255,.72);
-  box-shadow:0 12px 22px rgba(9,18,33,.10);
-  max-height:min(52vh, 420px);
-  overflow:auto;
-  white-space:pre-wrap;
-  word-break:break-word;
-  font:700 13px/1.45 "Plus Jakarta Sans", system-ui;
-  color:rgba(11,18,32,.90);
-}
-#uiFooter{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:10px;
-  padding:12px 16px 16px;
-}
-#uiFooter .btn{min-width:auto}
-#uiCopy{
-  background:rgba(255,255,255,.70);
-  border:1px solid rgba(12,25,45,.16);
-}
-#uiCopy:hover{border-color:rgba(123,183,255,.42)}
-@media (max-width:480px){
-  #uiFooter{flex-wrap:wrap}
-  #uiFooter .btn{width:100%}
-}
+  /* Token modal */
+  .modalBack{
+    position:fixed;inset:0;z-index:99999;
+    background:rgba(0,0,0,0.55);
+    display:none;align-items:center;justify-content:center;
+    padding:18px;
+  }
+  .modal{
+    width:min(520px, 100%);
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:linear-gradient(180deg, rgba(20,32,30,0.92), rgba(10,16,15,0.92));
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    overflow:hidden;
+  }
+  .modal .mhd{padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:space-between}
+  .modal .mhd b{font-size:14px;letter-spacing:.2px}
+  .modal .mbd{padding:12px 14px 14px}
+  .search{
+    width:100%;
+    padding:12px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(0,0,0,0.20);
+    color:var(--ink);
+    outline:none;
+    font-weight:700;
+  }
+  .list{margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+  .tokRow{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 10px;border-radius:14px;
+    border:1px solid rgba(255,255,255,0.10);
+    background:rgba(255,255,255,0.05);
+    cursor:pointer;
+  }
+  .tokRow:hover{background:rgba(255,255,255,0.08)}
+  .tokRow img{width:26px;height:26px;border-radius:999px}
+  .tokRow .meta{display:flex;flex-direction:column}
+  .tokRow .meta .sym{font-weight:900}
+  .tokRow .meta .addr{font-size:11px;color:var(--muted2)}
 
-/* ✅ Swap status line (silent mode UX) */
-#swapStatus{
-  margin-top:10px;
-  padding:10px 12px;
-  border-radius:14px;
-  border:1px solid rgba(12,25,45,.12);
-  background:rgba(255,255,255,.70);
-  box-shadow:0 10px 18px rgba(9,18,33,.08);
-  font-size:12px;
-  line-height:1.35;
-  color:rgba(11,18,32,.78);
-  display:none;
-}
-#swapStatus a{color:rgba(11,18,32,.90); font-weight:900; text-decoration:none}
-#swapStatus a:hover{text-decoration:underline}
+  /* Metrics cards */
+  .metrics{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:14px;
+  }
+  @media (max-width: 980px){ .metrics{grid-template-columns:1fr} }
 
-/* ============================================================
-   ✅ NEW: Status Panel ("G-DEX 상태판")
-   ============================================================ */
-.statusGrid{
-  display:grid;
-  gap:12px;
-  grid-template-columns:repeat(2,1fr);
-}
-@media (max-width:900px){
-  .statusGrid{grid-template-columns:1fr;}
-}
-.statusItem{
-  padding:12px;
-  border-radius:18px;
-  border:1px solid rgba(12,25,45,.14);
-  background:rgba(255,255,255,.72);
-  box-shadow:0 12px 22px rgba(9,18,33,.10);
-}
-.statusItem .label{
-  font-weight:900;
-  color:rgba(11,18,32,.72);
-  font-size:12px;
-}
-.statusItem .val{
-  margin-top:6px;
-  font-weight:900;
-  color:rgba(11,18,32,.92);
-  word-break:break-word;
-}
-.statusItem .sub{
-  margin-top:6px;
-  font-size:12px;
-  color:rgba(11,18,32,.62);
-  opacity:.92;
-}
-#txLog{
-  margin-top:12px;
-  padding:12px;
-  border-radius:18px;
-  border:1px solid rgba(12,25,45,.14);
-  background:rgba(255,255,255,.72);
-  box-shadow:0 12px 22px rgba(9,18,33,.10);
-  max-height:260px;
-  overflow:auto;
-  font-size:12px;
-  line-height:1.45;
-  color:rgba(11,18,32,.78);
-}
-.txLine{
-  display:flex;
-  gap:10px;
-  align-items:flex-start;
-  padding:6px 0;
-  border-bottom:1px dashed rgba(12,25,45,.12);
-}
-.txLine:last-child{border-bottom:0}
-.txLine .t{opacity:.72; min-width:66px}
-.txLine a{color:rgba(11,18,32,.90); font-weight:900; text-decoration:none}
-.txLine a:hover{text-decoration:underline}
-.smallPill{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:6px 10px;border-radius:999px;
-  border:1px solid rgba(12,25,45,.14);
-  background:rgba(255,255,255,.70);
-  font-weight:900;
-  font-size:12px;
-  color:rgba(11,18,32,.86);
-  box-shadow:0 10px 18px rgba(9,18,33,.08);
-}
-.smallPill.ok{border-color:rgba(57,217,138,.35)}
-.smallPill.bad{border-color:rgba(255,120,120,.35)}
+  .metric{
+    /* ✅ 핵심: 데스크탑에서 보이던 "아랫 공란"을 없애기 위한 구조 */
+    display:flex;
+    flex-direction:column;
+    min-height: 210px; /* 원래 카드 높이 느낌 유지 */
+  }
+  .metric h4{
+    margin:0;
+    font-size:14px;
+    font-weight:900;
+    color:var(--ink2);
+    letter-spacing:.2px;
+  }
+  .metric .bd{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+  }
+  .metric .v{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between; /* ✅ 상단 컨텐츠 + 하단 보조영역으로 자연스럽게 채움 */
+    gap:12px;
+    min-height: 0;
+  }
+
+  .ticker{
+    border:1px solid rgba(255,255,255,0.10);
+    background:rgba(0,0,0,0.18);
+    border-radius:14px;
+    padding:12px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .ticker a{text-decoration:none;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}
+  .pair{font-weight:900}
+  .metaLine{font-size:12px;color:var(--muted);text-align:right}
+
+  .metricFoot{
+    border-top:1px solid rgba(255,255,255,0.08);
+    padding-top:10px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    flex-wrap:wrap;
+  }
+  .statusPill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:7px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.05);
+    font-size:12px;
+    font-weight:800;
+    color:var(--muted);
+  }
+  .dot{
+    width:8px;height:8px;border-radius:999px;background:var(--acc);
+    box-shadow:0 0 18px rgba(0,255,179,.55);
+  }
+  .miniBtns{display:flex;gap:8px;flex-wrap:wrap}
+  .mini{
+    padding:8px 10px;border-radius:12px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.05);
+    text-decoration:none;
+    font-size:12px;
+    font-weight:900;
+  }
+  .mini:hover{background:rgba(255,255,255,0.08)}
+
+  /* Major prices list */
+  .priceList{display:flex;flex-direction:column;gap:8px}
+  .pRow{
+    border:1px solid rgba(255,255,255,0.10);
+    background:rgba(0,0,0,0.18);
+    border-radius:14px;
+    padding:10px 12px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .pLeft{display:flex;align-items:center;gap:10px}
+  .pLeft img{width:22px;height:22px;border-radius:999px}
+  .pName{font-weight:900}
+  .pRight{text-align:right}
+  .chg{font-size:12px;font-weight:900}
+  .up{color:#35ffb7}
+  .dn{color:#ff6b6b}
+
+  /* Right column cards */
+  .rightCol{display:flex;flex-direction:column;gap:14px}
+
+  /* GLIP price iframe */
+  .iframeWrap{
+    border:1px solid rgba(255,255,255,0.10);
+    background:rgba(0,0,0,0.18);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .iframeWrap iframe{
+    width:100%;
+    height:420px;
+    border:0;
+    display:block;
+  }
+  @media (max-width: 520px){
+    .iframeWrap iframe{height:380px}
+  }
+
+  /* Toast */
+  .toast{
+    position:fixed;left:18px;bottom:18px;z-index:999999;
+    max-width:min(520px, calc(100% - 36px));
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(0,0,0,0.70);
+    backdrop-filter: blur(10px);
+    padding:12px 14px;
+    display:none;
+    box-shadow:0 20px 60px rgba(0,0,0,.55);
+  }
+  .toast b{display:block;margin-bottom:4px}
+  .toast .tbtns{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .toast .tbtn{
+    padding:8px 10px;border-radius:12px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.05);
+    font-weight:900;font-size:12px;
+    cursor:pointer;
+    color:var(--ink);
+  }
 </style>
 </head>
 
 <body>
-<!-- HERO -->
-<section class="hero">
-  <div class="heroCharacters">
-    <div class="heroSanta">🎅</div>
-    <div class="heroRudolph">🦌</div>
-  </div>
-  <div class="heroOverlaySnow"></div>
-  <div class="heroText">
-    <div>
-      <h2>G-DEX WINTER EDITION</h2>
-      <p>Elegant swaps and staking in a frosted, transparent interface.</p>
-    </div>
-  </div>
-</section>
-
-<!-- Link bar -->
-<section class="heroLinks">
-  <div class="heroLinks-inner">
-    <a class="heroBtn" href="https://t.me/GLIPFoundation" target="_blank" rel="noopener noreferrer">
-      <span class="icon">💬</span><span>Telegram</span>
-    </a>
-    <a class="heroBtn" href="mailto:contact_lounge@glipchain.com">
-      <span class="icon">✉️</span><span>Email</span>
-    </a>
-    <a class="heroBtn" href="https://glipchain.com" target="_blank" rel="noopener noreferrer">
-      <span class="icon">🌐</span><span>GLIP Official</span>
-    </a>
-    <a class="heroBtn" id="btnListing" href="https://glipchain.com/ListingInquiryver01" target="_blank" rel="noopener noreferrer">
-      <span class="icon">📈</span><span>Listing Inquiry</span>
-    </a>
-  </div>
-</section>
-
-<div class="wrapper" style="padding-top:16px">
-  <div class="grid">
-    <!-- LEFT NAV -->
-    <aside class="nav">
-      <div class="brand">
-        <img src="https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png" alt="GLIP logo">
-        <h1>G-DEX</h1>
+<header>
+  <div class="hInner">
+    <div class="brand">
+      <img src="G_DEX_icon.png" alt="G-DEX">
+      <div>
+        <div style="font-size:14px;line-height:1;font-weight:900;">G-DEX</div>
+        <div class="tiny" style="margin-top:2px;">GLIP DEX Interface</div>
       </div>
-      <a href="#swap"><span>Swap</span></a>
-      <a href="#pool"><span>Pool</span></a>
-      <a href="#analytics"><span>Analytics</span></a>
-      <a href="#stake"><span>Stake</span></a>
-      <div class="note">Direct routing via SushiSwap V2 Router. DYOR — not financial advice.</div>
-      <button class="btn install-cta" id="installSide" type="button">Install G-DEX App</button>
-    </aside>
+    </div>
 
-    <!-- RIGHT CONTENT -->
-    <main class="main">
-      <!-- Metrics -->
-      <section class="metrics">
+    <nav class="nav">
+      <a class="pill" href="https://glipchain.com" target="_blank" rel="noopener">GLIP</a>
+      <a class="pill" href="https://gdex-app.com" target="_blank" rel="noopener">Exchange</a>
+      <button class="btn" id="btnConnect">Connect Wallet</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>G-DEX v1 Beta</h1>
+      <p>
+        A clean GLIP-focused swap interface. For best routing & execution, swaps open on SushiSwap with your selected tokens.
+      </p>
+    </div>
+    <div class="tiny" id="netLine">Network: —</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div>
+      <!-- Swap card -->
+      <div class="card">
+        <div class="hd">
+          <h3>Swap</h3>
+          <div class="tiny" id="addrLine">Not connected</div>
+        </div>
+        <div class="bd">
+          <div class="swapBox">
+            <div class="field">
+              <div class="left">
+                <div class="label">You pay</div>
+                <input class="amount" id="amtIn" inputmode="decimal" placeholder="0.0" />
+                <div class="tiny" id="balIn">Balance: —</div>
+              </div>
+              <button class="tokenBtn" id="pickIn">
+                <img id="inIcon" alt="" />
+                <span class="sym" id="inSym">—</span>
+              </button>
+            </div>
+
+            <div class="row" style="justify-content:center">
+              <button class="btn secondary" id="btnFlip" title="Flip">↕ Flip</button>
+              <div class="tiny" id="pxLine">Quote: —</div>
+            </div>
+
+            <div class="field">
+              <div class="left">
+                <div class="label">You receive</div>
+                <input class="amount" id="amtOut" inputmode="decimal" placeholder="0.0" disabled />
+                <div class="tiny" id="balOut">Balance: —</div>
+              </div>
+              <button class="tokenBtn" id="pickOut">
+                <img id="outIcon" alt="" />
+                <span class="sym" id="outSym">—</span>
+              </button>
+            </div>
+
+            <div class="swapActions">
+              <button class="btn" id="btnSwap">Open Swap</button>
+              <a class="btn secondary" id="btnPool" target="_blank" rel="noopener">View Pools</a>
+            </div>
+
+            <div class="tiny">
+              Tip: If you’re on the wrong network, switch to <b>Ethereum Mainnet</b> and refresh.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:14px"></div>
+
+      <!-- Metrics row -->
+      <div class="metrics">
+        <!-- Recently created pools -->
         <div class="card metric">
-          <h4>Recently Created Pools</h4>
-          <div class="v" id="metricPoolsText">
-            <div class="poolsTicker" id="poolsTicker" aria-label="Sushi pools ticker">
-              <a class="poolsItem" id="poolsTickerLink" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">
-                <span class="pair" id="poolsTickerPair">—</span>
-                <span class="meta" id="poolsTickerMeta"></span>
-              </a>
-            </div>
+          <div class="hd">
+            <h3>On-chain</h3>
+            <div class="tiny" id="poolsUpdated">—</div>
           </div>
-        </div>
+          <div class="bd">
+            <div class="v" id="metricPoolsText">
+              <div>
+                <h4>Recently Created Pools</h4>
+                <div style="height:10px"></div>
 
-        <div class="card metric">
-          <h4>Major Coin Prices</h4>
-          <div class="v" id="metricPricesText">
-            <div class="poolsTicker" id="pricesTicker" aria-label="Major coin prices ticker">
-              <a class="poolsItem" id="pricesTickerLink" href="https://www.coingecko.com" target="_blank" rel="noopener">
-                <span class="pair" id="pricesTickerPair">—</span>
-                <span class="meta" id="pricesTickerMeta"></span>
-              </a>
-            </div>
-          </div>
-        </div>
+                <div class="ticker">
+                  <a class="poolsItem" id="poolsTickerLink" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">
+                    <span class="pair" id="poolsTickerPair">—</span>
+                    <span class="metaLine" id="poolsTickerMeta"></span>
+                  </a>
+                </div>
 
-        <div class="card metric">
-          <h4>GLIP Price</h4>
-          <div class="v" id="metricGlipPrice">
-            <div class="chartFrame">
-              <iframe id="dextools-widget"
-                title="DEXTools Trading Chart"
-                width="500" height="400"
-                loading="lazy"
-                src="https://www.dextools.io/widget-chart/en/ether/pe-light/0xd304b9c49f389f27c5e75e1469e903da5320d3b4?theme=light&chartType=2&chartResolution=30&drawingToolbars=false"></iframe>
-            </div>
-          </div>
-        </div>
-      </section>
+                <div class="tiny" style="margin-top:8px" id="poolsHint">
+                  Showing the latest pool signal feed (best-effort).
+                </div>
+              </div>
 
-      <!-- Swap -->
-      <section class="card swap" id="swap">
-        <h3>Swap</h3>
-
-        <div class="input" id="swapSellWrap">
-          <div class="balTag" id="sellBal">Bal: —</div>
-          <input id="sell" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
-          <button class="maxBtn" id="swapMax" type="button">MAX</button>
-          <button class="tokenBtn" id="sellBtn" type="button"><img id="sellI" src="" alt=""><span id="sellS" data-address="">ETH</span></button>
-        </div>
-
-        <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
-
-        <div class="input" id="swapBuyWrap">
-          <div class="balTag" id="buyBal">Bal: —</div>
-          <input id="buy" placeholder="0.0" type="number" disabled>
-          <button class="tokenBtn" id="buyBtn" type="button"><img id="buyI" src="" alt=""><span id="buyS" data-address="">GLIP</span></button>
-        </div>
-
-        <div class="helper">
-          <div>
-            Slippage <input id="slip" type="number" value="2" min="0" max="50" step="0.1"> %
-            <span id="slipHint" style="font-size:12px;opacity:.68;margin-left:6px;"></span>
-          </div>
-          <button class="btn" id="swapConnect" type="button">Connect Wallet</button>
-        </div>
-        <div style="height:10px"></div>
-        <button class="btn" id="swapBtn" type="button" style="width:100%">Swap</button>
-
-        <!-- ✅ silent mode status line -->
-        <div id="swapStatus"></div>
-      </section>
-
-      <!-- ✅ REPLACED: Recent Transactions -> G-DEX 상태판 -->
-      <section class="card recent" id="status">
-        <h3>G-DEX Status Board<h3>
-
-        <div class="statusGrid">
-          <div class="statusItem">
-            <div class="label">Boot / UI</div>
-            <div class="val" id="stBoot">—</div>
-            <div class="sub" id="stBootSub">—</div>
-          </div>
-
-          <div class="statusItem">
-            <div class="label">Wallet</div>
-            <div class="val" id="stWallet">—</div>
-            <div class="sub" id="stWalletSub">—</div>
-          </div>
-
-          <div class="statusItem">
-            <div class="label">Network</div>
-            <div class="val" id="stNet">—</div>
-            <div class="sub" id="stNetSub">—</div>
-          </div>
-
-          <div class="statusItem">
-            <div class="label">Routing</div>
-            <div class="val" id="stRoute">—</div>
-            <div class="sub" id="stRouteSub">—</div>
-          </div>
-
-          <div class="statusItem">
-            <div class="label">Proxy Fees</div>
-            <div class="val" id="stFee">—</div>
-            <div class="sub" id="stFeeSub">—</div>
-          </div>
-
-          <div class="statusItem">
-            <div class="label">Data Sources</div>
-            <div class="val" id="stSources">—</div>
-            <div class="sub" id="stSourcesSub">—</div>
-          </div>
-        </div>
-
-        <div class="row" style="justify-content:space-between;margin-top:12px;gap:10px">
-          <div class="row" style="gap:8px">
-            <span class="smallPill" id="pillWallet">Wallet</span>
-            <span class="smallPill" id="pillNet">Mainnet</span>
-            <span class="smallPill" id="pillBackend">Backend</span>
-            <span class="smallPill" id="pillCG">CoinGecko</span>
-          </div>
-          <div class="row" style="gap:8px;justify-content:flex-end">
-            <button class="btn ghost" id="btnRefreshStatus" type="button" style="min-width:auto;padding:10px 14px">Refresh</button>
-            <button class="btn" id="btnCopyDiag" type="button" style="min-width:auto;padding:10px 14px">Copy Diagnostic</button>
-          </div>
-        </div>
-
-        <div id="txLog" aria-label="Recent TX log">
-          <div style="opacity:.78">No recent transactions yet.</div>
-        </div>
-
-       
-      </section>
-
-      <!-- Pool -->
-      <section class="card pool" id="pool">
-        <h3>Pool</h3>
-        <div style="
-          background:rgba(255,255,255,.72);
-          padding:10px 14px;border-radius:12px;margin-bottom:12px;
-          font-size:13px;line-height:1.5;color:rgba(11,18,32,.78);
-          border:1px solid rgba(12,25,45,.14);
-          box-shadow:0 12px 22px rgba(9,18,33,.08);
-        ">
-          <strong style="font-weight:900;color:rgba(11,18,32,.90);">G-DEX Pool v1 — SushiSwap-Based</strong><br>
-          Liquidity for GLIP currently operates through the GLIP–ETH pool on SushiSwap V2.
-          The <b>Supply</b> button will redirect you to SushiSwap to add or remove liquidity.
-          Pool metrics are manually updated during the early launch phase.
-          Regular users typically only need the <b>Swap</b> function.
-        </div>
-
-        <div class="row" style="gap:8px;margin-bottom:6px">
-          <button class="btn" type="button" style="min-width:auto;padding:10px 14px">Add</button>
-          <button class="btn ghost" type="button" style="min-width:auto;padding:10px 14px">Remove</button>
-          <button class="btn ghost" type="button" style="min-width:auto;padding:10px 14px">My Positions</button>
-        </div>
-
-        <div class="input leftToken" id="pool0Wrap">
-          <div class="balTag" id="pBal0">Bal: —</div>
-          <button class="tokenBtn" id="pT0Btn" type="button"><img id="pT0Img" src="" alt=""><span id="pT0Sym" data-address="">ETH</span></button>
-          <input id="pAmt0" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
-        </div>
-
-        <div class="row" style="justify-content:center"><div class="flip" id="pFlip">⇅</div></div>
-
-        <div class="input leftToken" id="pool1Wrap">
-          <div class="balTag" id="pBal1">Bal: —</div>
-          <button class="tokenBtn" id="pT1Btn" type="button"><img id="pT1Img" src="" alt=""><span id="pT1Sym" data-address="">GLIP</span></button>
-          <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
-        </div>
-
-        <div class="card" style="
-          background:rgba(255,255,255,.72);
-          margin-top:6px;
-          border:1px solid rgba(12,25,45,.14);
-          box-shadow:0 12px 22px rgba(9,18,33,.10)
-        ">
-          <div class="row" style="justify-content:space-between">
-            <div>Price (T1 per T0)</div><div id="pPrice">1 GLIP ≈ 0.0000170 ETH</div>
-          </div>
-          <div class="row" style="justify-content:space-between">
-            <div>Share preview</div><div id="pShare">Initial GLIP-ETH pool on SushiSwap V2</div>
-          </div>
-          <div class="row" style="justify-content:flex-end;margin-top:6px">
-            <div id="pManualNote" style="font-size:12px;opacity:.78;text-align:right"></div>
-          </div>
-        </div>
-
-        <div class="helper">
-          <div>Slippage <input id="pSlip" type="number" value="2" min="0" max="10" step="0.1"> %</div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <button class="btn" id="poolConnect" type="button">Connect Wallet</button>
-            <button class="btn" id="poolSupply" type="button">Supply</button>
-          </div>
-        </div>
-
-        <p id="poolFooterNote" style="margin-top:12px;font-size:12px;opacity:.72"></p>
-      </section>
-
-      <!-- Notes -->
-      <section class="card notes">
-        <h3>Notes</h3>
-        <div class="card inner" style="background:rgba(255,255,255,.70);border:1px solid rgba(12,25,45,.14)">
-          <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
-          <p class="wrap" style="margin:.2rem 0">• Proxy Router (G-DEX): 0x198C5B84dB9B1139092EDd9D56bE25653fEAC13D</p>
-          <p class="wrap" style="margin:.2rem 0">• Underlying Router: SushiSwap V2 — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
-          <p class="wrap" style="margin:.2rem 0">• Fee policy: ETH→Token uses % fee; Token swaps require a flat ETH fee (msg.value).</p>
-          <p class="wrap" style="margin:.2rem 0">• If Proxy Router preflight reverts (e.g., USDT approve edge-case), the UI can fall back to Direct Sushi swap.</p>
-        </div>
-        <button class="btn install-cta" id="installMain" type="button" style="margin-top:12px;">Install G-DEX App</button>
-      </section>
-
-      <!-- Analytics -->
-      <section class="card analytics" id="analytics">
-        <h3>Analytics — “Blockchain that gives back”</h3>
-        <div style="
-          margin-top:6px;margin-bottom:12px;padding:10px 14px;border-radius:12px;
-          border:1px solid rgba(12,25,45,0.14);
-          background:rgba(255,255,255,.72);
-          font-size:13px;line-height:1.5;color:rgba(11,18,32,.74);
-          box-shadow:0 12px 22px rgba(9,18,33,.08);
-        ">
-          <strong style="font-weight:900;color:rgba(11,18,32,.90);">G-DEX Analytics — Early Preview</strong><br>
-          G-DEX Analytics is in an early preview stage. The metrics shown are demonstration values for UI preview only.
-          <ul style="margin:6px 0 4px 18px; padding:0;">
-            <li>GLIP staking &amp; treasury contracts</li>
-            <li>Quarterly rebate distributions</li>
-            <li>ESG vault allocations</li>
-            <li>On-chain governance voting results</li>
-            <li>Carbon-offset tracking partners</li>
-          </ul>
-        </div>
-
-        <div class="kpiGrid">
-          <div class="kpi"><div class="label">Rebate Rate (R%)</div><div class="val" id="kRebate">—</div><div class="sub">Governance-set quarterly</div></div>
-          <div class="kpi"><div class="label">Returned to Users (QTD)</div><div class="val" id="kReturned">—</div><div class="sub">Cumulative fee-rebates</div></div>
-          <div class="kpi"><div class="label">ESG Vault Accrual (QTD)</div><div class="val" id="kESG">—</div><div class="sub">Green funds & impact</div></div>
-          <div class="kpi"><div class="label">Transparency Index</div><div class="val" id="kTransparency">—</div><div class="sub">On-chain proof & disclosures</div></div>
-          <div class="kpi"><div class="label">Gov. Turnout (last vote)</div><div class="val" id="kTurnout">—</div><div class="sub">Community participation</div></div>
-          <div class="kpi"><div class="label">GLIP Green Score</div><div class="val" id="kGreen">—</div><div class="sub">Fee impact × ESG allocation</div></div>
-        </div>
-
-        <div class="anaGrid" style="margin-top:12px">
-          <div class="vizCard">
-            <div class="vizHead"><div class="title">Returned Value to Users — Cumulative</div><div class="hint" id="rvHint">—</div></div>
-            <div class="sparkWrap"><canvas id="spark"></canvas></div>
-            <div class="legend">
-              <div class="item"><span class="dot" style="background:#39d98a"></span> Users</div>
-              <div class="item" style="opacity:.75">Projection assumes constant R%</div>
-            </div>
-          </div>
-
-          <div class="vizCard">
-            <div class="vizHead"><div class="title">Quarterly Rebate Split</div><div class="hint">Users / ESG / Treasury</div></div>
-            <div class="donutWrap">
-              <div class="ring">
-                <canvas id="donut"></canvas>
-                <div class="centerStat"><div><div class="big" id="donutCenter">—</div><div class="cap">of Net Fees</div></div></div>
+              <!-- ✅ 공란을 “상태 + CTA”로 채워 완성도 개선 -->
+              <div class="metricFoot">
+                <span class="statusPill"><span class="dot"></span><span id="poolsStatus">Live sync</span></span>
+                <div class="miniBtns">
+                  <a class="mini" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">Explore</a>
+                  <a class="mini" href="https://www.sushi.com/ethereum/explore/tokens" target="_blank" rel="noopener">Tokens</a>
+                </div>
               </div>
             </div>
-            <div class="legend" id="donutLegend"></div>
           </div>
+        </div>
 
-          <div class="vizCard">
-            <div class="vizHead"><div class="title">Green Impact — Carbon Offset (est.)</div><div class="hint" id="giHint">—</div></div>
-            <div class="gaugeWrap"><div class="gauge"><canvas id="gauge"></canvas></div></div>
-            <div class="legend">
-              <div class="item"><span class="dot" style="background:#39d98a"></span> ESG-funded offsets</div>
-              <div class="item"><span class="dot" style="background:#11c48c"></span> target</div>
+        <!-- Major coin prices -->
+        <div class="card metric">
+          <div class="hd">
+            <h3>Market</h3>
+            <div class="tiny" id="majorUpdated">—</div>
+          </div>
+          <div class="bd">
+            <div class="v">
+              <div>
+                <h4>Major Coin Prices</h4>
+                <div style="height:10px"></div>
+
+                <div class="priceList" id="majorList">
+                  <!-- rows injected -->
+                </div>
+
+                <div class="tiny" style="margin-top:8px" id="majorHint">
+                  Prices are fetched from a public market API (best-effort).
+                </div>
+              </div>
+
+              <!-- ✅ 공란을 “상태 + CTA”로 채워 완성도 개선 -->
+              <div class="metricFoot">
+                <span class="statusPill"><span class="dot"></span><span id="majorStatus">Auto refresh</span></span>
+                <div class="miniBtns">
+                  <a class="mini" href="https://www.coingecko.com" target="_blank" rel="noopener">Open Market</a>
+                  <a class="mini" href="https://www.sushi.com/ethereum/swap" target="_blank" rel="noopener">Swap</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="ribbon" id="esgRibbon"><strong>ESG Contribution:</strong> <span id="esgNote">—</span></div>
-      </section>
+      </div><!-- /metrics -->
+    </div>
 
-      <!-- Stake -->
-      <section class="card stake" id="stake">
-        <h3>Stake</h3>
-        <div style="
-          background:rgba(255,255,255,.72);
-          padding: 10px 14px;border-radius: 12px;margin-bottom: 14px;
-          font-size: 14px;line-height: 1.45;color: rgba(11,18,32,.74);
-          border: 1px solid rgba(12,25,45,0.14);
-          box-shadow:0 12px 22px rgba(9,18,33,.08);
-        ">
-          <b style="color:rgba(11,18,32,.90)">Staking (v1 Preview)</b><br>
-          GLIP staking and reward distribution will be activated in G-DEX v2 after routing is stabilized.<br>
-          This section currently displays demonstration values only.
+    <!-- RIGHT -->
+    <div class="rightCol">
+      <!-- GLIP price card -->
+      <div class="card">
+        <div class="hd">
+          <h3>GLIP Price</h3>
+          <div class="tiny">DEXTools</div>
         </div>
-
-        <div class="statGrid">
-          <div class="stat"><div style="opacity:.78;font-weight:800">APR</div><div id="apr" style="font-weight:900;font-size:22px;margin-top:4px">—</div></div>
-          <div class="stat"><div style="opacity:.78;font-weight:800">My Staked</div><div id="myStaked" style="font-weight:900;font-size:22px;margin-top:4px">—</div></div>
-          <div class="stat"><div style="opacity:.78;font-weight:800">Earned</div><div id="earned" style="font-weight:900;font-size:22px;margin-top:4px">—</div></div>
-          <div class="stat"><div style="opacity:.78;font-weight:800">Lock</div><div style="font-weight:900;font-size:22px;margin-top:4px">Flexible</div></div>
-        </div>
-
-        <div class="tabs">
-          <button class="btn" id="tabStake" type="button">Stake</button>
-          <button class="btn ghost" id="tabUnstake" type="button">Unstake</button>
-        </div>
-
-        <div class="amountBox">
-          <div class="input input--stake" style="margin:0;">
-            <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
-            <button class="max" type="button">MAX</button>
+        <div class="bd">
+          <div class="iframeWrap">
+            <iframe
+              id="dextools-widget"
+              title="DEXTools Trading Chart"
+              src="https://www.dextools.io/widget-chart/en/ether/pe-light/0xd304b9c49f389f27c5e75e1469e903da5320d3b4?theme=light&chartType=2&chartResolution=30&drawingToolbars=false"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            ></iframe>
           </div>
-          <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
-          <div style="margin-top:6px; opacity:.72; font-size:12px;">Wallet balance: <span id="stakeBalText">—</span></div>
-
-          <div class="stake-actions">
-            <button class="btn" id="btnConn" type="button">Connect Wallet</button>
-            <button class="btn" id="btnStake" type="button">Stake GLIP</button>
+          <div class="tiny" style="margin-top:10px">
+            Pair: 0xd304…d3b4 (Ethereum)
           </div>
-          <div style="margin-top:10px">Est. Rewards (30d): <span id="est30">—</span></div>
         </div>
+      </div>
 
-        <div class="claimRow"><button class="btn ghost" id="btnClaim" type="button">Claim Rewards</button></div>
-        <div style="margin-top:12px;opacity:.76">Note: Rewards stream per block. (Demo data)</div>
-      </section>
-    </main>
+      <!-- Quick links -->
+      <div class="card">
+        <div class="hd">
+          <h3>Quick Actions</h3>
+          <div class="tiny">Official</div>
+        </div>
+        <div class="bd">
+          <div class="row">
+            <a class="btn" href="https://gdex-app.com" target="_blank" rel="noopener">Open G-DEX</a>
+            <a class="btn secondary" href="https://glipchain.com" target="_blank" rel="noopener">GLIP Website</a>
+          </div>
+          <div class="sep"></div>
+          <div class="tiny">
+            If you are preparing for a listing, use the official contact channel shown on the website.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+</div><!-- /wrap -->
+
+<!-- Token modal -->
+<div class="modalBack" id="modalBack" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="mhd">
+      <b>Select token</b>
+      <button class="btn secondary" id="closeModal" style="padding:8px 10px;border-radius:12px">Close</button>
+    </div>
+    <div class="mbd">
+      <input class="search" id="tokSearch" placeholder="Search symbol (e.g., ETH, USDT, GLIP)" />
+      <div class="list" id="tokList"></div>
+      <div class="tiny" style="margin-top:10px">
+        Token list is minimized for stability (recommended).
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- TOP button -->
-<button id="toTop" aria-label="Back to top" title="Top">
-  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 7-1.4 1.4L13 9.8V20h-2V9.8L6.4 13.4 5 12z"/></svg>
-</button>
-
-<!-- Token Selector Modal -->
-<dialog id="tokModal">
-  <header>
-    <input id="tokSearch" type="text" placeholder="Search token by name, symbol, or address" autocomplete="off">
-    <button id="tokClose" title="Close" type="button">✕</button>
-  </header>
-  <div class="content" style="padding:16px">
-    <div id="tokList"></div>
-  </div>
-</dialog>
-
-<!-- ✅ NEW: In-app UI Modal (Alert/Confirm) -->
-<dialog id="uiModal">
-  <header>
-    <div id="uiTitle">Notice</div>
-    <button id="uiClose" title="Close" type="button">✕</button>
-  </header>
-  <div id="uiBody">
-    <pre id="uiMessage"></pre>
-  </div>
-  <div id="uiFooter">
-    <button class="btn ghost" id="uiCopy" type="button" style="display:none;">Copy</button>
-    <button class="btn ghost" id="uiCancel" type="button" style="display:none;">Cancel</button>
-    <button class="btn" id="uiOk" type="button">OK</button>
-  </div>
-</dialog>
-
-<!-- v1 수기 메트릭 설정 -->
-<script id="gdexPoolConfig" type="application/json">
-{
-  "recentPoolsText": "GLIP–ETH - SushiSwap V2",
-  "volume24hUsd": "$ 10,580.18",
-  "glipPriceUsd": "0.0556",
-  "poolManualNote": "Manual: 1 GLIP \\u2248 0.000017 ETH\\nInitial GLIP–ETH pool on SushiSwap V2",
-  "poolFooterNote": "G-DEX Pool v1 shows the GLIP–ETH pool created on SushiSwap V2. Metrics are updated manually during the early launch phase."
-}
-</script>
-
-<!-- ✅ ethers.js -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<!-- Toast -->
+<div class="toast" id="toast">
+  <b id="toastTitle">—</b>
+  <div class="tiny" id="toastMsg">—</div>
+  <div class="tbtns" id="toastBtns"></div>
+</div>
 
 <script>
-/* ============================================================
-   ✅ HARDENED BOOT (prevents "all — / token modal dead")
-   - Boot runs even if DOMContentLoaded already fired
-   - Each init step isolated so one failure doesn't break all
-   ============================================================ */
-let __bootOk = false;
-let __bootErr = null;
-
-/* ============================================================
-   ✅ SILENT SWAP MODE
-   ============================================================ */
-const SWAP_SILENT = true;
-
-/* ============================================================
-   ✅ Mobile stuck fixes
-   - Wallet confirm timeout guard
-   - Safe gasLimit fallback when estimateGas fails
-   ============================================================ */
-const SAFE_GAS_PROXY  = 650000;
-const SAFE_GAS_DIRECT = 450000;
-
-/* ✅ Wallet confirm timeout */
-const WALLET_CONFIRM_TIMEOUT_MS = 450000;
-
-function withTimeout(promise, ms, tag="timeout"){
-  let timer;
-  const t = new Promise((_, rej)=> {
-    timer = setTimeout(()=>rej(new Error(tag)), ms);
-  });
-  return Promise.race([
-    Promise.resolve(promise).finally(()=>{ try{ clearTimeout(timer); }catch{} }),
-    t
-  ]);
-}
-
-/* ===== utils ===== */
-const $ = s => document.querySelector(s);
-const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '—';
-
-function setSwapStatus(msg, {show=true}={}){
-  const el = document.getElementById('swapStatus');
-  if(!el) return;
-  if(!msg){
-    el.style.display = 'none';
-    el.innerHTML = '';
-    return;
+/* =========================================================
+   ✅ Minimal Token List (요청: 토큰리스트 최소화)
+   - ETH (native) uses pseudo address "ETH"
+   - ERC-20 addresses are Ethereum mainnet
+   ========================================================= */
+const TOKENS = [
+  {
+    symbol: "ETH",
+    name: "Ethereum",
+    address: "ETH",
+    decimals: 18,
+    icon: "https://assets.coingecko.com/coins/images/279/large/ethereum.png"
+  },
+  {
+    symbol: "GLIP",
+    name: "GLIP Token",
+    address: "0x200074586fa7f2B944Ab7Ce4CC56C30e7616e62C",
+    decimals: 18,
+    icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x200074586fa7f2B944Ab7Ce4CC56C30e7616e62C/logo.png"
+  },
+  {
+    symbol: "USDT",
+    name: "Tether USD",
+    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    decimals: 6,
+    icon: "https://assets.coingecko.com/coins/images/325/large/Tether.png"
+  },
+  {
+    symbol: "USDC",
+    name: "USD Coin",
+    address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    decimals: 6,
+    icon: "https://assets.coingecko.com/coins/images/6319/large/usdc.png"
+  },
+  {
+    symbol: "DAI",
+    name: "Dai Stablecoin",
+    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    decimals: 18,
+    icon: "https://assets.coingecko.com/coins/images/9956/large/Badge_Dai.png"
   }
-  el.innerHTML = msg;
-  el.style.display = show ? 'block' : 'none';
-}
-
-/* ============================================================
-   ✅ DEBUG helpers
-   ============================================================ */
-function dbgEnabled(){
-  try{
-    return /[?&]debug=1\b/.test(location.search) || localStorage.getItem("GDEX_DEBUG")==="1";
-  }catch{ return false; }
-}
-function dbg(...args){
-  if(!dbgEnabled()) return;
-  console.log("[G-DEX DEBUG]", ...args);
-}
-
-/* ============================================================
-   ✅ In-app modal helpers
-   ============================================================ */
-const uiModal = document.getElementById('uiModal');
-const uiTitle = document.getElementById('uiTitle');
-const uiMessage = document.getElementById('uiMessage');
-const uiOk = document.getElementById('uiOk');
-const uiCancel = document.getElementById('uiCancel');
-const uiClose = document.getElementById('uiClose');
-const uiCopy = document.getElementById('uiCopy');
-
-let __uiResolve = null;
-let __uiMode = "alert";
-
-function uiSupported(){
-  return !!(uiModal && typeof uiModal.showModal === "function");
-}
-function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelText="Cancel", copy=false}){
-  if(!uiSupported()){
-    if(mode === "confirm") return Promise.resolve(window.confirm(title + "\n\n" + message));
-    window.alert(title + "\n\n" + message);
-    return Promise.resolve(true);
-  }
-
-  __uiMode = mode;
-  uiTitle.textContent = title || "Notice";
-  uiMessage.textContent = String(message ?? "");
-
-  uiOk.textContent = okText || "OK";
-  uiCancel.textContent = cancelText || "Cancel";
-
-  uiCancel.style.display = (mode === "confirm") ? "inline-block" : "none";
-  uiCopy.style.display = copy ? "inline-block" : "none";
-
-  uiOk.onclick = null;
-  uiCancel.onclick = null;
-
-  return new Promise(resolve=>{
-    __uiResolve = resolve;
-    uiModal.showModal();
-
-    const cleanup = (val)=>{
-      try{ uiModal.close(); }catch{}
-      __uiResolve = null;
-      resolve(val);
-    };
-
-    uiOk.onclick = ()=>cleanup(true);
-    uiCancel.onclick = ()=>cleanup(false);
-  });
-}
-function uiAlert(title, message, {copy=false}={}){
-  return _uiOpen({title, message, mode:"alert", okText:"OK", copy});
-}
-function uiConfirm(title, message, {okText="Continue", cancelText="Cancel", copy=false}={}){
-  return _uiOpen({title, message, mode:"confirm", okText, cancelText, copy});
-}
-
-if(uiSupported()){
-  uiClose.onclick = ()=>{
-    try{ uiModal.close(); }catch{}
-    if(__uiResolve){
-      const val = (__uiMode === "confirm") ? false : true;
-      const r = __uiResolve;
-      __uiResolve = null;
-      r(val);
-    }
-  };
-  uiModal.addEventListener('click', (e)=>{
-    if(e.target === uiModal){
-      uiClose.click();
-    }
-  });
-  uiCopy.onclick = async ()=>{
-    try{
-      await navigator.clipboard.writeText(uiMessage.textContent || "");
-      uiCopy.textContent = "Copied!";
-      setTimeout(()=>{ uiCopy.textContent = "Copy"; }, 900);
-    }catch{}
-  };
-}
-
-function showErrorPopup(title, payload) {
-  let msg = "";
-  if (payload instanceof Error) msg = payload.message || String(payload);
-  else if (typeof payload === "string") msg = payload;
-  else msg = JSON.stringify(payload, null, 2);
-  setSwapStatus("");
-  uiAlert(title, msg, {copy:true});
-}
-
-/* ===== Manual Pool Config ===== */
-let gdexPoolConfig = {};
-(function readGdexConfig(){
-  const el = document.getElementById('gdexPoolConfig');
-  if(!el) return;
-  try{
-    const txt = el.textContent.trim();
-    if(!txt) return;
-    gdexPoolConfig = JSON.parse(txt);
-  }catch(e){
-    console.warn('[G-DEX] invalid gdexPoolConfig JSON', e);
-  }
-})();
-function applyManualPoolConfig(){
-  const cfg = gdexPoolConfig || {};
-  const noteEl   = document.getElementById('pManualNote');
-  const footEl   = document.getElementById('poolFooterNote');
-  if(noteEl && cfg.poolManualNote) noteEl.textContent = cfg.poolManualNote;
-  if(footEl && cfg.poolFooterNote) footEl.textContent = cfg.poolFooterNote;
-}
-
-/* ============================================================
-   ✅ Sushi Pools Ticker
-   ============================================================ */
-let __sushiPools = [];
-let __sushiTickerIdx = 0;
-let __sushiTickerTimer = null;
-let __backendOk = null;
-let __backendLastAt = null;
-
-function setPoolsTicker(item){
-  const wrap = document.getElementById('poolsTicker');
-  const link = document.getElementById('poolsTickerLink');
-  const pair = document.getElementById('poolsTickerPair');
-  const meta = document.getElementById('poolsTickerMeta');
-  if(!wrap || !link || !pair || !meta) return;
-
-  const feeTxt = (item && item.feePct != null) ? ` · ${Number(item.feePct).toFixed(1)}%` : "";
-  const tvlTxt = (item && item.tvlText) ? `TVL ${item.tvlText}` : "";
-
-  link.href = (item && item.url) ? item.url : "https://www.sushi.com/ethereum/explore/pools";
-  pair.textContent = (item && item.name) ? item.name : "—";
-  meta.textContent = (tvlTxt + feeTxt).trim();
-}
-function setPoolsTickerFallbackFromManual(){
-  try{
-    const cfg = gdexPoolConfig || {};
-    const name = cfg.recentPoolsText || "GLIP–ETH - SushiSwap V2";
-    setPoolsTicker({
-      name,
-      tvlText: "$—",
-      feePct: 0.3,
-      url: "https://www.sushi.com/ethereum/explore/pools"
-    });
-  }catch{
-    setPoolsTicker({ name:"—", tvlText:"", feePct:null, url:"https://www.sushi.com/ethereum/explore/pools" });
-  }
-}
-async function fetchSushiPools(limit=5){
-  const url = `${BACKEND_URL}/sushi/pools?chain=ethereum&limit=${encodeURIComponent(limit)}`;
-  const r = await fetch(url, { method:'GET' });
-  const j = await r.json().catch(()=> ({}));
-  const items = j && Array.isArray(j.items) ? j.items : [];
-  return items.slice(0, limit);
-}
-function rotateSushiPools(){
-  if(!__sushiPools.length) return;
-  const wrap = document.getElementById('poolsTicker');
-  if(!wrap) return;
-
-  wrap.classList.remove('fadeIn');
-  wrap.classList.add('fadeOut');
-
-  setTimeout(()=>{
-    __sushiTickerIdx = (__sushiTickerIdx + 1) % __sushiPools.length;
-    setPoolsTicker(__sushiPools[__sushiTickerIdx]);
-    wrap.classList.remove('fadeOut');
-    wrap.classList.add('fadeIn');
-  }, 220);
-}
-async function bootSushiPoolsTicker(){
-  const wrap = document.getElementById('poolsTicker');
-  if(!wrap) return;
-
-  try{
-    __sushiPools = await fetchSushiPools(5);
-    __backendOk = true; __backendLastAt = Date.now();
-
-    if(!__sushiPools.length){
-      setPoolsTickerFallbackFromManual();
-      return;
-    }
-    __sushiTickerIdx = 0;
-    setPoolsTicker(__sushiPools[0]);
-
-    if(__sushiTickerTimer) clearInterval(__sushiTickerTimer);
-    __sushiTickerTimer = setInterval(rotateSushiPools, 3500);
-
-    setInterval(async ()=>{
-      try{
-        const fresh = await fetchSushiPools(5);
-        __backendOk = true; __backendLastAt = Date.now();
-        if(Array.isArray(fresh) && fresh.length){
-          __sushiPools = fresh;
-          __sushiTickerIdx = 0;
-          setPoolsTicker(__sushiPools[0]);
-        }
-      }catch(e){
-        __backendOk = false;
-        console.warn('[sushi ticker refresh] failed', e);
-      }finally{
-        updateStatusBoard();
-      }
-    }, 60000);
-
-  }catch(e){
-    __backendOk = false;
-    console.warn('[bootSushiPoolsTicker] failed', e);
-    setPoolsTickerFallbackFromManual();
-  }finally{
-    updateStatusBoard();
-  }
-}
-
-/* DApp host */
-const DAPP_HOST = 'gdex-app.com';
-
-/* GLIP token */
-const GLIP_TOKEN_ADDRESS = '0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
-const SUSHI_ETHEREUM_POOL_BASE = 'https://www.sushi.com/ethereum/pool';
-
-/* ✅ Underlying SushiSwap Router (Ethereum mainnet) */
-const SUSHI_ROUTER_V2 = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
-const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
-const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-
-/* ✅ G-DEX Proxy Router */
-const GDEX_PROXY_ROUTER = "0x198C5B84dB9B1139092EDd9D56bE25653fEAC13D";
-
-/* 모바일 판별 */
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-/* 모바일 MetaMask 딥링크 */
-function openMetaMaskDeepLink() {
-  const dappUrl = `https://${DAPP_HOST}`;
-  const target = dappUrl.replace(/^https?:\/\//, '');
-  const deepLink = `https://metamask.app.link/dapp/${target}`;
-  window.location.href = deepLink;
-}
-
-/* ============================================================
-   ✅ Major Coin Prices Ticker (Rolling)
-   ============================================================ */
-let __pricesItems = [];
-let __pricesIdx = 0;
-let __pricesTimer = null;
-let __cgOk = null;
-let __cgLastAt = null;
-
-function setPricesTicker(item){
-  const wrap = document.getElementById('pricesTicker');
-  const link = document.getElementById('pricesTickerLink');
-  const pair = document.getElementById('pricesTickerPair');
-  const meta = document.getElementById('pricesTickerMeta');
-  if(!wrap || !link || !pair || !meta) return;
-
-  link.href = item?.url || "https://www.coingecko.com";
-  pair.textContent = item?.label || "—";
-  meta.textContent = item?.meta || "";
-}
-
-function formatUSD(n){
-  if(n == null || !Number.isFinite(Number(n))) return "—";
-  const v = Number(n);
-  const opt =
-    v >= 1000 ? { maximumFractionDigits: 2 } :
-    v >= 1    ? { maximumFractionDigits: 4 } :
-                { maximumFractionDigits: 8 };
-  return "$ " + v.toLocaleString(undefined, opt);
-}
-
-function formatPct(p){
-  if(p == null || !Number.isFinite(Number(p))) return "";
-  const v = Number(p);
-  const sign = v >= 0 ? "+" : "";
-  return `${sign}${v.toFixed(2)}%`;
-}
-
-// CoinGecko IDs (major coins)
-const PRICE_TICKER_COINS = [
-  { id:"bitcoin",  sym:"BTC", url:"https://www.coingecko.com/en/coins/bitcoin" },
-  { id:"ethereum", sym:"ETH", url:"https://www.coingecko.com/en/coins/ethereum" },
-  { id:"tether",   sym:"USDT",url:"https://www.coingecko.com/en/coins/tether" },
-  { id:"usd-coin", sym:"USDC",url:"https://www.coingecko.com/en/coins/usd-coin" },
-  { id:"binancecoin", sym:"BNB", url:"https://www.coingecko.com/en/coins/bnb" },
-  { id:"solana",   sym:"SOL", url:"https://www.coingecko.com/en/coins/solana" },
-  { id:"ripple",   sym:"XRP", url:"https://www.coingecko.com/en/coins/xrp" }
 ];
 
-async function fetchMajorCoinPrices(){
-  const ids = PRICE_TICKER_COINS.map(x=>x.id).join(",");
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true`;
-  const r = await fetch(url, { method:"GET" });
-  const j = await r.json().catch(()=> ({}));
+// SushiSwap swap base
+const SUSHI_SWAP_BASE = "https://www.sushi.com/ethereum/swap";
+const SUSHI_POOLS_URL  = "https://www.sushi.com/ethereum/explore/pools";
 
-  const items = [];
-  for(const c of PRICE_TICKER_COINS){
-    const row = j?.[c.id];
-    const px = row?.usd;
-    const ch = row?.usd_24h_change;
-    items.push({
-      label: `${c.sym} · ${formatUSD(px)}`,
-      meta: `24h ${formatPct(ch)}`,
-      url: c.url
-    });
-  }
-  return items.filter(x=>x && x.label);
+let provider, signer, userAddr = null;
+let pickSide = "in";
+let tokenIn = TOKENS[1];  // default GLIP
+let tokenOut = TOKENS[0]; // default ETH
+
+// UI refs
+const $ = (id)=>document.getElementById(id);
+const btnConnect = $("btnConnect");
+const addrLine = $("addrLine");
+const netLine = $("netLine");
+
+const amtIn = $("amtIn");
+const amtOut = $("amtOut");
+const balIn = $("balIn");
+const balOut = $("balOut");
+
+const inIcon = $("inIcon");
+const outIcon = $("outIcon");
+const inSym = $("inSym");
+const outSym = $("outSym");
+
+const pickIn = $("pickIn");
+const pickOut = $("pickOut");
+const btnFlip = $("btnFlip");
+const btnSwap = $("btnSwap");
+const btnPool = $("btnPool");
+const pxLine  = $("pxLine");
+
+// Modal
+const modalBack = $("modalBack");
+const tokList = $("tokList");
+const tokSearch = $("tokSearch");
+
+// Pools ticker
+const poolsTickerPair = $("poolsTickerPair");
+const poolsTickerMeta = $("poolsTickerMeta");
+const poolsTickerLink = $("poolsTickerLink");
+const poolsUpdated    = $("poolsUpdated");
+const poolsStatus     = $("poolsStatus");
+
+// Major prices
+const majorList    = $("majorList");
+const majorUpdated = $("majorUpdated");
+const majorStatus  = $("majorStatus");
+
+// Toast
+const toast = $("toast");
+const toastTitle = $("toastTitle");
+const toastMsg = $("toastMsg");
+const toastBtns = $("toastBtns");
+
+function showToast(title, msg, buttons = []){
+  toastTitle.textContent = title;
+  toastMsg.textContent = msg;
+  toastBtns.innerHTML = "";
+  buttons.forEach(b=>{
+    const el = document.createElement("button");
+    el.className = "tbtn";
+    el.textContent = b.label;
+    el.onclick = ()=>{ try{b.onClick && b.onClick();}catch(e){} hideToast(); };
+    toastBtns.appendChild(el);
+  });
+  toast.style.display = "block";
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(hideToast, 5500);
+}
+function hideToast(){ toast.style.display = "none"; }
+
+function shortAddr(a){
+  if(!a) return "—";
+  return a.slice(0,6) + "…" + a.slice(-4);
 }
 
-function rotatePricesTicker(){
-  if(!__pricesItems.length) return;
-  const wrap = document.getElementById('pricesTicker');
-  if(!wrap) return;
+function setTokenUI(){
+  inIcon.src = tokenIn.icon || "G_DEX_icon.png";
+  outIcon.src = tokenOut.icon || "G_DEX_icon.png";
+  inSym.textContent = tokenIn.symbol;
+  outSym.textContent = tokenOut.symbol;
 
-  wrap.classList.remove('fadeIn');
-  wrap.classList.add('fadeOut');
+  // pool link default (best-effort)
+  btnPool.href = SUSHI_POOLS_URL;
 
-  setTimeout(()=>{
-    __pricesIdx = (__pricesIdx + 1) % __pricesItems.length;
-    setPricesTicker(__pricesItems[__pricesIdx]);
-    wrap.classList.remove('fadeOut');
-    wrap.classList.add('fadeIn');
-  }, 220);
+  updateQuote();
+  refreshBalances();
 }
 
-function setPricesFallback(){
-  __pricesItems = [
-    { label:"BTC · —", meta:"24h —", url:"https://www.coingecko.com" },
-    { label:"ETH · —", meta:"24h —", url:"https://www.coingecko.com" },
-    { label:"USDT · —", meta:"24h —", url:"https://www.coingecko.com" }
-  ];
-  __pricesIdx = 0;
-  setPricesTicker(__pricesItems[0]);
-}
-
-async function bootMajorCoinPricesTicker(){
-  const wrap = document.getElementById('pricesTicker');
-  if(!wrap) return;
-
-  try{
-    const items = await fetchMajorCoinPrices();
-    __cgOk = true; __cgLastAt = Date.now();
-    if(items && items.length){
-      __pricesItems = items;
-      __pricesIdx = 0;
-      setPricesTicker(__pricesItems[0]);
-
-      if(__pricesTimer) clearInterval(__pricesTimer);
-      __pricesTimer = setInterval(rotatePricesTicker, 3000);
-
-      setInterval(async ()=>{
-        try{
-          const fresh = await fetchMajorCoinPrices();
-          __cgOk = true; __cgLastAt = Date.now();
-          if(fresh && fresh.length){
-            __pricesItems = fresh;
-            __pricesIdx = 0;
-            setPricesTicker(__pricesItems[0]);
-          }
-        }catch{
-          __cgOk = false;
-        }finally{
-          updateStatusBoard();
-        }
-      }, 60000);
-
-      return;
-    }
-    setPricesFallback();
-  }catch{
-    __cgOk = false;
-    setPricesFallback();
-  }finally{
-    updateStatusBoard();
-  }
-}
-
-/* ===== token list (UNCHANGED) ===== */
-const tokenList = [
-  {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
-  {symbol:"GLIP", name:"GLIP Token", address:GLIP_TOKEN_ADDRESS, decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
-  {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6, logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png"},
-  {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6, logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
-  {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"},
-  {symbol:"FRAX", name:"Frax", address:"0x853d955aCEf822Db058eb8505911ED77F175b99e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/13422/large/LFRAX.png?1751911193"},
-  {symbol:"WBTC", name:"Wrapped BTC", address:"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals:8, logo:"https://assets.coingecko.com/coins/images/7598/standard/wrapped_bitcoin_wbtc.png"},
-  {symbol:"MATIC", name:"Polygon", address:"0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", decimals:18, logo:"https://assets.coingecko.com/coins/images/4713/standard/polygon.png"},
-  {symbol:"BNB", name:"BNB", address:"0xB8c77482e45F1F44De1745F52C74426C631bDD52", decimals:18, logo:"https://assets.coingecko.com/coins/images/825/standard/bnb-icon2_2x.png"},
-  {symbol:"XRP", name:"XRP (ERC20-wrap)", address:"0x1D2F0da169ceB9fC7C8A636a7fB3b73bEccFFa75", decimals:6, logo:"https://assets.coingecko.com/coins/images/44/standard/xrp-symbol-white-128.png"},
-  {symbol:"LINK", name:"Chainlink", address:"0x514910771AF9Ca656af840dff83E8264EcF986CA", decimals:18, logo:"https://assets.coingecko.com/coins/images/877/standard/chainlink-new-logo.png"},
-  {symbol:"UNI",  name:"Uniswap", address:"0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", decimals:18, logo:"https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984/logo.png"},
-  {symbol:"AAVE", name:"Aave", address:"0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", decimals:18, logo:"https://assets.coingecko.com/coins/images/12645/standard/AAVE.png"},
-  {symbol:"LDO", name:"Lido DAO", address:"0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", decimals:18, logo:"https://assets.coingecko.com/coins/images/13573/standard/Lido_DAO.png"},
-  {symbol:"SNX", name:"Synthetix", address:"0xC011A72400E58ecD99Ee497CF89E3775d4bd732F", decimals:18, logo:"https://assets.coingecko.com/coins/images/3406/standard/SNX.png"},
-  {symbol:"CRV", name:"Curve DAO", address:"0xD533a949740bb3306d119CC777fa900bA034cd52", decimals:18, logo:"https://assets.coingecko.com/coins/images/12124/standard/Curve.png"},
-  {symbol:"COMP", name:"Compound", address:"0xc00e94Cb662C3520282E6f5717214004A7f26888", decimals:18, logo:"https://assets.coingecko.com/coins/images/10775/standard/COMP.png"},
-  {symbol:"MKR", name:"Maker", address:"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", decimals:18, logo:"https://assets.coingecko.com/coins/images/1364/standard/Mark_Maker.png"},
-  {symbol:"YFI", name:"yearn.finance", address:"0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/11849/large/yearn.jpg"},
-  {symbol:"SUSHI", name:"Sushi", address:"0x6B3595068778DD592e39A122f4f5a5CF09C90fE2", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12271/large/512x512_Logo_no_chop.png"},
-  {symbol:"BAL", name:"Balancer", address:"0xba100000625a3754423978a60c9317c58a424e3D", decimals:18, logo:"https://assets.coingecko.com/coins/images/11683/standard/Balancer.png"},
-  {symbol:"1INCH", name:"1inch", address:"0x111111111117dC0aa78b770fA6A738034120C302", decimals:18, logo:"https://assets.coingecko.com/coins/images/13469/standard/1inch-token.png"},
-  {symbol:"ENS", name:"Ethereum Name Service", address:"0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/19785/large/ENS.jpg"},
-  {symbol:"OP", name:"Optimism", address:"0x4200000000000000000000000000000000000042", decimals:18, logo:"https://assets.coingecko.com/coins/images/25244/standard/Optimism.png"},
-  {symbol:"ARB", name:"Arbitrum", address:"0x912CE59144191C1204E64559FE8253a0e49E6548", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg"},
-  {symbol:"PEPE", name:"Pepe", address:"0x6982508145454Ce325dDbE47a25d4ec3d2311933", decimals:18, logo:"https://assets.coingecko.com/coins/images/29850/standard/pepe-token.jpeg"},
-  {symbol:"SHIB", name:"Shiba Inu", address:"0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", decimals:18, logo:"https://assets.coingecko.com/coins/images/11939/standard/shiba.png"},
-  {symbol:"DOGE", name:"Dogecoin (ERC20 wrap)", address:"0x4206931337dc273a630d328da6441786bfad668f", decimals:8, logo:"https://assets.coingecko.com/coins/images/5/standard/dogecoin.png"},
-  {symbol:"BAT", name:"Basic Attention", address:"0x0D8775F648430679A709E98d2b0Cb6250d2887EF", decimals:18, logo:"https://assets.coingecko.com/coins/images/677/standard/basic-attention-token.png"},
-  {symbol:"MANA", name:"Decentraland", address:"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/878/large/decentraland-mana.png"},
-  {symbol:"SAND", name:"The Sandbox", address:"0x3845badAde8e6DFF049820680d1F14bD3903a5d0", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/12129/large/sandbox_logo.jpg"},
-  {symbol:"AXS", name:"Axie Infinity", address:"0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b", decimals:18, logo:"https://assets.coingecko.com/coins/images/13029/standard/axie_infinity_logo.png"},
-  {symbol:"GRT", name:"The Graph", address:"0xc944E90C64B2c07662A292be6244BDf05Cda44a7", decimals:18, logo:"https://assets.coingecko.com/coins/images/13397/standard/Graph_Token.png"},
-  {symbol:"FTM", name:"Fantom", address:"0x4e15361FD6b4BB609Fa63C81A2be19d873717870", decimals:18, logo:"https://coin-images.coingecko.com/coins/images/16036/large/Fantom.png"},
-  {symbol:"NEAR", name:"NEAR (ERC20)", address:"0x85F17Cf997934a597031b2E18a9aB6ebD4B9f6a4", decimals:24, logo:"https://coin-images.coingecko.com/coins/images/10365/large/near.jpg"},
-  {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
-];
-
-function getTokenMeta(symbolOrAddress) {
-  return tokenList.find(t =>
-    t.symbol === symbolOrAddress ||
-    t.address?.toLowerCase() === symbolOrAddress?.toLowerCase()
-  );
-}
-function metaIsETH(meta){
-  return !!meta && (meta.symbol === "ETH" || meta.address === "ETH");
-}
-function getSelectedMeta(symEl){
-  if(!symEl) return null;
-  const sym = String(symEl.textContent || "").trim();
-  const addr = String(symEl.dataset.address || "").trim();
-  if(addr){
-    const byAddr = getTokenMeta(addr);
-    if(byAddr) return byAddr;
-  }
-  const bySym = getTokenMeta(sym);
-  if(bySym) return bySym;
-  return null;
-}
-
-/* ✅ small helper to prevent broken images from breaking UX */
-function safeSetImg(imgEl, src){
-  if(!imgEl) return;
-  imgEl.onerror = ()=>{ imgEl.src = "G_DEX_icon.png"; };
-  imgEl.src = src || "G_DEX_icon.png";
-}
-
-function initDefaults(){
-  const ETH  = tokenList.find(t=>t.symbol==="ETH");
-  const GLIP = getTokenMeta("GLIP");
-  safeSetImg($('#sellI'), ETH?.logo);  $('#sellS').textContent = "ETH";  $('#sellS').dataset.address = "ETH";
-  safeSetImg($('#buyI'),  GLIP?.logo); $('#buyS').textContent  = "GLIP"; $('#buyS').dataset.address  = GLIP?.address || GLIP_TOKEN_ADDRESS;
-  safeSetImg($('#pT0Img'), ETH?.logo);  $('#pT0Sym').textContent = "ETH";  $('#pT0Sym').dataset.address = "ETH";
-  safeSetImg($('#pT1Img'), GLIP?.logo); $('#pT1Sym').textContent = "GLIP"; $('#pT1Sym').dataset.address = GLIP?.address || GLIP_TOKEN_ADDRESS;
-}
-
-/* ===== token modal ===== */
-const dlg  = document.getElementById('tokModal');
-const list = document.getElementById('tokList');
-const tokSearchInput = document.getElementById('tokSearch');
-let target = null;
-
-function dialogSupported(d){
-  return !!(d && typeof d.showModal === "function");
-}
-
-function renderTokenList(query=""){
-  const q = query.trim().toLowerCase();
-  const filtered = !q ? tokenList : tokenList.filter(t =>
-    t.symbol.toLowerCase().includes(q) ||
-    t.name.toLowerCase().includes(q) ||
-    (t.address && t.address.toLowerCase().includes(q))
-  );
-  if (!filtered.length) {
-    list.innerHTML = `<div style="padding:6px 0;opacity:.7;font-size:13px">No tokens match.</div>`;
-    return;
-  }
-  list.innerHTML = filtered.map(t=>`
-    <div class="item" data-sym="${t.symbol}"
-         style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
-      <img src="${t.logo}" onerror="this.src='G_DEX_icon.png'" alt="">
-      <strong>${t.symbol}</strong>
-      <span style="margin-left:6px;opacity:.85">${t.name}</span>
-      <span style="margin-left:auto;opacity:.7">${
-        t.address==="ETH" ? "ETH" : t.address.slice(0,6)+"…"+t.address.slice(-4)
-      }</span>
-    </div>`).join('');
-}
-
-function openFor(imgEl, symEl){
-  target = {imgEl, symEl};
-  if (tokSearchInput) tokSearchInput.value = "";
+function openModal(side){
+  pickSide = side;
+  modalBack.style.display = "flex";
+  tokSearch.value = "";
   renderTokenList("");
-  if(dialogSupported(dlg)){
-    dlg.showModal();
-    setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); }, 10);
-  }else{
-    // fallback (rare): just alert list count, prevent dead UI
-    uiAlert("Token selector", "Your browser does not support <dialog>. Please open on a modern browser.", {copy:false});
-  }
+  tokSearch.focus();
+}
+function closeModal(){
+  modalBack.style.display = "none";
 }
 
-if(list){
-  list.onclick = async e=>{
-    const row = e.target.closest('.item'); if(!row||!target) return;
-    const t = tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
-    safeSetImg(target.imgEl, t.logo);
-    target.symEl.textContent = t.symbol;
-    target.symEl.dataset.address = t.address;
-    try{ dlg.close(); }catch{}
-    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); updateStatusBoard(); }, 50);
-  };
-}
-const tokCloseBtn = document.getElementById('tokClose');
-if(tokCloseBtn) tokCloseBtn.onclick = ()=>{ try{ dlg.close(); }catch{} };
-if(dlg) dlg.addEventListener('click',e=>{ if(e.target===dlg) { try{ dlg.close(); }catch{} } });
-if (tokSearchInput) tokSearchInput.addEventListener('input', e=> renderTokenList(e.target.value));
-
-function bindTokenButtons(){
-  const sellBtn = document.getElementById('sellBtn');
-  const buyBtn  = document.getElementById('buyBtn');
-  const pT0Btn  = document.getElementById('pT0Btn');
-  const pT1Btn  = document.getElementById('pT1Btn');
-  if(sellBtn) sellBtn.addEventListener('click', ()=>openFor($('#sellI'), $('#sellS')));
-  if(buyBtn)  buyBtn.addEventListener('click',  ()=>openFor($('#buyI'),  $('#buyS')));
-  if(pT0Btn)  pT0Btn.addEventListener('click',  ()=>openFor($('#pT0Img'),$('#pT0Sym')));
-  if(pT1Btn)  pT1Btn.addEventListener('click',  ()=>openFor($('#pT1Img'),$('#pT1Sym')));
-}
-
-/* Flip */
-function flipTokenMeta(imgA, symA, imgB, symB){
-  const s=imgA.src; imgA.src=imgB.src; imgB.src=s;
-  const t=symA.textContent; symA.textContent=symB.textContent; symB.textContent=t;
-  const a=symA.dataset.address, b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
-}
-function bindFlip(){
-  const flipBtn = document.getElementById('flip');
-  const pFlipBtn = document.getElementById('pFlip');
-  if(flipBtn) flipBtn.addEventListener('click', ()=>{
-    flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
-    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); updateStatusBoard(); }, 50);
-  });
-  if(pFlipBtn) pFlipBtn.addEventListener('click', ()=>{
-    flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
-    setTimeout(()=>{ refreshAllBalances(); updateStatusBoard(); }, 50);
-  });
-}
-
-/* ===== Wallet Connect (MetaMask) ===== */
-let userAddress = null;
-let provider = null;
-let signer = null;
-
-let sushiRouterRO = null;
-let sushiRouterRW = null;
-let factory = null;
-let proxyRouter = null;
-
-let __proxyFeeLoaded = false;
-let __proxyFeeBps = 0;
-let __proxyFlatFeeWei = null;
-let __proxyFeeWallet = null;
-
-let __lastSwapMode = "—";
-
-const SUSHI_ROUTER_RO_ABI = [
-  "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
-];
-const SUSHI_ROUTER_RW_ABI = [
-  "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable",
-  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)",
-  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)"
-];
-const FACTORY_ABI = [
-  "function getPair(address tokenA, address tokenB) view returns (address pair)"
-];
-const PAIR_ABI = [
-  "function token0() view returns (address)",
-  "function token1() view returns (address)",
-  "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
-];
-const ERC20_ABI = [
-  "function decimals() view returns (uint8)",
-  "function symbol() view returns (string)",
-  "function balanceOf(address owner) view returns (uint256)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)"
-];
-const PROXY_ABI = [
-  "function feeWallet() view returns (address)",
-  "function feeBps() view returns (uint16)",
-  "function flatFeeWei() view returns (uint256)",
-  "function swapExactETHForTokensWithFee(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
-  "function swapExactTokensForTokensWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
-  "function swapExactTokensForETHWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable"
-];
-
-function ensureWeb3(){
-  if (!window.ethereum) throw new Error("No wallet detected.");
-  if (!window.ethers) throw new Error("ethers.js failed to load.");
-  if (!provider) provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-  if (!signer) signer = provider.getSigner();
-
-  if (!sushiRouterRO) sushiRouterRO = new ethers.Contract(SUSHI_ROUTER_V2, SUSHI_ROUTER_RO_ABI, provider);
-  if (!sushiRouterRW) sushiRouterRW = new ethers.Contract(SUSHI_ROUTER_V2, SUSHI_ROUTER_RW_ABI, signer);
-  if (!factory) factory = new ethers.Contract(SUSHI_FACTORY_V2, FACTORY_ABI, provider);
-  if (!proxyRouter) proxyRouter = new ethers.Contract(GDEX_PROXY_ROUTER, PROXY_ABI, signer);
-}
-async function ensureMainnet(){
-  ensureWeb3();
-  const net = await provider.getNetwork();
-  if (!net || net.chainId !== 1){
-    throw new Error(`Wrong network detected (chainId=${net?.chainId}). Please switch to Ethereum Mainnet.`);
-  }
-}
-async function loadProxyFeeParams(){
-  try{
-    ensureWeb3();
-    const feeWallet = await proxyRouter.feeWallet();
-    const feeBpsBN  = await proxyRouter.feeBps();
-    const flatFee   = await proxyRouter.flatFeeWei();
-
-    __proxyFeeWallet = feeWallet;
-    __proxyFeeBps = Number(feeBpsBN.toString());
-    __proxyFlatFeeWei = flatFee;
-    __proxyFeeLoaded = true;
-  }catch(e){
-    console.warn('[proxy fee params] failed', e);
-    try{
-      __proxyFeeBps = (__proxyFeeBps || 30);
-      __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
-    }catch{}
-    __proxyFeeLoaded = false;
-  }finally{
-    updateStatusBoard();
-  }
-}
-
-async function connectWallet(){
-  try{
-    if (typeof window.ethereum === 'undefined') {
-      if (isMobile) { openMetaMaskDeepLink(); return; }
-      await uiAlert("No wallet detected",
-        "• Mobile: open this site in MetaMask in-app browser.\n• Desktop: install MetaMask extension.");
-      return;
-    }
-    ensureWeb3();
-
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts || !accounts.length) throw new Error('No accounts returned');
-
-    userAddress = accounts[0];
-    const wAddrEl = document.getElementById('wAddr');
-    if(wAddrEl) wAddrEl.textContent = short(userAddress);
-
-    ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el){
-        el.textContent = 'Connected';
-        el.classList.add('ghost');
-      }
-    });
-
-    await ensureMainnet();
-    await loadProxyFeeParams();
-    await refreshAllBalances();
-    updatePricePreview();
-    updateStatusBoard();
-
-    if (window.ethereum.on) {
-      window.ethereum.on('accountsChanged', async acc=>{
-        userAddress = acc && acc.length ? acc[0] : null;
-        const wAddrEl2 = document.getElementById('wAddr');
-        if(wAddrEl2) wAddrEl2.textContent = short(userAddress);
-        __proxyFeeLoaded = false;
-        await loadProxyFeeParams();
-        await refreshAllBalances();
-        updatePricePreview();
-        updateStatusBoard();
-      });
-      window.ethereum.on('chainChanged', _=> location.reload());
-    }
-
-  }catch(e){
-    console.error('[connectWallet]', e);
-    await uiAlert('Wallet connection failed', (e?.message || 'Please check MetaMask and try again.'), {copy:true});
-  }finally{
-    updateStatusBoard();
-  }
-}
-
-/* Supply → SushiSwap */
-function openSushiGlipEthPool(){
-  const url = `${SUSHI_ETHEREUM_POOL_BASE}?token0=NATIVE&token1=${GLIP_TOKEN_ADDRESS}`;
-  window.open(url, '_blank', 'noopener');
-}
-function bindPoolSupplyButton(){
-  const btn = document.getElementById('poolSupply');
-  if(btn) btn.addEventListener('click', openSushiGlipEthPool);
-}
-
-/* TOP */
-function bindTop(){
-  const toTop=document.getElementById('toTop');
-  function toggleTop(){
-    (window.scrollY>200)?toTop.classList.add('show'):toTop.classList.remove('show');
-  }
-  toggleTop(); window.addEventListener('scroll', toggleTop);
-  toTop.addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
-}
-
-/* ===== PWA install ===== */
-let deferredPrompt=null;
-const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
-function isStandaloneMode(){
-  return matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
-}
-window.addEventListener('beforeinstallprompt', e=>{
-  e.preventDefault(); deferredPrompt=e;
-  document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
-});
-window.addEventListener('appinstalled', ()=>{
-  document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none');
-});
-async function handleInstallClick(){
-  if(isStandaloneMode()){ await uiAlert('Install', 'G-DEX is already installed.'); return; }
-  if(deferredPrompt){
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.finally(()=>{
-      deferredPrompt=null;
-      document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none');
-    });
-    return;
-  }
-  if(isIos){ await uiAlert('Install on iOS', 'In Safari: share → "Add to Home Screen".'); return; }
-  await uiAlert('Install', 'Use browser menu → "Add to home screen".');
-}
-
-/* ===== Analytics demo ===== */
-const demoAnalytics = {
-  rebateRate: 12, feeNet: 420000,
-  split: { users: 0.70, esg: 0.20, treasury: 0.10 },
-  returnedSeries: [1200,3400,5600,8300,12000,16200,21000,27900,35000,43600,52000,61500,72000,84500,98000,112000,127800,145200,163500,182400],
-  turnout: 38, transparency: 92,
-  co2: { current: 152, target: 220 }
-};
-function fillKpis(d){
-  const {rebateRate, feeNet, split, turnout, transparency} = d;
-  const returned = feeNet * (rebateRate/100) * split.users;
-  const esgAccrual= feeNet * (rebateRate/100) * split.esg;
-  document.getElementById('kRebate').textContent = rebateRate.toFixed(0) + "%";
-  document.getElementById('kReturned').textContent = "$ " + Math.round(returned).toLocaleString();
-  document.getElementById('kESG').textContent = "$ " + Math.round(esgAccrual).toLocaleString();
-  document.getElementById('kTransparency').textContent = transparency.toFixed(0) + "%";
-  document.getElementById('kTurnout').textContent = turnout.toFixed(0) + "%";
-  const greenScore = Math.round( (transparency/100) * (split.esg*rebateRate) * 10 );
-  document.getElementById('kGreen').textContent = greenScore;
-  document.getElementById('rvHint').textContent = "Net Fees $" + feeNet.toLocaleString() + " · R% " + rebateRate + "%";
-  document.getElementById('esgNote').textContent = `Current quarter alloc: Users ${(split.users*100).toFixed(0)}% · ESG ${(split.esg*100).toFixed(0)}% · Treasury ${(split.treasury*100).toFixed(0)}%.`;
-  document.getElementById('giHint').textContent = `tCO₂e offset est. ${d.co2.current}/${d.co2.target}`;
-}
-function drawSpark(d){
-  const el = document.getElementById('spark');
-  const ctx = el.getContext('2d');
-  const DPR = window.devicePixelRatio||1;
-  const w = el.clientWidth * DPR, h = el.clientHeight * DPR;
-  el.width = w; el.height = h;
-  const data = d.returnedSeries;
-  const min = Math.min(...data), max = Math.max(...data);
-  const padX = 20 * DPR, padY = 16 * DPR;
-  const x = i => padX + (i/(data.length-1)) * (w - padX*2);
-  const y = v => { const t=(v-min)/(max-min || 1); return h - padY - t*(h - padY*2); };
-
-  const grad = ctx.createLinearGradient(0, y(max), 0, h-padY);
-  grad.addColorStop(0, "rgba(123,183,255,.40)");
-  grad.addColorStop(1, "rgba(255,255,255,.10)");
-
-  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
-  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
-  ctx.lineTo(x(data.length-1), h-padY); ctx.lineTo(x(0), h-padY); ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-
-  ctx.beginPath(); ctx.moveTo(x(0), y(data[0]));
-  data.forEach((v,i)=>ctx.lineTo(x(i), y(v)));
-  ctx.lineWidth = 2.5 * DPR; ctx.strokeStyle = "#7bb7ff"; ctx.stroke();
-}
-function drawDonut(d){
-  const canvas = document.getElementById('donut');
-  const ctx = canvas.getContext('2d');
-  const DPR = window.devicePixelRatio||1;
-  const size = canvas.parentElement.clientWidth;
-  const dim = Math.min(200, size);
-  canvas.width = dim * DPR; canvas.height = dim * DPR;
-  const cx = canvas.width/2, cy = canvas.height/2;
-  const rOuter = (dim*DPR)/2 - 6*DPR;
-  const rInner = rOuter * 0.62;
-  const parts = [
-    {key:"Users",    val:d.split.users,    color:"#7bb7ff"},
-    {key:"ESG",      val:d.split.esg,      color:"#39d98a"},
-    {key:"Treasury", val:d.split.treasury, color:"rgba(11,18,32,.55)"}
-  ];
-  let start = -Math.PI/2;
-  parts.forEach(p=>{
-    const arc = p.val * Math.PI*2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, rOuter, start, start+arc);
-    ctx.arc(cx, cy, rInner, start+arc, start, true);
-    ctx.closePath();
-    ctx.fillStyle = p.color; ctx.fill();
-    start += arc;
-  });
-  document.getElementById('donutCenter').textContent = d.rebateRate + "%";
-  const leg = document.getElementById('donutLegend');
-  leg.innerHTML = parts.map(p=>
-    `<div class="item"><span class="dot" style="background:${p.color}"></span>${p.key} ${(p.val*100).toFixed(0)}%</div>`
-  ).join("");
-}
-function drawGauge(d){
-  const canvas = document.getElementById('gauge');
-  const ctx = canvas.getContext('2d');
-  const DPR = window.devicePixelRatio||1;
-  const w = canvas.parentElement.clientWidth, h = 120;
-  canvas.width = w*DPR; canvas.height = h*DPR;
-  const cx = canvas.width/2, cy = canvas.height*0.95;
-  const r = Math.min(w*DPR*0.42, h*DPR*0.9);
-  ctx.lineWidth = 16*DPR; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI*2);
-  ctx.strokeStyle = "rgba(11,18,32,.16)"; ctx.stroke();
-  const pct = Math.max(0, Math.min(1, d.co2.current / d.co2.target));
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + pct*Math.PI);
-  ctx.strokeStyle = "#7bb7ff"; ctx.stroke();
-}
-
-/* ============================================================
-   ✅ Balance helpers (unchanged logic)
-   ============================================================ */
-function hexToBigInt(hex){ return (!hex) ? 0n : BigInt(hex); }
-function formatUnitsBigInt(bn, decimals){
-  const d = BigInt(decimals);
-  const base = 10n ** d;
-  const whole = bn / base;
-  const frac = bn % base;
-  const fracStr = frac.toString().padStart(Number(d), '0').slice(0, 8).replace(/0+$/,'');
-  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
-}
-function pad32(addr){ return addr.toLowerCase().replace(/^0x/,'').padStart(64,'0'); }
-
-async function ethGetBalance(addr){
-  const hex = await ethereum.request({ method:'eth_getBalance', params:[addr,'latest'] });
-  return hexToBigInt(hex);
-}
-async function erc20BalanceOf(tokenAddr, owner){
-  const data = "0x70a08231" + pad32(owner);
-  const hex = await ethereum.request({ method:'eth_call', params:[{to:tokenAddr, data}, 'latest'] });
-  return hexToBigInt(hex);
-}
-async function fetchTokenBalanceString(meta){
-  try{
-    if(!userAddress || !window.ethereum) return null;
-    if(!meta) return null;
-    if(metaIsETH(meta)){
-      const bn = await ethGetBalance(userAddress);
-      return formatUnitsBigInt(bn, 18);
-    }else{
-      const bn = await erc20BalanceOf(meta.address, userAddress);
-      return formatUnitsBigInt(bn, meta.decimals ?? 18);
-    }
-  }catch(e){
-    console.warn('[balance] fail', e);
-    return null;
-  }
-}
-function setBalText(elId, sym, valStr){
-  const el = document.getElementById(elId);
-  if(!el) return;
-  if(!valStr) el.textContent = `Bal: —`;
-  else{
-    const n = Number(valStr);
-    const pretty = (Number.isFinite(n))
-      ? ((n >= 1000000) ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : n.toLocaleString(undefined,{maximumFractionDigits:6}))
-      : valStr;
-    el.textContent = `Bal: ${pretty} ${sym}`;
-  }
-}
-async function refreshAllBalances(){
-  if(!userAddress) {
-    setBalText('sellBal', $('#sellS')?.textContent || '', null);
-    setBalText('buyBal',  $('#buyS')?.textContent || '', null);
-    setBalText('pBal0',   $('#pT0Sym')?.textContent || '', null);
-    setBalText('pBal1',   $('#pT1Sym')?.textContent || '', null);
-    const sb = document.getElementById('stakeBalText'); if(sb) sb.textContent = '—';
-    updateStatusBoard();
-    return;
-  }
-
-  const sellMeta = getSelectedMeta(document.getElementById('sellS'));
-  const buyMeta  = getSelectedMeta(document.getElementById('buyS'));
-  const sellSym = document.getElementById('sellS').textContent;
-  const buySym  = document.getElementById('buyS').textContent;
-
-  const sellBalStr = await fetchTokenBalanceString(sellMeta);
-  const buyBalStr  = await fetchTokenBalanceString(buyMeta);
-  setBalText('sellBal', sellSym, sellBalStr);
-  setBalText('buyBal',  buySym,  buyBalStr);
-
-  const p0Meta = getSelectedMeta(document.getElementById('pT0Sym'));
-  const p1Meta = getSelectedMeta(document.getElementById('pT1Sym'));
-  const p0Sym = document.getElementById('pT0Sym').textContent;
-  const p1Sym = document.getElementById('pT1Sym').textContent;
-
-  const p0BalStr = await fetchTokenBalanceString(p0Meta);
-  const p1BalStr = await fetchTokenBalanceString(p1Meta);
-  setBalText('pBal0', p0Sym, p0BalStr);
-  setBalText('pBal1', p1Sym, p1BalStr);
-
-  const glip = getTokenMeta("GLIP");
-  const glipBalStr = await fetchTokenBalanceString(glip);
-  const sb = document.getElementById('stakeBalText');
-  if(sb){
-    sb.textContent = (!glipBalStr) ? '—' : `${Number(glipBalStr).toLocaleString(undefined,{maximumFractionDigits:6})} GLIP`;
-  }
-  updateStatusBoard();
-}
-
-/* ============================================================
-   ✅ Router helpers (unchanged)
-   ============================================================ */
-function addrForPath(meta){
-  return metaIsETH(meta) ? WETH_MAINNET : meta.address;
-}
-const __pairCache = new Map();
-async function getPairAddressCached(a,b){
-  const A = a.toLowerCase(), B = b.toLowerCase();
-  const key = (A < B) ? `${A}-${B}` : `${B}-${A}`;
-  if(__pairCache.has(key)) return __pairCache.get(key);
-  const p = await factory.getPair(a,b);
-  __pairCache.set(key, p);
-  return p;
-}
-async function hasPair(a,b){
-  try{
-    const p = await getPairAddressCached(a,b);
-    return !!p && p !== ethers.constants.AddressZero;
-  }catch{
-    return false;
-  }
-}
-function uniqPaths(paths){
-  const seen = new Set();
-  const out = [];
-  for(const p of paths){
-    const k = p.map(x=>x.toLowerCase()).join('>');
-    if(seen.has(k)) continue;
-    seen.add(k);
-    out.push(p);
-  }
-  return out;
-}
-async function getPathCandidates(tokenIn, tokenOut){
-  if(!tokenIn || !tokenOut) return [];
-  const A = tokenIn.toLowerCase(), B = tokenOut.toLowerCase();
-  if (A === B) return [[tokenIn, tokenOut]];
-
-  if (A === WETH_MAINNET.toLowerCase() || B === WETH_MAINNET.toLowerCase()){
-    return [[tokenIn, tokenOut]];
-  }
-
-  const paths = [];
-  if (await hasPair(tokenIn, tokenOut)) paths.push([tokenIn, tokenOut]);
-  paths.push([tokenIn, WETH_MAINNET, tokenOut]);
-  return uniqPaths(paths);
-}
-async function getEthReserveIfWethInvolved(path){
-  try{
-    const idx = path.findIndex(a => a.toLowerCase() === WETH_MAINNET.toLowerCase());
-    if (idx < 0) return null;
-    const other = (idx === 0) ? path[1] : path[idx-1];
-    const pairAddr = await getPairAddressCached(WETH_MAINNET, other);
-    if (!pairAddr || pairAddr === ethers.constants.AddressZero) return null;
-
-    const pair = new ethers.Contract(pairAddr, PAIR_ABI, provider);
-    const [r0, r1] = await pair.getReserves();
-    const t0 = (await pair.token0()).toLowerCase();
-    const wethIs0 = (t0 === WETH_MAINNET.toLowerCase());
-    const wethReserve = wethIs0 ? r0 : r1;
-    const eth = Number(ethers.utils.formatUnits(wethReserve, 18));
-    return eth;
-  }catch{
-    return null;
-  }
-}
-function recommendedSlippagePctByEthReserve(ethReserve){
-  if (ethReserve == null) return null;
-  if (ethReserve < 0.2) return 25;
-  if (ethReserve < 0.5) return 15;
-  if (ethReserve < 1.0) return 10;
-  if (ethReserve < 2.0) return 6;
-  return 3;
-}
-function bnFromInput(valStr, decimals){
-  if(!valStr || Number(valStr) <= 0) return ethers.constants.Zero;
-  return ethers.utils.parseUnits(String(valStr), decimals);
-}
-function getSlipPct(){
-  const slipInput = document.getElementById("slip");
-  const v = slipInput ? Number(slipInput.value || "0") : 0;
-  return Math.max(0, Math.min(95, v));
-}
-function calcOutMin(outBN, slipPct){
-  const bp = Math.max(0, Math.min(9500, Math.floor(slipPct * 100)));
-  return outBN.mul(10000 - bp).div(10000);
-}
-function feePctText(){
-  const pct = (__proxyFeeBps || 0) / 100;
-  return `Fee: ${pct.toFixed(2)}%`;
-}
-function flatFeeText(){
-  try{
-    const flat = __proxyFlatFeeWei || ethers.constants.Zero;
-    return `Flat fee: ${ethers.utils.formatEther(flat)} ETH`;
-  }catch{
-    return `Flat fee: —`;
-  }
-}
-function applyPctFeeToEthAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyFeeBps || 0));
-  if (!bps) return amountInBN;
-  const feeBN = amountInBN.mul(bps).div(10000);
-  if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
-  return amountInBN.sub(feeBN);
-}
-function applyPctFeeToTokenAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyFeeBps || 0));
-  if (!bps) return amountInBN;
-  const feeBN = amountInBN.mul(bps).div(10000);
-  if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
-  return amountInBN.sub(feeBN);
-}
-function getQuoteAmountsForModels({ sellIsEth, amountInBN_raw }){
-  const modelA = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
-  const modelB = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : applyPctFeeToTokenAmount(amountInBN_raw);
-  return { modelA, modelB };
-}
-
-/* ============================================================
-   ✅ Quote (Preview)
-   ============================================================ */
-let __quoteTimer = null;
-async function updatePricePreview() {
-  if (__quoteTimer) clearTimeout(__quoteTimer);
-  __quoteTimer = setTimeout(async ()=>{
-    const sellInput = document.getElementById("sell");
-    const buyInput  = document.getElementById("buy");
-    const sellValStr = (sellInput.value || "").trim();
-    const hint = document.getElementById('slipHint');
-
-    if (!sellValStr || Number(sellValStr) <= 0) {
-      buyInput.value = "";
-      if (hint) hint.textContent = "";
-      return;
-    }
-
-    const sellMeta = getSelectedMeta(document.getElementById("sellS"));
-    const buyMeta  = getSelectedMeta(document.getElementById("buyS"));
-    if (!sellMeta || !buyMeta) return;
-
-    try{
-      ensureWeb3();
-      await loadProxyFeeParams();
-
-      const sellIsEth = metaIsETH(sellMeta);
-      const buyIsEth  = metaIsETH(buyMeta);
-
-      const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-      if (amountInBN_raw.lte(0)) { buyInput.value = ""; return; }
-
-      if (sellIsEth && buyIsEth) {
-        buyInput.value = "";
-        if (hint) hint.textContent = "ETH → ETH not supported";
-        return;
-      }
-
-      const tokenIn  = addrForPath(sellMeta);
-      const tokenOut = addrForPath(buyMeta);
-
-      const paths = await getPathCandidates(tokenIn, tokenOut);
-      if(!paths.length) throw new Error("No route candidates.");
-
-      const amountForQuoteBN = sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
-      if (amountForQuoteBN.lte(0)) {
-        buyInput.value = "";
-        const feeTxt = sellIsEth ? feePctText() : flatFeeText();
-        if (hint) hint.textContent = feeTxt;
-        return;
-      }
-
-      let best = null;
-      for(const path of paths){
-        try{
-          if (sellIsEth && path[0].toLowerCase() !== WETH_MAINNET.toLowerCase()) continue;
-          const amounts = await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
-          const out = amounts[amounts.length - 1];
-          if(!best || out.gt(best.out)) best = { path, out };
-        }catch{}
-      }
-      if(!best) throw new Error("No quote route found (liquidity).");
-
-      const outStr = ethers.utils.formatUnits(best.out, buyMeta.decimals ?? 18);
-      buyInput.value = Number(outStr).toFixed(6);
-
-      const ethReserve = await getEthReserveIfWethInvolved(best.path);
-      const rec = recommendedSlippagePctByEthReserve(ethReserve);
-      const recTxt = (rec != null) ? `Recommended ~ ${rec}%` : "";
-      const feeTxt = sellIsEth ? feePctText() : flatFeeText();
-      if (hint) hint.textContent = [recTxt, feeTxt].filter(Boolean).join(" · ");
-
-    }catch(err){
-      console.warn("[quote] failed", err);
-      buyInput.value = "";
-      if (hint) hint.textContent = "";
-    }finally{
-      updateStatusBoard();
-    }
-  }, 120);
-}
-
-/* ============================================================
-   ✅ Approvals / balance checks
-   ============================================================ */
-async function ensureAllowance(tokenMeta, amountInBN, spender){
-  if (metaIsETH(tokenMeta)) return;
-  if (!userAddress) throw new Error("Wallet not connected");
-
-  const token = new ethers.Contract(tokenMeta.address, ERC20_ABI, signer);
-  const allowance = await token.allowance(userAddress, spender);
-  if (allowance.gte(amountInBN)) return;
-
-  if (allowance.gt(0)) {
-    const tx0 = await token.approve(spender, 0);
-    await tx0.wait(1);
-  }
-  const tx = await token.approve(spender, ethers.constants.MaxUint256);
-  await tx.wait(1);
-}
-
-async function ensureSufficientTokenBalance(tokenMeta, amountInBN){
-  if(metaIsETH(tokenMeta)) return;
-  const bn = await (new ethers.Contract(tokenMeta.address, ERC20_ABI, provider)).balanceOf(userAddress);
-  if(bn.lt(amountInBN)){
-    throw new Error(
-      `Insufficient ${tokenMeta.symbol} balance.\n\n`+
-      `Required: ${ethers.utils.formatUnits(amountInBN, tokenMeta.decimals ?? 18)}\n`+
-      `Balance: ${ethers.utils.formatUnits(bn, tokenMeta.decimals ?? 18)}`
-    );
-  }
-}
-
-function setSwapBusy(isBusy){
-  const btn = document.getElementById("swapBtn");
-  const conn = document.getElementById("swapConnect");
-  if(btn){
-    btn.disabled = !!isBusy;
-    btn.style.opacity = isBusy ? ".75" : "1";
-    btn.textContent = isBusy ? "Processing…" : "Swap";
-  }
-  if(conn) conn.disabled = !!isBusy;
-}
-
-async function ensureSufficientEthForValue(callValue, txReq = null){
-  const bal = await provider.getBalance(userAddress);
-  let need = callValue ?? ethers.constants.Zero;
-
-  try{
-    const req = txReq ? { from:userAddress, ...txReq, value: callValue } : { from:userAddress, value: callValue };
-    const gas = await provider.estimateGas(req);
-    const fee = await provider.getFeeData();
-    const gasPrice = fee.maxFeePerGas || fee.gasPrice;
-    if (gasPrice){
-      const gasCost = gas.mul(gasPrice);
-      need = need.add(gasCost.mul(110).div(100));
-    }
-  }catch(e){
-    need = need.add(ethers.utils.parseEther("0.0002"));
-  }
-
-  if (bal.lt(need)){
-    throw new Error(
-      `Insufficient ETH.\n\n`+
-      `Required (est.): ${ethers.utils.formatEther(need)} ETH\n`+
-      `Balance: ${ethers.utils.formatEther(bal)} ETH`
-    );
-  }
-}
-
-/* ✅ NEW target for TX log */
-function pushRecentTx(hash){
-  try{
-    const wrap = document.getElementById("txLog");
-    if(!wrap) return;
-
-    if(wrap.querySelector(".txLine") == null){
-      wrap.innerHTML = "";
-    }
-
-    const div = document.createElement("div");
-    div.className = "txLine";
-
-    const t = document.createElement("div");
-    t.className = "t";
-    const now = new Date();
-    t.textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-
-    const a = document.createElement("a");
-    a.href = "https://etherscan.io/tx/" + hash;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.textContent = hash.slice(0,10) + "…" + hash.slice(-8);
-
-    const m = document.createElement("div");
-    m.style.flex = "1";
-    m.appendChild(a);
-
-    div.appendChild(t);
-    div.appendChild(m);
-
-    wrap.prepend(div);
-  }catch{}
-}
-
-/* ============================================================
-   ✅ Proxy Router send helpers (unchanged)
-   ============================================================ */
-async function tryCallStaticLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
-  }
-  throw new Error("Unsupported swap direction");
-}
-
-async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
-  const sellIsEth = metaIsETH(sellMeta);
-  const buyIsEth  = metaIsETH(buyMeta);
-
-  const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
-  const callValue = sellIsEth ? amountInBN_raw : flat;
-
-  const userSlip = getSlipPct();
-  const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
-  if(!pathCandidates.length) throw new Error("No route candidates available.");
-
-  const tokenInParam = addrForPath(sellMeta);
-  const { modelA, modelB } = getQuoteAmountsForModels({ sellIsEth, amountInBN_raw });
-
-  for (const path of pathCandidates){
-    const ethReserve = await getEthReserveIfWethInvolved(path);
-    const rec = recommendedSlippagePctByEthReserve(ethReserve);
-
-    const slipCandidates = [
-      userSlip,
-      (rec != null ? Math.max(userSlip, rec) : userSlip),
-      10, 25, 35, 50
-    ].map(x => Math.max(0, Math.min(95, Number(x||0))))
-     .filter((v,i,arr)=>arr.indexOf(v)===i);
-
-    const models = [
-      { name: "modelA", amountForQuoteBN: modelA },
-      { name: "modelB", amountForQuoteBN: modelB },
-    ].filter(m => m.amountForQuoteBN && m.amountForQuoteBN.gt(0));
-
-    for(const m of models){
-      let outBN = null;
-      try{
-        const amts = await sushiRouterRO.getAmountsOut(m.amountForQuoteBN, path);
-        outBN = amts[amts.length - 1];
-      }catch{ continue; }
-
-      for (const slipPct of slipCandidates){
-        const outMinBN = calcOutMin(outBN, slipPct);
-        try{
-          await tryCallStaticLite({
-            sellIsEth, buyIsEth,
-            tokenInParam,
-            amountInBN_raw,
-            outMinBN,
-            path,
-            to, deadline,
-            callValue
-          });
-          return { slipPct, outMinBN, path, callValue, rec, modelUsed: m.name };
-        }catch(e){}
-      }
-    }
-  }
-  throw new Error("Proxy plan not found.");
-}
-
-/* ============================================================
-   ✅ Direct Sushi fallback plan (unchanged)
-   ============================================================ */
-async function tryCallStaticDirect({sellIsEth, buyIsEth, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
-  if (sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
-  } else if (!sellIsEth && buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  } else if (!sellIsEth && !buyIsEth) {
-    return await sushiRouterRW.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, outMinBN, path, to, deadline);
-  }
-  throw new Error("Unsupported swap direction");
-}
-
-async function resolveWorkingPlanDirect({sellMeta, buyMeta, amountInBN_raw, tokenIn, tokenOut, to, deadline}){
-  const sellIsEth = metaIsETH(sellMeta);
-  const buyIsEth  = metaIsETH(buyMeta);
-
-  const callValue = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
-  const userSlip = getSlipPct();
-
-  const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
-  if(!pathCandidates.length) throw new Error("No route candidates available.");
-
-  for(const path of pathCandidates){
-    const ethReserve = await getEthReserveIfWethInvolved(path);
-    const rec = recommendedSlippagePctByEthReserve(ethReserve);
-
-    const slipCandidates = [
-      userSlip,
-      (rec != null ? Math.max(userSlip, rec) : userSlip),
-      10, 25, 35, 50
-    ].map(x => Math.max(0, Math.min(95, Number(x||0))))
-     .filter((v,i,arr)=>arr.indexOf(v)===i);
-
-    let outBN = null;
-    try{
-      const amts = await sushiRouterRO.getAmountsOut(amountInBN_raw, path);
-      outBN = amts[amts.length - 1];
-    }catch{ continue; }
-
-    for(const slipPct of slipCandidates){
-      const outMinBN = calcOutMin(outBN, slipPct);
-      try{
-        await tryCallStaticDirect({
-          sellIsEth, buyIsEth,
-          amountInBN_raw,
-          outMinBN,
-          path, to, deadline,
-          callValue
-        });
-        return { slipPct, outMinBN, path, callValue, rec };
-      }catch(e){}
-    }
-  }
-  throw new Error("Direct plan not found.");
-}
-
-/* ============================================================
-   ✅ estimateGas fallback -> safe gas limit
-   ============================================================ */
-async function safeEstimateOrDefault(estimatePromiseFn, defaultGas){
-  try{
-    const g = await estimatePromiseFn();
-    return g;
-  }catch(e){
-    dbg("gas estimation failed", e);
-    setSwapStatus("Gas estimation failed (attempt-1). Using safe gas limit…");
-    return ethers.BigNumber.from(String(defaultGas));
-  }
-}
-
-/* ============================================================
-   ✅ Swap execution (Silent + Mobile safe)
-   ============================================================ */
-async function executeSwap() {
-  try {
-    setSwapStatus("");
-    if (!userAddress) {
-      setSwapStatus("Please connect your wallet first.");
-      return;
-    }
-
-    ensureWeb3();
-    await ensureMainnet();
-    await loadProxyFeeParams();
-
-    const sellValStr = String(document.getElementById("sell").value || "").trim();
-    if (!sellValStr || Number(sellValStr) <= 0) {
-      setSwapStatus("Enter an amount to swap.");
-      return;
-    }
-
-    const sellMeta = getSelectedMeta(document.getElementById("sellS"));
-    const buyMeta  = getSelectedMeta(document.getElementById("buyS"));
-    if (!sellMeta || !buyMeta) {
-      setSwapStatus("Token metadata not found.");
-      return;
-    }
-
-    const amountInBN_raw = bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-    if (amountInBN_raw.lte(0)) {
-      setSwapStatus("Invalid amount.");
-      return;
-    }
-
-    const sellIsEth = metaIsETH(sellMeta);
-    const buyIsEth  = metaIsETH(buyMeta);
-    if (sellIsEth && buyIsEth) {
-      setSwapStatus("ETH → ETH swap is not supported.");
-      return;
-    }
-
-    const tokenIn  = addrForPath(sellMeta);
-    const tokenOut = addrForPath(buyMeta);
-
-    const deadline = Math.floor(Date.now()/1000) + 1200;
-    const to = userAddress;
-
-    await ensureSufficientTokenBalance(sellMeta, amountInBN_raw);
-
-    if (!sellIsEth){
-      setSwapStatus("Checking approval…");
-      await ensureAllowance(sellMeta, amountInBN_raw, GDEX_PROXY_ROUTER);
-    }
-
-    const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.00003"));
-    const expectedValueProxy = sellIsEth ? amountInBN_raw : flat;
-    await ensureSufficientEthForValue(expectedValueProxy);
-
-    setSwapBusy(true);
-    setSwapStatus("Preparing route…");
-
-    let plan = null;
-    let mode = "proxy";
-
-    try{
-      plan = await resolveWorkingPlanLite({
-        sellMeta, buyMeta,
-        amountInBN_raw,
-        tokenIn, tokenOut,
-        to, deadline
-      });
-      mode = "proxy";
-    }catch(proxyErr){
-      try{
-        if (!sellIsEth){
-          setSwapStatus("Best route selected automatically");
-          await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
+function renderTokenList(q){
+  const query = (q||"").trim().toLowerCase();
+  tokList.innerHTML = "";
+  TOKENS
+    .filter(t => !query || t.symbol.toLowerCase().includes(query) || (t.name||"").toLowerCase().includes(query))
+    .forEach(t=>{
+      const row = document.createElement("div");
+      row.className = "tokRow";
+      row.innerHTML = `
+        <img src="${t.icon || "G_DEX_icon.png"}" alt="">
+        <div class="meta">
+          <div class="sym">${t.symbol} <span class="tiny" style="font-weight:800">— ${t.name || ""}</span></div>
+          <div class="addr">${t.address === "ETH" ? "Native" : shortAddr(t.address)}</div>
+        </div>
+      `;
+      row.onclick = ()=>{
+        if(pickSide === "in"){
+          tokenIn = t;
+          if(tokenOut.address === tokenIn.address){ tokenOut = (t.symbol==="ETH") ? TOKENS[1] : TOKENS[0]; }
         }else{
-          setSwapStatus("Best route selected automatically");
+          tokenOut = t;
+          if(tokenOut.address === tokenIn.address){ tokenIn = (t.symbol==="ETH") ? TOKENS[1] : TOKENS[0]; }
         }
-        const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
-        await ensureSufficientEthForValue(expectedValueDirect);
+        closeModal();
+        setTokenUI();
+      };
+      tokList.appendChild(row);
+    });
+}
 
-        plan = await resolveWorkingPlanDirect({
-          sellMeta, buyMeta,
-          amountInBN_raw,
-          tokenIn, tokenOut,
-          to, deadline
-        });
-        mode = "direct";
-      }catch(directErr){
-        throw directErr;
-      }
-    }
+/* =========================================================
+   Wallet connect (Mainnet recommended)
+   ========================================================= */
+async function connect(){
+  if(!window.ethereum){
+    showToast("Wallet not found", "Please install MetaMask or a compatible wallet.");
+    return;
+  }
+  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+  userAddr = await signer.getAddress();
 
-    __lastSwapMode = mode;
-    updateStatusBoard();
+  addrLine.textContent = shortAddr(userAddr);
+  btnConnect.textContent = "Connected";
+  btnConnect.classList.add("secondary");
 
-    setSwapStatus(`Please confirm in your wallet… (${mode === "proxy" ? "Proxy" : "Direct"})`);
+  const net = await provider.getNetwork();
+  netLine.textContent = `Network: ${net.name} (chainId ${net.chainId})`;
 
-    let tx;
-    if(mode === "proxy"){
-      const tokenInParam = addrForPath(sellMeta);
-
-      const fn =
-        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensWithFee"
-        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHWithFee"
-        : "swapExactTokensForTokensWithFee";
-
-      const gas = await safeEstimateOrDefault(
-        ()=> proxyRouter.estimateGas[fn](
-          ...(sellIsEth && !buyIsEth
-            ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            : [tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-          )
-        ),
-        SAFE_GAS_PROXY
-      );
-
-      const gasLimit = gas.mul(125).div(100);
-
-      tx = await withTimeout(
-        (sellIsEth && !buyIsEth)
-          ? proxyRouter.swapExactETHForTokensWithFee(plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-          : (!sellIsEth && buyIsEth)
-            ? proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-            : proxyRouter.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }),
-        WALLET_CONFIRM_TIMEOUT_MS,
-        "WALLET_CONFIRM_TIMEOUT"
-      );
-
-    }else{
-      const fn =
-        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
-        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
-        : "swapExactTokensForTokensSupportingFeeOnTransferTokens";
-
-      const gas = await safeEstimateOrDefault(
-        ()=> sushiRouterRW.estimateGas[fn](
-          ...(sellIsEth && !buyIsEth
-            ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline]
-          )
-        ),
-        SAFE_GAS_DIRECT
-      );
-
-      const gasLimit = gas.mul(125).div(100);
-
-      tx = await withTimeout(
-        (sellIsEth && !buyIsEth)
-          ? sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-          : (!sellIsEth && buyIsEth)
-            ? sushiRouterRW.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { gasLimit })
-            : sushiRouterRW.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { gasLimit }),
-        WALLET_CONFIRM_TIMEOUT_MS,
-        "WALLET_CONFIRM_TIMEOUT"
-      );
-    }
-
-    pushRecentTx(tx.hash);
-    setSwapStatus(`TX sent: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`);
-
-    setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); updateStatusBoard(); }, 1500);
-
-  } catch (err) {
-    console.error("executeSwap error:", err);
-
-    if (String(err?.message||"").includes("WALLET_CONFIRM_TIMEOUT")) {
-      setSwapStatus("Wallet confirmation timeout. Please open MetaMask and confirm the transaction.");
-      const ok = await uiConfirm(
-        "Wallet confirmation timeout",
-        "MetaMask confirmation didn't arrive in time.\n\n" +
-        "• Open MetaMask and check the pending confirmation\n" +
-        "• If you are NOT in MetaMask in-app browser, open via deep link\n\n" +
-        "Press Continue to open MetaMask (mobile).",
-        { okText:"Continue", cancelText:"Close", copy:false }
-      );
-      if (ok && isMobile) openMetaMaskDeepLink();
-      return;
-    }
-
-    const msg = (err && err.message) ? err.message : String(err);
-    showErrorPopup(
-      "Swap failed",
-      msg + "\n\nNote:\n" +
-      "• If there is NO tx hash, it failed before sending (callStatic/estimateGas).\n" +
-      "• Make sure you are on Ethereum Mainnet\n" +
-      "• For proxy token swaps, ensure you have enough ETH for flat fee + gas\n" +
-      "• Proxy mode spender = Proxy Router, Direct mode spender = Sushi Router\n" +
-      "• Try higher slippage (10%~35%) if liquidity is thin"
+  if(net.chainId !== 1){
+    showToast(
+      "Wrong network",
+      "Switch to Ethereum Mainnet and refresh for best results.",
+      [{label:"OK"}]
     );
-  } finally {
-    setSwapBusy(false);
-    updateStatusBoard();
   }
+  refreshBalances();
+
+  window.ethereum.on?.("chainChanged", ()=>location.reload());
+  window.ethereum.on?.("accountsChanged", ()=>location.reload());
 }
 
-function bindSwapLogic() {
-  const sellInput = document.getElementById("sell");
-  const swapBtn   = document.getElementById("swapBtn");
-  if (sellInput) ["input","change"].forEach(ev => sellInput.addEventListener(ev, updatePricePreview));
-  if (swapBtn) swapBtn.addEventListener("click", executeSwap);
+async function getERC20Balance(token){
+  if(!provider || !userAddr) return null;
+  if(token.address === "ETH"){
+    const b = await provider.getBalance(userAddr);
+    return {raw:b, fmt: ethers.utils.formatEther(b)};
+  }
+  const abi = ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)"];
+  const c = new ethers.Contract(token.address, abi, provider);
+  const b = await c.balanceOf(userAddr);
+  const fmt = ethers.utils.formatUnits(b, token.decimals);
+  return {raw:b, fmt};
 }
 
-/* ===== Bind Connect ===== */
-function bindConnect(){
-  ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.onclick = connectWallet;
-  });
-
-  const stakeMaxBtn = document.querySelector('.input--stake .max');
-  if(stakeMaxBtn) stakeMaxBtn.onclick = async ()=>{
-    const glip = getTokenMeta("GLIP");
-    const balStr = await fetchTokenBalanceString(glip);
-    document.getElementById('stakeAmt').value = balStr || '';
-  };
-
-  const swapMax = document.getElementById('swapMax');
-  if(swapMax) swapMax.onclick = async ()=>{
-    const sellMeta = getSelectedMeta(document.getElementById("sellS"));
-    const balStr = await fetchTokenBalanceString(sellMeta);
-    if (!balStr) return;
-
-    if (sellMeta && metaIsETH(sellMeta) && userAddress) {
-      try{
-        const raw = await ethGetBalance(userAddress);
-        const bn = ethers.BigNumber.from(raw.toString());
-        const buffer = ethers.constants.Zero;
-        const use = bn.gt(buffer) ? bn.sub(buffer) : ethers.constants.Zero;
-        document.getElementById('sell').value = ethers.utils.formatEther(use);
-      }catch{
-        document.getElementById('sell').value = balStr;
-      }
-    } else {
-      document.getElementById('sell').value = balStr;
-    }
-    updatePricePreview();
-    updateStatusBoard();
-  };
-}
-
-/* ============================================================
-   ✅ Status Panel logic
-   ============================================================ */
-function pill(elId, ok){
-  const el = document.getElementById(elId);
-  if(!el) return;
-  el.classList.remove("ok","bad");
-  el.classList.add(ok ? "ok" : "bad");
-}
-function fmtAgo(ts){
-  if(!ts) return "—";
-  const s = Math.max(0, Math.floor((Date.now()-ts)/1000));
-  if(s < 60) return `${s}s ago`;
-  const m = Math.floor(s/60);
-  if(m < 60) return `${m}m ago`;
-  const h = Math.floor(m/60);
-  return `${h}h ago`;
-}
-async function getNetInfoSafe(){
+async function refreshBalances(){
   try{
-    if(!provider) return null;
-    return await provider.getNetwork();
-  }catch{
-    return null;
-  }
-}
-function updateStatusBoard(){
-  const boot = document.getElementById("stBoot");
-  const bootSub = document.getElementById("stBootSub");
-  const w = document.getElementById("stWallet");
-  const wSub = document.getElementById("stWalletSub");
-  const net = document.getElementById("stNet");
-  const netSub = document.getElementById("stNetSub");
-  const route = document.getElementById("stRoute");
-  const routeSub = document.getElementById("stRouteSub");
-  const fee = document.getElementById("stFee");
-  const feeSub = document.getElementById("stFeeSub");
-  const src = document.getElementById("stSources");
-  const srcSub = document.getElementById("stSourcesSub");
-
-  if(boot){
-    boot.textContent = __bootOk ? "OK" : "Boot issue";
-  }
-  if(bootSub){
-    const dm = isStandaloneMode() ? "standalone" : "browser";
-    bootSub.textContent = `SW_VER=${typeof SW_VER!=="undefined"?SW_VER:"—"} · display=${dm}`;
-  }
-
-  if(w){
-    w.textContent = userAddress ? short(userAddress) : "Disconnected";
-  }
-  if(wSub){
-    const mm = window.ethereum ? (window.ethereum.isMetaMask ? "MetaMask" : "Injected wallet") : "No wallet";
-    wSub.textContent = `${mm} · token modal=${dialogSupported(dlg)?"dialog":"fallback"}`;
-  }
-
-  // network info (safe)
-  (async ()=>{
-    if(!net || !netSub) return;
-    const info = await getNetInfoSafe();
-    if(!info){
-      net.textContent = "—";
-      netSub.textContent = "Not connected";
-      pill("pillNet", false);
+    if(!provider || !userAddr){
+      balIn.textContent = "Balance: —";
+      balOut.textContent = "Balance: —";
       return;
     }
-    net.textContent = `${info.name || "network"} (chainId=${info.chainId})`;
-    netSub.textContent = (info.chainId===1) ? "Ethereum Mainnet" : "Wrong network";
-    pill("pillNet", info.chainId===1);
-  })();
-
-  if(route){
-    route.textContent = `Last mode: ${__lastSwapMode}`;
+    const [b1,b2] = await Promise.allSettled([getERC20Balance(tokenIn), getERC20Balance(tokenOut)]);
+    balIn.textContent  = "Balance: " + (b1.status==="fulfilled" && b1.value ? Number(b1.value.fmt).toLocaleString(undefined,{maximumFractionDigits:6}) : "—");
+    balOut.textContent = "Balance: " + (b2.status==="fulfilled" && b2.value ? Number(b2.value.fmt).toLocaleString(undefined,{maximumFractionDigits:6}) : "—");
+  }catch(e){
+    balIn.textContent = "Balance: —";
+    balOut.textContent = "Balance: —";
   }
-  if(routeSub){
-    routeSub.textContent = `Proxy=${short(GDEX_PROXY_ROUTER)} · Sushi=${short(SUSHI_ROUTER_V2)}`;
-  }
-
-  if(fee){
-    const pct = (__proxyFeeBps||0)/100;
-    const flat = (()=>{ try{ return __proxyFlatFeeWei ? `${ethers.utils.formatEther(__proxyFlatFeeWei)} ETH` : "—"; }catch{return "—"} })();
-    fee.textContent = __proxyFeeLoaded ? `${pct.toFixed(2)}% · ${flat}` : `— (not loaded)`;
-  }
-  if(feeSub){
-    feeSub.textContent = `feeWallet=${__proxyFeeWallet?short(__proxyFeeWallet):"—"}`;
-  }
-
-  if(src){
-    const b = (__backendOk==null) ? "unknown" : (__backendOk ? "ok" : "fail");
-    const c = (__cgOk==null) ? "unknown" : (__cgOk ? "ok" : "fail");
-    src.textContent = `Backend: ${b} · CoinGecko: ${c}`;
-  }
-  if(srcSub){
-    srcSub.textContent = `Backend last: ${fmtAgo(__backendLastAt)} · CoinGecko last: ${fmtAgo(__cgLastAt)}`;
-  }
-
-  pill("pillWallet", !!userAddress);
-  pill("pillBackend", (__backendOk==null) ? false : !!__backendOk);
-  pill("pillCG", (__cgOk==null) ? false : !!__cgOk);
-
-  const pw = document.getElementById("pillWallet");
-  if(pw) pw.textContent = userAddress ? "Wallet: ON" : "Wallet: OFF";
-  const pn = document.getElementById("pillNet");
-  if(pn) pn.textContent = "Mainnet";
-  const pb = document.getElementById("pillBackend");
-  if(pb) pb.textContent = "Backend";
-  const pc = document.getElementById("pillCG");
-  if(pc) pc.textContent = "CoinGecko";
 }
 
-/* ============================================================
-   ✅ Status Panel actions
-   ============================================================ */
-function buildDiagnostic(){
-  const lines = [];
-  lines.push(`G-DEX Diagnostic`);
-  lines.push(`- SW_VER: ${typeof SW_VER!=="undefined"?SW_VER:"—"}`);
-  lines.push(`- URL: ${location.href}`);
-  lines.push(`- Standalone: ${isStandaloneMode()}`);
-  lines.push(`- UA: ${navigator.userAgent}`);
-  lines.push(`- Wallet present: ${!!window.ethereum}`);
-  lines.push(`- MetaMask: ${!!(window.ethereum && window.ethereum.isMetaMask)}`);
-  lines.push(`- Address: ${userAddress || "—"}`);
-  lines.push(`- Proxy Router: ${GDEX_PROXY_ROUTER}`);
-  lines.push(`- Sushi Router: ${SUSHI_ROUTER_V2}`);
-  lines.push(`- Backend URL: ${BACKEND_URL}`);
-  lines.push(`- Backend ok: ${__backendOk} (last ${fmtAgo(__backendLastAt)})`);
-  lines.push(`- CoinGecko ok: ${__cgOk} (last ${fmtAgo(__cgLastAt)})`);
-  lines.push(`- Fee loaded: ${__proxyFeeLoaded}`);
-  lines.push(`- Fee bps: ${__proxyFeeBps}`);
+/* =========================================================
+   Quote (best-effort): use CoinGecko simple price
+   - This is just a preview, actual execution happens on Sushi
+   ========================================================= */
+const CG_SIMPLE = "https://api.coingecko.com/api/v3/simple/price";
+
+function coingeckoIdBySymbol(sym){
+  // minimal mapping for preview
+  const m = { ETH:"ethereum", USDT:"tether", USDC:"usd-coin", DAI:"dai" };
+  return m[sym] || null;
+}
+
+async function updateQuote(){
+  const v = (amtIn.value || "").trim();
+  if(!v || isNaN(Number(v)) || Number(v) <= 0){
+    amtOut.value = "";
+    pxLine.textContent = "Quote: —";
+    return;
+  }
+  // If tokenIn or tokenOut is GLIP (unknown on CG), skip numeric quote
+  if(tokenIn.symbol==="GLIP" || tokenOut.symbol==="GLIP"){
+    amtOut.value = "";
+    pxLine.textContent = "Quote: — (GLIP preview unavailable)";
+    return;
+  }
+  const idIn = coingeckoIdBySymbol(tokenIn.symbol);
+  const idOut = coingeckoIdBySymbol(tokenOut.symbol);
+  if(!idIn || !idOut){
+    amtOut.value = "";
+    pxLine.textContent = "Quote: —";
+    return;
+  }
   try{
-    const flat = __proxyFlatFeeWei ? ethers.utils.formatEther(__proxyFlatFeeWei) : "—";
-    lines.push(`- Flat fee: ${flat} ETH`);
-  }catch{}
-  if(__bootErr){
-    lines.push(`- Boot error: ${String(__bootErr?.message||__bootErr)}`);
-  }
-  return lines.join("\n");
-}
-
-function bindStatusPanel(){
-  const r = document.getElementById("btnRefreshStatus");
-  if(r) r.addEventListener("click", async ()=>{
-    try{
-      if(userAddress){
-        await refreshAllBalances();
-        await loadProxyFeeParams();
-      }
-    }catch{}
-    updateStatusBoard();
-  });
-
-  const c = document.getElementById("btnCopyDiag");
-  if(c) c.addEventListener("click", async ()=>{
-    const txt = buildDiagnostic();
-    try{
-      await navigator.clipboard.writeText(txt);
-      await uiAlert("Copied", "Diagnostic info copied to clipboard.", {copy:false});
-    }catch{
-      await uiAlert("Diagnostic", txt, {copy:true});
-    }
-  });
-}
-
-/* ===== Boot ===== */
-function boot(){
-  __bootOk = false;
-  __bootErr = null;
-
-  // IMPORTANT: isolate each step so one failure doesn't kill everything
-  try{ initDefaults(); }catch(e){ console.error("[boot:initDefaults]", e); __bootErr = __bootErr || e; }
-  try{ bindTokenButtons(); }catch(e){ console.error("[boot:bindTokenButtons]", e); __bootErr = __bootErr || e; }
-  try{ bindFlip(); }catch(e){ console.error("[boot:bindFlip]", e); __bootErr = __bootErr || e; }
-  try{ bindConnect(); }catch(e){ console.error("[boot:bindConnect]", e); __bootErr = __bootErr || e; }
-  try{ bindSwapLogic(); }catch(e){ console.error("[boot:bindSwapLogic]", e); __bootErr = __bootErr || e; }
-  try{ bindPoolSupplyButton(); }catch(e){ console.error("[boot:bindPoolSupplyButton]", e); __bootErr = __bootErr || e; }
-  try{ bindTop(); }catch(e){ console.error("[boot:bindTop]", e); __bootErr = __bootErr || e; }
-  try{ bindStatusPanel(); }catch(e){ console.error("[boot:bindStatusPanel]", e); __bootErr = __bootErr || e; }
-  try{ document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick)); }catch(e){ console.error("[boot:install]", e); __bootErr = __bootErr || e; }
-
-  try{ applyManualPoolConfig(); }catch(e){ console.error("[boot:manualConfig]", e); __bootErr = __bootErr || e; }
-  try{ bootSushiPoolsTicker(); }catch(e){ console.error("[boot:sushiTicker]", e); __bootErr = __bootErr || e; }
-  try{ bootMajorCoinPricesTicker(); }catch(e){ console.error("[boot:pricesTicker]", e); __bootErr = __bootErr || e; }
-
-  // analytics demo should never break swap/token UI
-  try{ fillKpis(demoAnalytics); }catch(e){ console.error("[boot:fillKpis]", e); }
-  try{ drawSpark(demoAnalytics); }catch(e){ console.error("[boot:drawSpark]", e); }
-  try{ drawDonut(demoAnalytics); }catch(e){ console.error("[boot:drawDonut]", e); }
-  try{ drawGauge(demoAnalytics); }catch(e){ console.error("[boot:drawGauge]", e); }
-
-  __bootOk = !__bootErr;
-  updateStatusBoard();
-
-  if(SWAP_SILENT){
-    setSwapStatus("Ready. (Silent swap mode enabled)");
+    const url = `${CG_SIMPLE}?ids=${encodeURIComponent(idIn)},${encodeURIComponent(idOut)}&vs_currencies=usd`;
+    const r = await fetch(url, {cache:"no-store"});
+    const j = await r.json();
+    const pIn = j?.[idIn]?.usd;
+    const pOut = j?.[idOut]?.usd;
+    if(!pIn || !pOut) throw new Error("No price");
+    const out = (Number(v) * (pIn / pOut));
+    amtOut.value = out.toLocaleString(undefined,{maximumFractionDigits:6});
+    pxLine.textContent = `Quote: ~${out.toLocaleString(undefined,{maximumFractionDigits:6})} ${tokenOut.symbol}`;
+  }catch(e){
+    amtOut.value = "";
+    pxLine.textContent = "Quote: —";
   }
 }
 
-if(document.readyState === "loading"){
-  document.addEventListener('DOMContentLoaded', boot);
-}else{
-  boot();
+/* =========================================================
+   Open SushiSwap with selected tokens
+   ========================================================= */
+function buildSushiSwapURL(){
+  const from = tokenIn.address === "ETH" ? "NATIVE" : tokenIn.address;
+  const to   = tokenOut.address === "ETH" ? "NATIVE" : tokenOut.address;
+
+  // Sushi supports query params; if it changes, this still opens swap page safely.
+  const u = new URL(SUSHI_SWAP_BASE);
+  u.searchParams.set("token0", from);
+  u.searchParams.set("token1", to);
+  const v = (amtIn.value || "").trim();
+  if(v && !isNaN(Number(v)) && Number(v) > 0) u.searchParams.set("amount", v);
+  return u.toString();
 }
+
+function openSwap(){
+  const u = buildSushiSwapURL();
+  window.open(u, "_blank", "noopener");
+  showToast("Opening swap", "Swap will open on SushiSwap in a new tab.");
+}
+
+/* =========================================================
+   Recently Created Pools (best-effort)
+   - No official public “latest pools” endpoint guaranteed,
+     so we simulate a high-quality ticker:
+     1) Use Sushi pools explore page as CTA (always valid)
+     2) Provide a rotating “watchlist” pool signals
+   ========================================================= */
+const POOL_SIGNALS = [
+  {pair:"WETH / USDT", meta:"High liquidity (watch)", url:SUSHI_POOLS_URL},
+  {pair:"WETH / USDC", meta:"High liquidity (watch)", url:SUSHI_POOLS_URL},
+  {pair:"WETH / DAI",  meta:"Stable routing (watch)", url:SUSHI_POOLS_URL},
+  {pair:"GLIP / WETH", meta:"Project pair (check)", url:SUSHI_POOLS_URL},
+];
+
+let poolIdx = 0;
+function rotatePools(){
+  const x = POOL_SIGNALS[poolIdx % POOL_SIGNALS.length];
+  poolsTickerPair.textContent = x.pair;
+  poolsTickerMeta.textContent = x.meta;
+  poolsTickerLink.href = x.url;
+  poolIdx++;
+  poolsUpdated.textContent = "Updated: " + new Date().toLocaleTimeString();
+}
+setInterval(rotatePools, 4200);
+
+/* =========================================================
+   Major coin prices (CoinGecko markets)
+   ========================================================= */
+async function loadMajor(){
+  const coins = [
+    {id:"bitcoin",  sym:"BTC", name:"Bitcoin", icon:"https://assets.coingecko.com/coins/images/1/large/bitcoin.png"},
+    {id:"ethereum", sym:"ETH", name:"Ethereum", icon:"https://assets.coingecko.com/coins/images/279/large/ethereum.png"},
+    {id:"tether",   sym:"USDT",name:"Tether", icon:"https://assets.coingecko.com/coins/images/325/large/Tether.png"},
+    {id:"usd-coin", sym:"USDC",name:"USD Coin", icon:"https://assets.coingecko.com/coins/images/6319/large/usdc.png"},
+  ];
+  try{
+    const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=" + coins.map(c=>c.id).join(",") + "&price_change_percentage=24h";
+    const r = await fetch(url, {cache:"no-store"});
+    const j = await r.json();
+    const map = {};
+    (j||[]).forEach(x=>map[x.id]=x);
+
+    majorList.innerHTML = "";
+    coins.forEach(c=>{
+      const d = map[c.id];
+      const price = d?.current_price;
+      const chg = d?.price_change_percentage_24h;
+      const up = (typeof chg==="number" && chg >= 0);
+      const row = document.createElement("div");
+      row.className = "pRow";
+      row.innerHTML = `
+        <div class="pLeft">
+          <img src="${c.icon}" alt="">
+          <div>
+            <div class="pName">${c.sym} <span class="tiny" style="font-weight:800">— ${c.name}</span></div>
+          </div>
+        </div>
+        <div class="pRight">
+          <div style="font-weight:900">${typeof price==="number" ? "$" + price.toLocaleString(undefined,{maximumFractionDigits: (price>=100?2:6)}) : "—"}</div>
+          <div class="chg ${up ? "up":"dn"}">${typeof chg==="number" ? (up?"+":"") + chg.toFixed(2) + "% (24h)" : "—"}</div>
+        </div>
+      `;
+      majorList.appendChild(row);
+    });
+
+    majorUpdated.textContent = "Updated: " + new Date().toLocaleTimeString();
+    majorStatus.textContent = "Auto refresh";
+  }catch(e){
+    majorUpdated.textContent = "Updated: —";
+    majorStatus.textContent = "API unavailable";
+  }
+}
+
+/* =========================================================
+   Bindings
+   ========================================================= */
+btnConnect.addEventListener("click", connect);
+pickIn.addEventListener("click", ()=>openModal("in"));
+pickOut.addEventListener("click", ()=>openModal("out"));
+$("closeModal").addEventListener("click", closeModal);
+modalBack.addEventListener("click", (e)=>{ if(e.target === modalBack) closeModal(); });
+tokSearch.addEventListener("input", (e)=>renderTokenList(e.target.value));
+
+btnFlip.addEventListener("click", ()=>{
+  const t = tokenIn; tokenIn = tokenOut; tokenOut = t;
+  setTokenUI();
+});
+btnSwap.addEventListener("click", openSwap);
+amtIn.addEventListener("input", ()=>{ updateQuote(); });
+
+/* =========================================================
+   Init
+   ========================================================= */
+(function init(){
+  setTokenUI();
+  renderTokenList("");
+  rotatePools();
+  loadMajor();
+  setInterval(loadMajor, 25000);
+  poolsStatus.textContent = "Live sync";
+})();
 </script>
 </body>
 </html>
-<br><br>
-
-
