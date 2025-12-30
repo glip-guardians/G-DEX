@@ -893,29 +893,66 @@ h3::before{content:""; display:none;}
     <main class="main">
       <!-- Metrics -->
       <section class="metrics">
-        <div class="card metric">
-          <h4>Recently Created Pools</h4>
-          <div class="v" id="metricPoolsText">
-            <div class="poolsTicker" id="poolsTicker" aria-label="Sushi pools ticker">
-              <a class="poolsItem" id="poolsTickerLink" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">
-                <span class="pair" id="poolsTickerPair">—</span>
-                <span class="meta" id="poolsTickerMeta"></span>
-              </a>
-            </div>
-          </div>
-        </div>
+     <div class="card metric">
+  <h4>Recently Created Pools</h4>
 
-        <div class="card metric">
-          <h4>Major Coin Prices</h4>
-          <div class="v" id="metricPricesText">
-            <div class="poolsTicker" id="pricesTicker" aria-label="Major coin prices ticker">
-              <a class="poolsItem" id="pricesTickerLink" href="https://www.coingecko.com" target="_blank" rel="noopener">
-                <span class="pair" id="pricesTickerPair">—</span>
-                <span class="meta" id="pricesTickerMeta"></span>
-              </a>
-            </div>
-          </div>
-        </div>
+  <div class="v" id="metricPoolsText">
+    <div class="poolsTicker" id="poolsTicker" aria-label="Sushi pools ticker">
+      <a class="poolsItem" id="poolsTickerLink" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">
+        <span class="pair" id="poolsTickerPair">—</span>
+        <span class="meta" id="poolsTickerMeta"></span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ✅ NEW: fill empty area -->
+  <div class="metricFill">
+    <div class="miniTitleRow">
+      <div class="miniTitle">New pools (preview)</div>
+      <div class="miniHint" id="poolsUpdated">Updated —</div>
+    </div>
+
+    <div class="miniList" id="poolsMiniList" aria-label="Recent pools list">
+      <div class="miniEmpty">Loading…</div>
+    </div>
+
+    <div class="miniActions">
+      <a class="miniBtn" id="poolsExploreBtn" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">Explore</a>
+      <button class="miniBtn ghost" id="poolsRefreshBtn" type="button">Refresh</button>
+    </div>
+  </div>
+</div>
+
+<div class="card metric">
+  <h4>Major Coin Prices</h4>
+
+  <div class="v" id="metricPricesText">
+    <div class="poolsTicker" id="pricesTicker" aria-label="Major coin prices ticker">
+      <a class="poolsItem" id="pricesTickerLink" href="https://www.coingecko.com" target="_blank" rel="noopener">
+        <span class="pair" id="pricesTickerPair">—</span>
+        <span class="meta" id="pricesTickerMeta"></span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ✅ NEW: fill empty area -->
+  <div class="metricFill">
+    <div class="miniTitleRow">
+      <div class="miniTitle">Snapshot</div>
+      <div class="miniHint" id="pricesUpdated">Updated —</div>
+    </div>
+
+    <div class="priceGrid" id="pricesMiniGrid" aria-label="Major coin snapshot grid">
+      <div class="miniEmpty">Loading…</div>
+    </div>
+
+    <div class="miniActions">
+      <a class="miniBtn" id="pricesOpenBtn" href="https://www.coingecko.com" target="_blank" rel="noopener">Open</a>
+      <button class="miniBtn ghost" id="pricesRefreshBtn" type="button">Refresh</button>
+    </div>
+  </div>
+</div>
+
 
         <div class="card metric">
           <h4>GLIP Price</h4>
@@ -966,7 +1003,7 @@ h3::before{content:""; display:none;}
 
       <!-- ✅ REPLACED: Recent Transactions -> G-DEX 상태판 -->
       <section class="card recent" id="status">
-        <h3>G-DEX Status Board<h3>
+        <h3>G-DEX Status Board</h3>
 
         <div class="statusGrid">
           <div class="statusItem">
@@ -3150,6 +3187,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
