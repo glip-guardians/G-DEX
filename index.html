@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -837,120 +836,6 @@ h3::before{content:""; display:none;}
 }
 .smallPill.ok{border-color:rgba(57,217,138,.35)}
 .smallPill.bad{border-color:rgba(255,120,120,.35)}
-/* ============================================================
-   ✅ NEW: Metric card bottom-fill (prevents empty-looking cards)
-   - keeps design, fills whitespace with useful info
-   ============================================================ */
-.card.metric{
-  display:flex;
-  flex-direction:column;
-  min-height:190px; /* 카드 하단 공백을 '의도된 레이아웃'으로 고정 */
-}
-.metricFill{
-  margin-top:12px;
-  border:1px solid rgba(12,25,45,.12);
-  border-radius:18px;
-  background:rgba(255,255,255,.70);
-  box-shadow:0 12px 22px rgba(9,18,33,.10);
-  padding:12px;
-}
-.metricFillHead{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-}
-.metricFillTitle{
-  font-weight:900;
-  font-size:12px;
-  color:rgba(11,18,32,.74);
-  letter-spacing:.02em;
-}
-.metricFillUpdated{
-  font-size:11px;
-  color:rgba(11,18,32,.56);
-  opacity:.95;
-  white-space:nowrap;
-}
-.miniList{
-  margin:0;
-  padding:0;
-  list-style:none;
-  display:grid;
-  gap:8px;
-}
-.miniRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:9px 10px;
-  border-radius:14px;
-  border:1px solid rgba(12,25,45,.10);
-  background:rgba(255,255,255,.62);
-}
-.miniLeft{
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-.miniMain{
-  font-weight:900;
-  color:rgba(11,18,32,.92);
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.miniSub{
-  font-size:11px;
-  color:rgba(11,18,32,.60);
-  opacity:.92;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.miniRight{
-  flex:0 0 auto;
-  font-weight:900;
-  font-size:11px;
-  color:rgba(11,18,32,.78);
-  opacity:.92;
-  white-space:nowrap;
-}
-.metricActions{
-  margin-top:10px;
-  display:flex;
-  gap:8px;
-  justify-content:flex-end;
-  flex-wrap:wrap;
-}
-.miniBtn{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:8px 12px;
-  border-radius:999px;
-  border:1px solid rgba(12,25,45,.14);
-  background:rgba(255,255,255,.72);
-  box-shadow:0 10px 18px rgba(9,18,33,.08);
-  text-decoration:none;
-  color:rgba(11,18,32,.88);
-  font-weight:900;
-  font-size:12px;
-  cursor:pointer;
-  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
-}
-.miniBtn:hover{
-  transform:translateY(-1px);
-  background:rgba(255,255,255,.92);
-  border-color:rgba(123,183,255,.42);
-  box-shadow:0 14px 24px rgba(9,18,33,.12);
-}
-.miniBtn.primary{
-  background:linear-gradient(135deg, rgba(255,255,255,.92), rgba(123,183,255,.18));
-}
 </style>
 </head>
 
@@ -1019,29 +904,6 @@ h3::before{content:""; display:none;}
             </div>
           </div>
         </div>
-<div class="metricFill" aria-label="Pools quick summary">
-  <div class="metricFillHead">
-    <div class="metricFillTitle">Quick view</div>
-    <div class="metricFillUpdated" id="poolsUpdated">Updated: —</div>
-  </div>
-  <ul class="miniList" id="poolsMini">
-    <li class="miniRow">
-      <div class="miniLeft">
-        <div class="miniMain">Loading pools…</div>
-        <div class="miniSub">Fetching recent pools from backend</div>
-      </div>
-      <div class="miniRight">—</div>
-    </li>
-  </ul>
-  <div class="metricActions">
-    <a class="miniBtn" href="https://www.sushi.com/ethereum/explore/pools" target="_blank" rel="noopener">
-      🔎 Explore
-    </a>
-    <button class="miniBtn primary" id="btnPoolsRefresh" type="button">
-      ♻️ Refresh
-    </button>
-  </div>
-</div>
 
         <div class="card metric">
           <h4>Major Coin Prices</h4>
@@ -1054,29 +916,7 @@ h3::before{content:""; display:none;}
             </div>
           </div>
         </div>
-<div class="metricFill" aria-label="Major prices quick summary">
-  <div class="metricFillHead">
-    <div class="metricFillTitle">Top majors</div>
-    <div class="metricFillUpdated" id="pricesUpdated">Updated: —</div>
-  </div>
-  <ul class="miniList" id="pricesMini">
-    <li class="miniRow">
-      <div class="miniLeft">
-        <div class="miniMain">Loading prices…</div>
-        <div class="miniSub">Fetching from CoinGecko</div>
-      </div>
-      <div class="miniRight">—</div>
-    </li>
-  </ul>
-  <div class="metricActions">
-    <a class="miniBtn" href="https://www.coingecko.com" target="_blank" rel="noopener">
-      🌐 CoinGecko
-    </a>
-    <button class="miniBtn primary" id="btnPricesRefresh" type="button">
-      ♻️ Refresh
-    </button>
-  </div>
-</div>
+
         <div class="card metric">
           <h4>GLIP Price</h4>
           <div class="v" id="metricGlipPrice">
@@ -1126,7 +966,7 @@ h3::before{content:""; display:none;}
 
       <!-- ✅ REPLACED: Recent Transactions -> G-DEX 상태판 -->
       <section class="card recent" id="status">
-        <h3>G-DEX Status Board</h3>
+        <h3>G-DEX Status Board<h3>
 
         <div class="statusGrid">
           <div class="statusItem">
@@ -1623,12 +1463,6 @@ function setPoolsTicker(item){
   pair.textContent = (item && item.name) ? item.name : "—";
   meta.textContent = (tvlTxt + feeTxt).trim();
 }
-const __orig_setPoolsTicker = setPoolsTicker;
-setPoolsTicker = function(item){
-  __orig_setPoolsTicker(item);
-  renderPoolsMini();
-};
-setPricesTicker
 function setPoolsTickerFallbackFromManual(){
   try{
     const cfg = gdexPoolConfig || {};
@@ -1755,55 +1589,7 @@ function setPricesTicker(item){
   pair.textContent = item?.label || "—";
   meta.textContent = item?.meta || "";
 }
-const __orig_setPricesTicker = setPricesTicker;
-setPricesTicker = function(item){
-  __orig_setPricesTicker(item);
-  renderPricesMini();
-};
-/* (C) Status Board Refresh 버튼과 연동된 별도 refresh 버튼 바인딩 */
-function bindMetricFillButtons(){
-  const bp = document.getElementById("btnPoolsRefresh");
-  if(bp) bp.addEventListener("click", async ()=>{
-    try{
-      // backend 재호출
-      __sushiPools = await fetchSushiPools(5);
-      __backendOk = true; __backendLastAt = Date.now();
-      if(__sushiPools.length){
-        __sushiTickerIdx = 0;
-        setPoolsTicker(__sushiPools[0]);
-      }else{
-        setPoolsTickerFallbackFromManual();
-      }
-    }catch(e){
-      __backendOk = false;
-      setPoolsTickerFallbackFromManual();
-    }finally{
-      renderPoolsMini();
-      updateStatusBoard();
-    }
-  });
 
-  const bc = document.getElementById("btnPricesRefresh");
-  if(bc) bc.addEventListener("click", async ()=>{
-    try{
-      const items = await fetchMajorCoinPrices();
-      __cgOk = true; __cgLastAt = Date.now();
-      if(items && items.length){
-        __pricesItems = items;
-        __pricesIdx = 0;
-        setPricesTicker(__pricesItems[0]);
-      }else{
-        setPricesFallback();
-      }
-    }catch(e){
-      __cgOk = false;
-      setPricesFallback();
-    }finally{
-      renderPricesMini();
-      updateStatusBoard();
-    }
-  });
-}
 function formatUSD(n){
   if(n == null || !Number.isFinite(Number(n))) return "—";
   const v = Number(n);
@@ -1820,94 +1606,7 @@ function formatPct(p){
   const sign = v >= 0 ? "+" : "";
   return `${sign}${v.toFixed(2)}%`;
 }
-function fmtUpdated(ts){
-  if(!ts) return "—";
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-}
 
-function renderPoolsMini(){
-  const ul = document.getElementById("poolsMini");
-  const upd = document.getElementById("poolsUpdated");
-  if(upd) upd.textContent = `Updated: ${__backendLastAt ? fmtUpdated(__backendLastAt) : "—"}`;
-
-  if(!ul) return;
-
-  const items = Array.isArray(__sushiPools) ? __sushiPools.slice(0,3) : [];
-  if(!items.length){
-    ul.innerHTML = `
-      <li class="miniRow">
-        <div class="miniLeft">
-          <div class="miniMain">${(gdexPoolConfig?.recentPoolsText || "GLIP–ETH - SushiSwap V2")}</div>
-          <div class="miniSub">Backend unavailable · Showing fallback</div>
-        </div>
-        <div class="miniRight">TVL —</div>
-      </li>
-      <li class="miniRow">
-        <div class="miniLeft">
-          <div class="miniMain">Tip</div>
-          <div class="miniSub">Click the ticker above to open Sushi pools</div>
-        </div>
-        <div class="miniRight">—</div>
-      </li>
-    `;
-    return;
-  }
-
-  ul.innerHTML = items.map((p, idx)=>{
-    const name = p?.name || "—";
-    const tvl  = p?.tvlText ? `TVL ${p.tvlText}` : "TVL —";
-    const fee  = (p?.feePct != null) ? `${Number(p.feePct).toFixed(1)}%` : "—";
-    const url  = p?.url || "https://www.sushi.com/ethereum/explore/pools";
-    return `
-      <li class="miniRow" style="cursor:pointer" onclick="window.open('${url}','_blank','noopener')">
-        <div class="miniLeft">
-          <div class="miniMain">${idx===0 ? "🔥 " : ""}${name}</div>
-          <div class="miniSub">${tvl}</div>
-        </div>
-        <div class="miniRight">${fee} fee</div>
-      </li>
-    `;
-  }).join("");
-}
-
-function renderPricesMini(){
-  const ul = document.getElementById("pricesMini");
-  const upd = document.getElementById("pricesUpdated");
-  if(upd) upd.textContent = `Updated: ${__cgLastAt ? fmtUpdated(__cgLastAt) : "—"}`;
-
-  if(!ul) return;
-
-  const items = Array.isArray(__pricesItems) ? __pricesItems.slice(0,3) : [];
-  if(!items.length){
-    ul.innerHTML = `
-      <li class="miniRow">
-        <div class="miniLeft">
-          <div class="miniMain">Prices unavailable</div>
-          <div class="miniSub">CoinGecko fetch failed · Showing placeholders</div>
-        </div>
-        <div class="miniRight">—</div>
-      </li>
-    `;
-    return;
-  }
-
-  // label: "ETH · $ 2,944.99" / meta: "24h -3.02%"
-  ul.innerHTML = items.map((it, idx)=>{
-    const label = it?.label || "—";
-    const meta  = it?.meta  || "";
-    const url   = it?.url   || "https://www.coingecko.com";
-    return `
-      <li class="miniRow" style="cursor:pointer" onclick="window.open('${url}','_blank','noopener')">
-        <div class="miniLeft">
-          <div class="miniMain">${idx===0 ? "⭐ " : ""}${label}</div>
-          <div class="miniSub">${meta || "24h —"}</div>
-        </div>
-        <div class="miniRight">View</div>
-      </li>
-    `;
-  }).join("");
-}
 // CoinGecko IDs (major coins)
 const PRICE_TICKER_COINS = [
   { id:"bitcoin",  sym:"BTC", url:"https://www.coingecko.com/en/coins/bitcoin" },
@@ -3422,14 +3121,12 @@ function boot(){
   try{ bindPoolSupplyButton(); }catch(e){ console.error("[boot:bindPoolSupplyButton]", e); __bootErr = __bootErr || e; }
   try{ bindTop(); }catch(e){ console.error("[boot:bindTop]", e); __bootErr = __bootErr || e; }
   try{ bindStatusPanel(); }catch(e){ console.error("[boot:bindStatusPanel]", e); __bootErr = __bootErr || e; }
-try{ bindMetricFillButtons(); }catch(e){ console.error("[boot:bindMetricFillButtons]", e); __bootErr = __bootErr || e; }
-
   try{ document.querySelectorAll('.install-cta').forEach(b=>b.addEventListener('click',handleInstallClick)); }catch(e){ console.error("[boot:install]", e); __bootErr = __bootErr || e; }
 
   try{ applyManualPoolConfig(); }catch(e){ console.error("[boot:manualConfig]", e); __bootErr = __bootErr || e; }
   try{ bootSushiPoolsTicker(); }catch(e){ console.error("[boot:sushiTicker]", e); __bootErr = __bootErr || e; }
   try{ bootMajorCoinPricesTicker(); }catch(e){ console.error("[boot:pricesTicker]", e); __bootErr = __bootErr || e; }
-try{ bindMetricFillButtons(); }catch(e){ console.error("[boot:bindMetricFillButtons]", e); __bootErr = __bootErr || e; }
+
   // analytics demo should never break swap/token UI
   try{ fillKpis(demoAnalytics); }catch(e){ console.error("[boot:fillKpis]", e); }
   try{ drawSpark(demoAnalytics); }catch(e){ console.error("[boot:drawSpark]", e); }
@@ -3453,3 +3150,6 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
+
+
