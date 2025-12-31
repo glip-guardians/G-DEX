@@ -3126,8 +3126,7 @@ async function executeSwap() {
       });
       mode = "proxy";
     }catch(proxyErr){
-  console.error("PROXY PLAN FAILED:", proxyErr);
-  throw proxyErr; // ✅ direct로 내려가지 않고 여기서 멈춤
+ 
 }
 
       try{
@@ -3514,6 +3513,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
