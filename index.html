@@ -3158,9 +3158,9 @@ async function executeSwap() {
       const tokenInParam = addrForPath(sellMeta);
 
       const fn =
-        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensWithFee"
-        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHWithFee"
-        : "swapExactTokensForTokensWithFee";
+        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
+        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
+        : "swapExactTokensForTokensSupportingFeeOnTransferTokens";
 
       const gas = await safeEstimateOrDefault(
         ()=> proxyRouter.estimateGas[fn](
@@ -3508,6 +3508,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
