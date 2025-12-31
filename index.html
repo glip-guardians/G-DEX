@@ -2915,11 +2915,11 @@ function pushRecentTx(hash){
    ============================================================ */
 async function tryCallStaticLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
   if (sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
+    return await proxyRouter.callStatic.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
   } else if (!sellIsEth && buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+    return await proxyRouter.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
   } else if (!sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+    return await proxyRouter.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
   }
   throw new Error("Unsupported swap direction");
 }
@@ -2928,8 +2928,7 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
-  const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
-  const callValue = sellIsEth ? amountInBN_raw : flat;
+
 
   const userSlip = getSlipPct();
   const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
@@ -3148,35 +3147,35 @@ setSwapStatus(`Please confirm in your wallet… (Proxy)`);
     setSwapStatus(`Please confirm in your wallet… (${mode === "proxy" ? "Proxy" : "Direct"})`);
 
     let tx;
-    if(mode === "proxy"){
-      const tokenInParam = addrForPath(sellMeta);
+if (mode === "proxy") {
+  const fn =
+    (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
+    : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
+    : "swapExactTokensForTokensSupportingFeeOnTransferTokens";
 
-      const fn =
-        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
-        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
-        : "swapExactTokensForTokensSupportingFeeOnTransferTokens";
+  const gas = await safeEstimateOrDefault(
+    () => proxyRouter.estimateGas[fn](
+      ...(sellIsEth && !buyIsEth
+        ? [plan.outMinBN, plan.path, to, deadline, { value: plan.callValue }]
+        : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue }]
+      )
+    ),
+    SAFE_GAS_PROXY
+  );
 
-      const gas = await safeEstimateOrDefault(
-        ()=> proxyRouter.estimateGas[fn](
-          ...(sellIsEth && !buyIsEth
-            ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-            : [tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
-          )
-        ),
-        SAFE_GAS_PROXY
-      );
+  const gasLimit = gas.mul(125).div(100);
 
-      const gasLimit = gas.mul(125).div(100);
-
-      tx = await withTimeout(
-        (sellIsEth && !buyIsEth)
-          ? proxyRouter.swapExactETHForTokensWithFee(plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-          : (!sellIsEth && buyIsEth)
-            ? proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
-            : proxyRouter.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }),
-        WALLET_CONFIRM_TIMEOUT_MS,
-        "WALLET_CONFIRM_TIMEOUT"
-      );
+  tx = await withTimeout(
+    proxyRouter[fn](
+      ...(sellIsEth && !buyIsEth
+        ? [plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }]
+        : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }]
+      )
+    ),
+    WALLET_CONFIRM_TIMEOUT_MS,
+    "WALLET_CONFIRM_TIMEOUT"
+  );
+}
 
     }else{
       const fn =
@@ -3504,6 +3503,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
