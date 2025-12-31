@@ -1889,7 +1889,7 @@ const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
 /* ✅ G-DEX Proxy Router */
-const GDEX_PROXY_ROUTER = "0x198C5B84dB9B1139092EDd9D56bE25653fEAC13D";
+const GDEX_PROXY_ROUTER = "0xF89Dc5519C2BfDc3dab5BE2F7803dfb2E16E9E64";
 
 /* 모바일 판별 */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -2222,7 +2222,7 @@ let factory = null;
 let proxyRouter = null;
 
 let __proxyFeeLoaded = false;
-let __proxyFeeBps = 0;
+let __proxyPERCENT_BPS = 0;
 let __proxyFlatFeeWei = null;
 let __proxyFeeWallet = null;
 
@@ -2252,8 +2252,8 @@ const ERC20_ABI = [
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
 const PROXY_ABI = [
-  "function feeWallet() view returns (address)",
-  "function feeBps() view returns (uint16)",
+  "function feeRecipient() view returns (address)",
+  "function PERCENT_BPS() view returns (uint16)",
   "function flatFeeWei() view returns (uint256)",
   "function swapExactETHForTokensWithFee(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
   "function swapExactTokensForTokensWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
@@ -2281,18 +2281,18 @@ async function ensureMainnet(){
 async function loadProxyFeeParams(){
   try{
     ensureWeb3();
-    const feeWallet = await proxyRouter.feeWallet();
-    const feeBpsBN  = await proxyRouter.feeBps();
+    const feeWallet = await proxyRouter.feeRecipient();
+    const PERCENT_BPSBN  = await proxyRouter.PERCENT_BPS();
     const flatFee   = await proxyRouter.flatFeeWei();
 
     __proxyFeeWallet = feeWallet;
-    __proxyFeeBps = Number(feeBpsBN.toString());
+    __proxyPERCENT_BPS = Number(PERCENT_BPSBN.toString());
     __proxyFlatFeeWei = flatFee;
     __proxyFeeLoaded = true;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
     try{
-      __proxyFeeBps = (__proxyFeeBps || 30);
+      __proxyPERCENT_BPS = (__proxyPERCENT_BPS || 30);
       __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
     }catch{}
     __proxyFeeLoaded = false;
@@ -2676,7 +2676,7 @@ function calcOutMin(outBN, slipPct){
   return outBN.mul(10000 - bp).div(10000);
 }
 function feePctText(){
-  const pct = (__proxyFeeBps || 0) / 100;
+  const pct = (__proxyPERCENT_BPS || 0) / 100;
   return `Fee: ${pct.toFixed(2)}%`;
 }
 function flatFeeText(){
@@ -2688,14 +2688,14 @@ function flatFeeText(){
   }
 }
 function applyPctFeeToEthAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyFeeBps || 0));
+  const bps = Math.max(0, Number(__proxyPERCENT_BPS || 0));
   if (!bps) return amountInBN;
   const feeBN = amountInBN.mul(bps).div(10000);
   if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
   return amountInBN.sub(feeBN);
 }
 function applyPctFeeToTokenAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyFeeBps || 0));
+  const bps = Math.max(0, Number(__proxyPERCENT_BPS || 0));
   if (!bps) return amountInBN;
   const feeBN = amountInBN.mul(bps).div(10000);
   if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
@@ -3357,7 +3357,7 @@ function updateStatusBoard(){
   }
 
   if(fee){
-    const pct = (__proxyFeeBps||0)/100;
+    const pct = (__proxyPERCENT_BPS||0)/100;
     const flat = (()=>{ try{ return __proxyFlatFeeWei ? `${ethers.utils.formatEther(__proxyFlatFeeWei)} ETH` : "—"; }catch{return "—"} })();
     fee.textContent = __proxyFeeLoaded ? `${pct.toFixed(2)}% · ${flat}` : `— (not loaded)`;
   }
@@ -3407,7 +3407,7 @@ function buildDiagnostic(){
   lines.push(`- Backend ok: ${__backendOk} (last ${fmtAgo(__backendLastAt)})`);
   lines.push(`- CoinGecko ok: ${__cgOk} (last ${fmtAgo(__cgLastAt)})`);
   lines.push(`- Fee loaded: ${__proxyFeeLoaded}`);
-  lines.push(`- Fee bps: ${__proxyFeeBps}`);
+  lines.push(`- Fee bps: ${__proxyPERCENT_BPS}`);
   try{
     const flat = __proxyFlatFeeWei ? ethers.utils.formatEther(__proxyFlatFeeWei) : "—";
     lines.push(`- Flat fee: ${flat} ETH`);
@@ -3490,6 +3490,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
