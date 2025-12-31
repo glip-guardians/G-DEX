@@ -3114,43 +3114,32 @@ async function executeSwap() {
     setSwapBusy(true);
     setSwapStatus("Preparing route…");
 
-    let plan = null;
-    let mode = "proxy";
+let plan = null;
+let mode = "proxy";
 
-    try{
-      plan = await resolveWorkingPlanLite({
-        sellMeta, buyMeta,
-        amountInBN_raw,
-        tokenIn, tokenOut,
-        to, deadline
-      });
-      mode = "proxy";
-}catch(proxyErr){
- 
+try {
+  plan = await resolveWorkingPlanLite({
+    sellMeta, buyMeta,
+    amountInBN_raw,
+    tokenIn, tokenOut,
+    to, deadline
+  });
+  mode = "proxy";
+} catch (proxyErr) {
+  // ✅ Direct fallback 임시 차단 (Proxy-only)
+  console.error("Proxy plan failed:", proxyErr);
+
+  // swapBusy를 풀고 UI가 멈추지 않게, 에러로 처리해서 finally로 빠지게 함
+  throw new Error("Proxy plan not found (Direct fallback temporarily disabled).");
 }
 
+// 여기 아래는 기존대로 진행
+__lastSwapMode = mode;
+updateStatusBoard();
+setSwapStatus(`Please confirm in your wallet… (Proxy)`);
 
-      try{
-        if (!sellIsEth){
-          setSwapStatus("Best route selected automatically");
-          await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
-        }else{
-          setSwapStatus("Best route selected automatically");
-        }
-        const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
-        await ensureSufficientEthForValue(expectedValueDirect);
 
-        plan = await resolveWorkingPlanDirect({
-          sellMeta, buyMeta,
-          amountInBN_raw,
-          tokenIn, tokenOut,
-          to, deadline
-        });
-        mode = "direct";
-      }catch(directErr){
-        throw directErr;
-      }
-    }
+
 
 
     __lastSwapMode = mode;
@@ -3515,6 +3504,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
