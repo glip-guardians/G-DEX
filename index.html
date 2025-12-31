@@ -2071,7 +2071,7 @@ async function loadProxyFeeParams(){
     console.warn('[proxy fee params] failed', e);
     try{
       __proxyPERCENT_BPS = (__proxyPERCENT_BPS || 30);
-      __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
+      __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0"));
     }catch{}
     __proxyFeeLoaded = false;
   }finally{
@@ -3192,4 +3192,5 @@ async function boot(){
 </script>
 </body>
 </html>
+
 
