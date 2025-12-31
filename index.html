@@ -3126,8 +3126,7 @@ async function executeSwap() {
       });
       mode = "proxy";
 }catch(proxyErr){
-  // ✅ TEMP: direct fallback 차단 (무조건 proxy만 테스트)
-  throw proxyErr;
+ 
 }
 
 
@@ -3516,6 +3515,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
