@@ -3218,8 +3218,11 @@ async function executeSwap() {
 
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); updateStatusBoard(); }, 1500);
 
-  } catch (err) {
-    console.error("executeSwap error:", err);
+  } catch (proxyErr) {
+  console.error("PROXY PLAN FAILED:", proxyErr);
+  throw proxyErr; // ✅ direct로 내려가지 않고 여기서 멈춤
+}
+
 
     if (String(err?.message||"").includes("WALLET_CONFIRM_TIMEOUT")) {
       setSwapStatus("Wallet confirmation timeout. Please open MetaMask and confirm the transaction.");
@@ -3508,6 +3511,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
