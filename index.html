@@ -3125,16 +3125,31 @@ async function executeSwap() {
         to, deadline
       });
       mode = "proxy";
-    }catch(proxyErr){
-  console.error("❌ PROXY PLAN FAILED", proxyErr);
-
-  showErrorPopup(
-    "Proxy swap blocked (debug mode)",
-    proxyErr?.message || String(proxyErr)
-  );
-
-  throw proxyErr; // ⛔ 여기서 끝. direct로 절대 안 내려감
+}catch(proxyErr){
+ 
 }
+
+      try{
+        if (!sellIsEth){
+          setSwapStatus("Best route selected automatically");
+          await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
+        }else{
+          setSwapStatus("Best route selected automatically");
+        }
+        const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
+        await ensureSufficientEthForValue(expectedValueDirect);
+
+        plan = await resolveWorkingPlanDirect({
+          sellMeta, buyMeta,
+          amountInBN_raw,
+          tokenIn, tokenOut,
+          to, deadline
+        });
+        mode = "direct";
+      }catch(directErr){
+        throw directErr;
+      }
+    }
 
 
     __lastSwapMode = mode;
@@ -3499,6 +3514,7 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
+
 
 
 
