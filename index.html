@@ -1889,7 +1889,7 @@ const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
 /* ✅ G-DEX Proxy Router */
-const GDEX_PROXY_ROUTER = "0xF89Dc5519C2BfDc3dab5BE2F7803dfb2E16E9E64";
+const GDEX_PROXY_ROUTER = "0x198C5B84dB9B1139092EDd9D56bE25653fEAC13D";
 
 /* 모바일 판별 */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -2222,7 +2222,7 @@ let factory = null;
 let proxyRouter = null;
 
 let __proxyFeeLoaded = false;
-let __proxyPERCENT_BPS = 0;
+let __proxyFeeBps = 0;
 let __proxyFlatFeeWei = null;
 let __proxyFeeWallet = null;
 
@@ -2251,32 +2251,14 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
-// ✅ GDEXRouterV11 (v1.1) — PROXY_ABI replacement (string ABI array)
 const PROXY_ABI = [
-  // ----- Read (view) -----
-  "function BPS_DENOM() view returns (uint16)",
-  "function PERCENT_BPS() view returns (uint16)",
-  "function WETH() view returns (address)",
-  "function feeRecipient() view returns (address)",
-  "function sushiRouter() view returns (address)",
-
-  // ----- Swaps (ETH -> Token) -----
-  "function swapExactETHForTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable returns (uint256[] amounts)",
-  "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable",
-
-  // ----- Swaps (Token -> ETH) -----
-  "function swapExactTokensForETH(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) returns (uint256[] amounts)",
-  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline)",
-
-  // ----- Swaps (Token -> Token) -----
-  "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) returns (uint256[] amounts)",
-  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline)",
-
-  // ----- (Optional) Events (로그 필요하면) -----
-  "event FeeTaken(address indexed payer, address indexed token, uint256 amount, uint16 bps)",
-  "event Forwarded(address indexed sushiRouter, address indexed user, uint8 swapType)"
+  "function feeWallet() view returns (address)",
+  "function feeBps() view returns (uint16)",
+  "function flatFeeWei() view returns (uint256)",
+  "function swapExactETHForTokensWithFee(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
+  "function swapExactTokensForTokensWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable",
+  "function swapExactTokensForETHWithFee(address tokenIn,uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) payable"
 ];
-
 
 function ensureWeb3(){
   if (!window.ethereum) throw new Error("No wallet detected.");
@@ -2299,18 +2281,18 @@ async function ensureMainnet(){
 async function loadProxyFeeParams(){
   try{
     ensureWeb3();
-    const feeWallet = await proxyRouter.feeRecipient();
-    const PERCENT_BPSBN  = await proxyRouter.PERCENT_BPS();
+    const feeWallet = await proxyRouter.feeWallet();
+    const feeBpsBN  = await proxyRouter.feeBps();
     const flatFee   = await proxyRouter.flatFeeWei();
 
     __proxyFeeWallet = feeWallet;
-    __proxyPERCENT_BPS = Number(PERCENT_BPSBN.toString());
+    __proxyFeeBps = Number(feeBpsBN.toString());
     __proxyFlatFeeWei = flatFee;
     __proxyFeeLoaded = true;
   }catch(e){
     console.warn('[proxy fee params] failed', e);
     try{
-      __proxyPERCENT_BPS = (__proxyPERCENT_BPS || 30);
+      __proxyFeeBps = (__proxyFeeBps || 30);
       __proxyFlatFeeWei = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
     }catch{}
     __proxyFeeLoaded = false;
@@ -2694,7 +2676,7 @@ function calcOutMin(outBN, slipPct){
   return outBN.mul(10000 - bp).div(10000);
 }
 function feePctText(){
-  const pct = (__proxyPERCENT_BPS || 0) / 100;
+  const pct = (__proxyFeeBps || 0) / 100;
   return `Fee: ${pct.toFixed(2)}%`;
 }
 function flatFeeText(){
@@ -2706,14 +2688,14 @@ function flatFeeText(){
   }
 }
 function applyPctFeeToEthAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyPERCENT_BPS || 0));
+  const bps = Math.max(0, Number(__proxyFeeBps || 0));
   if (!bps) return amountInBN;
   const feeBN = amountInBN.mul(bps).div(10000);
   if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
   return amountInBN.sub(feeBN);
 }
 function applyPctFeeToTokenAmount(amountInBN){
-  const bps = Math.max(0, Number(__proxyPERCENT_BPS || 0));
+  const bps = Math.max(0, Number(__proxyFeeBps || 0));
   if (!bps) return amountInBN;
   const feeBN = amountInBN.mul(bps).div(10000);
   if (amountInBN.lte(feeBN)) return ethers.constants.Zero;
@@ -2915,11 +2897,11 @@ function pushRecentTx(hash){
    ============================================================ */
 async function tryCallStaticLite({sellIsEth, buyIsEth, tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, callValue}){
   if (sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactETHForTokensSupportingFeeOnTransferTokens(outMinBN, path, to, deadline, { value: callValue });
+    return await proxyRouter.callStatic.swapExactETHForTokensWithFee(outMinBN, path, to, deadline, { value: callValue });
   } else if (!sellIsEth && buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForETHSupportingFeeOnTransferTokens(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+    return await proxyRouter.callStatic.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
   } else if (!sellIsEth && !buyIsEth) {
-    return await proxyRouter.callStatic.swapExactTokensForTokensSupportingFeeOnTransferTokens(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
+    return await proxyRouter.callStatic.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, outMinBN, path, to, deadline, { value: callValue });
   }
   throw new Error("Unsupported swap direction");
 }
@@ -2928,7 +2910,8 @@ async function resolveWorkingPlanLite({sellMeta, buyMeta, amountInBN_raw, tokenI
   const sellIsEth = metaIsETH(sellMeta);
   const buyIsEth  = metaIsETH(buyMeta);
 
-
+  const flat = (__proxyFlatFeeWei || ethers.utils.parseEther("0.0000003"));
+  const callValue = sellIsEth ? amountInBN_raw : flat;
 
   const userSlip = getSlipPct();
   const pathCandidates = await getPathCandidates(tokenIn, tokenOut);
@@ -3113,33 +3096,39 @@ async function executeSwap() {
     setSwapBusy(true);
     setSwapStatus("Preparing route…");
 
-let plan = null;
-let mode = "proxy";
+    let plan = null;
+    let mode = "proxy";
 
-try {
-  plan = await resolveWorkingPlanLite({
-    sellMeta, buyMeta,
-    amountInBN_raw,
-    tokenIn, tokenOut,
-    to, deadline
-  });
-  mode = "proxy";
-} catch (proxyErr) {
-  // ✅ Direct fallback 임시 차단 (Proxy-only)
-  console.error("Proxy plan failed:", proxyErr);
+    try{
+      plan = await resolveWorkingPlanLite({
+        sellMeta, buyMeta,
+        amountInBN_raw,
+        tokenIn, tokenOut,
+        to, deadline
+      });
+      mode = "proxy";
+    }catch(proxyErr){
+      try{
+        if (!sellIsEth){
+          setSwapStatus("Best route selected automatically");
+          await ensureAllowance(sellMeta, amountInBN_raw, SUSHI_ROUTER_V2);
+        }else{
+          setSwapStatus("Best route selected automatically");
+        }
+        const expectedValueDirect = sellIsEth ? amountInBN_raw : ethers.constants.Zero;
+        await ensureSufficientEthForValue(expectedValueDirect);
 
-  // swapBusy를 풀고 UI가 멈추지 않게, 에러로 처리해서 finally로 빠지게 함
-  throw new Error("Proxy plan not found (Direct fallback temporarily disabled).");
-}
-
-// 여기 아래는 기존대로 진행
-__lastSwapMode = mode;
-updateStatusBoard();
-setSwapStatus(`Please confirm in your wallet… (Proxy)`);
-
-
-
-
+        plan = await resolveWorkingPlanDirect({
+          sellMeta, buyMeta,
+          amountInBN_raw,
+          tokenIn, tokenOut,
+          to, deadline
+        });
+        mode = "direct";
+      }catch(directErr){
+        throw directErr;
+      }
+    }
 
     __lastSwapMode = mode;
     updateStatusBoard();
@@ -3147,35 +3136,35 @@ setSwapStatus(`Please confirm in your wallet… (Proxy)`);
     setSwapStatus(`Please confirm in your wallet… (${mode === "proxy" ? "Proxy" : "Direct"})`);
 
     let tx;
-if (mode === "proxy") {
-  const fn =
-    (sellIsEth && !buyIsEth) ? "swapExactETHForTokensSupportingFeeOnTransferTokens"
-    : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHSupportingFeeOnTransferTokens"
-    : "swapExactTokensForTokensSupportingFeeOnTransferTokens";
+    if(mode === "proxy"){
+      const tokenInParam = addrForPath(sellMeta);
 
-  const gas = await safeEstimateOrDefault(
-    () => proxyRouter.estimateGas[fn](
-      ...(sellIsEth && !buyIsEth
-        ? [plan.outMinBN, plan.path, to, deadline, { value: plan.callValue }]
-        : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue }]
-      )
-    ),
-    SAFE_GAS_PROXY
-  );
+      const fn =
+        (sellIsEth && !buyIsEth) ? "swapExactETHForTokensWithFee"
+        : (!sellIsEth && buyIsEth) ? "swapExactTokensForETHWithFee"
+        : "swapExactTokensForTokensWithFee";
 
-  const gasLimit = gas.mul(125).div(100);
+      const gas = await safeEstimateOrDefault(
+        ()=> proxyRouter.estimateGas[fn](
+          ...(sellIsEth && !buyIsEth
+            ? [plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
+            : [tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, {value: plan.callValue}]
+          )
+        ),
+        SAFE_GAS_PROXY
+      );
 
-  tx = await withTimeout(
-    proxyRouter[fn](
-      ...(sellIsEth && !buyIsEth
-        ? [plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }]
-        : [amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }]
-      )
-    ),
-    WALLET_CONFIRM_TIMEOUT_MS,
-    "WALLET_CONFIRM_TIMEOUT"
-  );
-}
+      const gasLimit = gas.mul(125).div(100);
+
+      tx = await withTimeout(
+        (sellIsEth && !buyIsEth)
+          ? proxyRouter.swapExactETHForTokensWithFee(plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
+          : (!sellIsEth && buyIsEth)
+            ? proxyRouter.swapExactTokensForETHWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit })
+            : proxyRouter.swapExactTokensForTokensWithFee(tokenInParam, amountInBN_raw, plan.outMinBN, plan.path, to, deadline, { value: plan.callValue, gasLimit }),
+        WALLET_CONFIRM_TIMEOUT_MS,
+        "WALLET_CONFIRM_TIMEOUT"
+      );
 
     }else{
       const fn =
@@ -3211,10 +3200,8 @@ if (mode === "proxy") {
 
     setTimeout(()=>{ refreshAllBalances(); updatePricePreview(); updateStatusBoard(); }, 1500);
 
-
-} catch (err) {
+  } catch (err) {
     console.error("executeSwap error:", err);
-
 
     if (String(err?.message||"").includes("WALLET_CONFIRM_TIMEOUT")) {
       setSwapStatus("Wallet confirmation timeout. Please open MetaMask and confirm the transaction.");
@@ -3370,7 +3357,7 @@ function updateStatusBoard(){
   }
 
   if(fee){
-    const pct = (__proxyPERCENT_BPS||0)/100;
+    const pct = (__proxyFeeBps||0)/100;
     const flat = (()=>{ try{ return __proxyFlatFeeWei ? `${ethers.utils.formatEther(__proxyFlatFeeWei)} ETH` : "—"; }catch{return "—"} })();
     fee.textContent = __proxyFeeLoaded ? `${pct.toFixed(2)}% · ${flat}` : `— (not loaded)`;
   }
@@ -3420,7 +3407,7 @@ function buildDiagnostic(){
   lines.push(`- Backend ok: ${__backendOk} (last ${fmtAgo(__backendLastAt)})`);
   lines.push(`- CoinGecko ok: ${__cgOk} (last ${fmtAgo(__cgLastAt)})`);
   lines.push(`- Fee loaded: ${__proxyFeeLoaded}`);
-  lines.push(`- Fee bps: ${__proxyPERCENT_BPS}`);
+  lines.push(`- Fee bps: ${__proxyFeeBps}`);
   try{
     const flat = __proxyFlatFeeWei ? ethers.utils.formatEther(__proxyFlatFeeWei) : "—";
     lines.push(`- Flat fee: ${flat} ETH`);
@@ -3503,19 +3490,6 @@ if(document.readyState === "loading"){
 </body>
 </html>
 <br><br>
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
