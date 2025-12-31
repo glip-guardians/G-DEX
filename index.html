@@ -1145,7 +1145,7 @@ h3::before{content:""; display:none;}
         <h3>Notes</h3>
         <div class="card inner" style="background:rgba(255,255,255,.70);border:1px solid rgba(12,25,45,.14)">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
-          <p class="wrap" style="margin:.2rem 0">• Proxy Router (G-DEX): 0x198C5B84dB9B1139092EDd9D56bE25653fEAC13D</p>
+          <p class="wrap" style="margin:.2rem 0">• Proxy Router (G-DEX): 0xF89Dc5519C2BfDc3dab5BE2F7803dfb2E16E9E64</p>
           <p class="wrap" style="margin:.2rem 0">• Underlying Router: SushiSwap V2 — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
           <p class="wrap" style="margin:.2rem 0">• Fee policy: ETH→Token uses % fee; Token swaps may require a flat ETH fee (msg.value).</p>
           <p class="wrap" style="margin:.2rem 0">• If Proxy Router preflight reverts (e.g., USDT approve edge-case), UI can fall back to Direct Sushi swap.</p>
@@ -1823,7 +1823,7 @@ const SUSHI_FACTORY_V2 = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const WETH_MAINNET = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
 /* ✅ FIX: Proxy router unified with Notes */
-const GDEX_PROXY_ROUTER = "0x198C5B84dB9B1139092EDd9D56bE25653fEAC13D";
+const GDEX_PROXY_ROUTER = "0xF89Dc5519C2BfDc3dab5BE2F7803dfb2E16E9E64";
 
 /* mobile detect */
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -3192,3 +3192,4 @@ async function boot(){
 </script>
 </body>
 </html>
+
