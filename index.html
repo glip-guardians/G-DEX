@@ -744,11 +744,6 @@ h3::before{content:""; display:none;}
 }
 #swapStatus a{color:rgba(11,18,32,.90); font-weight:900; text-decoration:none}
 #swapStatus a:hover{text-decoration:underline}
-  /* swap status: step tone */
-#swapStatus .ok{font-weight:900;}
-#swapStatus .dim{opacity:.78;}
-#swapStatus .warn{font-weight:900;}
-
 
 /* Status Board */
 .statusGrid{ display:grid; gap:12px; grid-template-columns:repeat(2,1fr); }
@@ -2354,27 +2349,14 @@ async function fetchTokenBalanceString(meta){
 function setBalText(elId, sym, valStr){
   const el = document.getElementById(elId);
   if(!el) return;
-
-  // ✅ raw 저장 (MAX에서 이 값을 사용)
-  // valStr은 formatUnitsBigInt 결과(최대 8자리 소수)라 UI에 충분히 정밀함
-  el.dataset.raw = (valStr == null) ? "" : String(valStr);
-  el.dataset.sym = sym || "";
-
-  if(!valStr){
-    el.textContent = `Bal: —`;
-    return;
+  if(!valStr) el.textContent = `Bal: —`;
+  else{
+    const n = Number(valStr);
+    const pretty = (Number.isFinite(n))
+      ? ((n >= 1000000) ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : n.toLocaleString(undefined,{maximumFractionDigits:6}))
+      : valStr;
+    el.textContent = `Bal: ${pretty} ${sym}`;
   }
-
-  // 화면 표시는 기존처럼 보기 좋게(단, raw는 잃지 않음)
-  const n = Number(valStr);
-  const pretty = (Number.isFinite(n))
-    ? ((n >= 1000000) ? n.toLocaleString(undefined,{maximumFractionDigits:2})
-                      : n.toLocaleString(undefined,{maximumFractionDigits:8}))   // ✅ 6 → 8로 (초소수 잔액 표시 개선)
-    : valStr;
-
-  el.textContent = `Bal: ${pretty} ${sym}`;
-}
-
 }
 async function refreshAllBalances(){
   if(!userAddress) {
@@ -2623,8 +2605,6 @@ async function ensureAllowance(tokenMeta, amountInBN, spender){
   }
   const tx = await token.approve(spender, ethers.constants.MaxUint256);
   await tx.wait(1);
-  setSwapStatus(`<span class="dim">Approval confirmed. Continuing swap…</span>`, {show:true});
-
 }
 
 async function ensureSufficientTokenBalance(tokenMeta, amountInBN){
@@ -2863,8 +2843,7 @@ async function swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path
 async function executeSwap(){
   try{
     setSwapBusy(true);
-   setSwapStatus(`<span class="dim">Preparing swap…</span><br><span class="dim">• Checking wallet / network</span>`, {show:true});
-
+    setSwapStatus(SWAP_SILENT ? "Preparing swap…" : "", {show:true});
 
     if(!userAddress) await connectWallet();
     await ensureMainnet();
@@ -2932,65 +2911,15 @@ async function executeSwap(){
 
     if(!tx || !tx.hash) throw new Error("Transaction not created.");
 
-// ✅ 좀 더 구체적인 진행 안내
-const sellSym = document.getElementById("sellS")?.textContent || "—";
-const buySym  = document.getElementById("buyS")?.textContent || "—";
-const sellAmtStr = cleanDecimalString(String(sellValStr), 18);
+    addTxLog({ title:"Swap sent", hash: tx.hash, mode: used });
+    setSwapStatus(`Swap sent. <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`, {show:true});
 
-addTxLog({ title:"Swap sent", hash: tx.hash, mode: used });
+    // Optional wait 1 block
+    try{ await tx.wait(1); }catch{}
 
-setSwapStatus(
-  `<span class="ok">Swap submitted</span><br>` +
-  `<span class="dim">• Mode: ${used}</span><br>` +
-  `<span class="dim">• From: ${sellAmtStr} ${sellSym}</span><br>` +
-  `<span class="dim">• Waiting for confirmation…</span><br>` +
-  `<a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
-  {show:true}
-);
-
-// ✅ 1컨펌 대기(실패해도 다음 로직은 수행)
-let confirmed = false;
-try{
-  await tx.wait(1);
-  confirmed = true;
-}catch{
-  confirmed = false;
-}
-
-// ✅ 잔액 갱신
-await refreshAllBalances();
-
-// ✅ 완료/미완료 상태 표시 + 입력 리셋 (요청사항 #2)
-if(confirmed){
-  // 입력 리셋
-  const sellEl = document.getElementById("sell");
-  const buyEl  = document.getElementById("buy");
-  if(sellEl) sellEl.value = "";
-  if(buyEl)  buyEl.value  = "";
-
-  setSwapStatus(
-    `<span class="ok">✅ Swap confirmed</span><br>` +
-    `<span class="dim">• Mode: ${used}</span><br>` +
-    `<span class="dim">• From: ${sellAmtStr} ${sellSym}</span><br>` +
-    `<span class="dim">• Balances updated</span><br>` +
-    `<a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
-    {show:true}
-  );
-
-  addTxLog({ title:"Swap confirmed", hash: tx.hash, mode: used });
-}else{
-  setSwapStatus(
-    `<span class="warn">⏳ Swap pending</span><br>` +
-    `<span class="dim">TX is sent but confirmation is not detected yet.</span><br>` +
-    `<a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
-    {show:true}
-  );
-}
-
-// ✅ quote 입력값도 리셋 반영
-await updatePricePreview();
-updateStatusBoard();
-
+    await refreshAllBalances();
+    await updatePricePreview();
+    updateStatusBoard();
 
     if(!SWAP_SILENT){
       await uiAlert("Swap transaction sent!", "TX:\n" + tx.hash + "\n\nEtherscan:\nhttps://etherscan.io/tx/" + tx.hash, {copy:true});
@@ -3004,43 +2933,6 @@ updateStatusBoard();
     updateStatusBoard();
   }
 }
-function getRawBalanceFromEl(elId){
-  const el = document.getElementById(elId);
-  if(!el) return null;
-
-  const raw = (el.dataset.raw || "").trim();
-  if(raw){
-    const v = Number(raw);
-    return Number.isFinite(v) ? v : null;
-  }
-
-  // fallback: 기존 라벨 파싱(최후 수단)
-  const t = el.textContent || "";
-  const m = t.match(/Bal:\s*([0-9.,]+)\s*/i);
-  if(!m) return null;
-  const v = Number(String(m[1]).replace(/,/g,""));
-  return Number.isFinite(v) ? v : null;
-}
-
-function cleanDecimalString(x, maxDp=18){
-  // "0.5000000" -> "0.5", "1." -> "1"
-  const s = String(x ?? "").trim();
-  if(!s) return "";
-  if(!s.includes(".")) return s;
-
-  const [a,bRaw] = s.split(".");
-  const b = (bRaw || "").slice(0, maxDp).replace(/0+$/,"");
-  return b ? `${a}.${b}` : a;
-}
-
-function formatMaxInputValue(v, maxDp=18){
-  if(!Number.isFinite(v) || v <= 0) return "0";
-  // Number -> string 변환시 과학표기 방지: toFixed 후 trim
-  // (v는 raw가 보통 소수 8자리 수준이라 안전)
-  const s = v.toFixed(Math.min(maxDp, 18));
-  return cleanDecimalString(s, maxDp);
-}
-  
 
 /* ============================================================
    MAX button
@@ -3056,68 +2948,27 @@ function parseBalFromLabel(labelText){
 }
 function bindMaxButtons(){
   const swapMax = document.getElementById("swapMax");
-  if(swapMax) swapMax.addEventListener("click", async ()=>{
-    try{
-      // ✅ 지갑 미연결이면 연결 유도(0 표시 문제도 같이 해결)
-      if(!userAddress){
-        setSwapStatus(`<span class="dim">Wallet not connected. Tap “Connect Wallet” first.</span>`, {show:true});
-        return;
-      }
-
-      const sellMeta = getSelectedMeta(document.getElementById("sellS"));
-      const rawBal = getRawBalanceFromEl("sellBal");
-
-      if(rawBal == null){
-        document.getElementById("sell").value = "0";
-        updatePricePreview();
-        return;
-      }
-
-      // ✅ ETH는 가스 여유분(dust) 남기기: 너무 공격적으로 빼지 않도록
-      // - flat fee는 token-sell일 때 msg.value로 들어가므로 ETH-sell과 분리
-      const reserveEth = 0.006; // 기존 0.005보다 약간 안전
-      const maxVal = metaIsETH(sellMeta) ? Math.max(0, rawBal - reserveEth) : Math.max(0, rawBal);
-
-      // ✅ 0.000… 같은 초소수도 표시되도록 "0" 강제
-      document.getElementById("sell").value = formatMaxInputValue(maxVal, 18);
-
-      setSwapStatus(
-        metaIsETH(sellMeta)
-          ? `<span class="dim">MAX applied. (kept ~${reserveEth} ETH for gas)</span>`
-          : `<span class="dim">MAX applied.</span>`,
-        {show:true}
-      );
-
-      updatePricePreview();
-    }catch(e){
-      console.warn("[swapMax] failed", e);
-      document.getElementById("sell").value = "0";
-      updatePricePreview();
-    }
+  if(swapMax) swapMax.addEventListener("click", ()=>{
+    const sellMeta = getSelectedMeta(document.getElementById("sellS"));
+    const balText = document.getElementById("sellBal")?.textContent || "";
+    const v = parseBalFromLabel(balText);
+    if(v == null) return;
+    // leave dust for ETH
+    const val = metaIsETH(sellMeta) ? Math.max(0, v - 0.005) : v;
+    document.getElementById("sell").value = val > 0 ? String(val) : "0";
+    updatePricePreview();
   });
 
   const stakeMax = document.getElementById("stakeMax");
   if(stakeMax) stakeMax.addEventListener("click", ()=>{
-    const sbEl = document.getElementById("stakeBalText");
-    const raw = (sbEl?.dataset?.raw || "").trim();
-    let v = null;
-
-    if(raw){
-      const n = Number(raw);
-      v = Number.isFinite(n) ? n : null;
-    }else{
-      const sb = sbEl?.textContent || "";
-      const m = sb.match(/([0-9.,]+)/);
-      if(m){
-        const n = Number(String(m[1]).replace(/,/g,""));
-        v = Number.isFinite(n) ? n : null;
-      }
-    }
-
-    document.getElementById("stakeAmt").value = formatMaxInputValue(v ?? 0, 18);
+    const sb = document.getElementById("stakeBalText")?.textContent || "";
+    const m = sb.match(/([0-9.,]+)/);
+    if(!m) return;
+    const v = Number(String(m[1]).replace(/,/g,""));
+    if(!Number.isFinite(v)) return;
+    document.getElementById("stakeAmt").value = String(v);
   });
 }
-
 
 /* ============================================================
    Status Board
