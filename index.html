@@ -1847,9 +1847,9 @@ async function executeSwap(){
   let used="—", tx=null;
   try{
     setSwapBusy(true);
-    setSwapStatus(`1/5 준비 중… (지갑/네트워크/수수료 확인)`,{show:true,kind:"info"});
+    setSwapStatus(`1/5 Preparing… (checking wallet, network, and fees)`,{show:true,kind:"info"});
 
-    if(!userAddress){ setSwapStatus(`1/5 지갑 연결 중…`,{show:true,kind:"info"}); await connectWallet(); }
+    if(!userAddress){ setSwapStatus(`1/5 Connecting wallet…`,{show:true,kind:"info"}); await connectWallet(); }
     await ensureMainnet();
     ensureWeb3();
     await loadProxyFeeParams();
@@ -1877,7 +1877,7 @@ async function executeSwap(){
     const amountForQuoteBN=sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
     if(amountForQuoteBN.lte(0)) throw new Error("Amount too small after fee.");
 
-    setSwapStatus(`2/5 라우팅 계산 중…`,{show:true,kind:"info"});
+    setSwapStatus(`2/5 Calculating route…`,{show:true,kind:"info"});
     const best=await chooseBestRoute(amountForQuoteBN, paths);
     if(!best) throw new Error("No quote route found (liquidity).");
 
@@ -1885,17 +1885,17 @@ async function executeSwap(){
     const amountOutMinBN=calcOutMin(best.out, slip);
     const path=best.path;
 
-    setSwapStatus(`3/5 지갑에서 트랜잭션을 승인해주세요…`,{show:true,kind:"info"});
+    setSwapStatus(`3/5 Please confirm the transaction in your wallet…`,{show:true,kind:"info"});
 
     // Try Proxy first
     used="Proxy";
     try{
-      if(SWAP_SILENT) setSwapStatus(`3/5 Proxy 경로 시도 중… (실패 시 Direct로 자동 전환)`,{show:true,kind:"info"});
+      if(SWAP_SILENT) setSwapStatus(`3/5 Trying proxy route… (will auto-switch to direct if unavailable)`,{show:true,kind:"info"});
       tx=await swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path});
     }catch(e){
       used="Direct"; __lastSwapMode="Direct";
       if(SWAP_SILENT || isEstimateOrRevert(e)){
-        setSwapStatus(`Proxy 실패 → Direct Sushi로 전환 중…`,{show:true,kind:"info"});
+        setSwapStatus(`Proxy route unavailable → switching to Sushi direct route…`,{show:true,kind:"info"});
         tx=await swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path});
       }else{
         const ok=await uiConfirm("Proxy route failed",`Proxy failed with:\n${normalizeErr(e)}\n\nTry Direct Sushi route instead?`,{okText:"Try Direct",cancelText:"Cancel",copy:true});
@@ -1907,7 +1907,7 @@ async function executeSwap(){
     if(!tx || !tx.hash) throw new Error("Transaction not created.");
 
     addTxLog({title:"Swap sent",hash:tx.hash,mode:used});
-    setSwapStatus(`4/5 전송 완료. 컨펌 대기 중… <span class="spin">⏳</span><br>
+    setSwapStatus(`4/5 Transaction sent. Waiting for confirmation… <span class="spin">⏳</span><br>
       • Route: <b>${used}</b><br>
       • TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
       {show:true,kind:"info"}
@@ -1917,7 +1917,7 @@ async function executeSwap(){
 
     if(receipt && receipt.status===0){
       addTxLog({title:"Swap reverted",hash:tx.hash,mode:used});
-      setSwapStatus(`스왑 실패(리버트).<br>TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a>`,{show:true,kind:"error"});
+      setSwapStatus(`Swap could not be completed.<br>TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a>`,{show:true,kind:"error"});
       throw new Error("Swap reverted (receipt.status=0).");
     }
 
@@ -1928,10 +1928,10 @@ async function executeSwap(){
     updateStatusBoard();
 
     addTxLog({title:"Swap confirmed",hash:tx.hash,mode:used});
-    setSwapStatus(`✅ 5/5 스왑 완료! (1 컨펌)<br>
+    setSwapStatus(`✅ 5/5 Swap completed! (1 confirmation)<br>
       • Route: <b>${used}</b><br>
       • TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a><br>
-      • 잔액이 반영되지 않으면 5~10초 후 다시 확인해주세요.`,
+      • If your balance does not update, please check again in 5–10 seconds.`,
       {show:true,kind:"success"}
     );
 
@@ -1941,7 +1941,7 @@ async function executeSwap(){
   }catch(err){
     console.error("executeSwap error:", err);
     if(isUserRejected(err)){
-      setSwapStatus(`스왑이 취소되었습니다. (지갑에서 거절)<br>다시 시도하려면 Swap을 눌러주세요.`,{show:true,kind:"error"});
+      setSwapStatus(`Swap was cancelled. (Rejected in wallet)<br>Click **Swap** to try again.`,{show:true,kind:"error"});
     }else{
       showErrorPopup("Swap failed", err);
     }
@@ -1985,7 +1985,7 @@ function bindMaxButtons(){
   if(swapMax) swapMax.addEventListener("click", async ()=>{
     try{
       if(!userAddress){
-        setSwapStatus("MAX 사용을 위해 지갑을 먼저 연결합니다…",{show:true,kind:"info"});
+        setSwapStatus("Please connect your wallet to use MAX…",{show:true,kind:"info"});
         await connectWallet();
       }
       const sellMeta=getSelectedMeta(document.getElementById("sellS"));
@@ -2010,10 +2010,10 @@ function bindMaxButtons(){
       const val=trimDecimalString(ethers.utils.formatUnits(bn, dec));
       document.getElementById("sell").value = (bn.isZero() ? "0" : (val || "0"));
       updatePricePreview();
-      setSwapStatus(`MAX 적용됨.`,{show:false});
+      setSwapStatus(`MAX applied.`,{show:false});
     }catch(e){
       console.warn("[swapMax] failed", e);
-      setSwapStatus(`MAX 적용 실패: ${normalizeErr(e)}`,{show:true,kind:"error"});
+      setSwapStatus(`Failed to apply MAX.: ${normalizeErr(e)}`,{show:true,kind:"error"});
     }
   });
 
@@ -2203,3 +2203,4 @@ async function boot(){
 </script>
 </body>
 </html>
+
