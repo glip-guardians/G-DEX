@@ -17,7 +17,7 @@
 <meta name="theme-color" content="#ffffff" />
 <script>
   // ✅ SW cache bust (mobile old version issue)
-  const SW_VER = "20251231_fullfix_1";
+  const SW_VER = "20251231_fullfix_2_swapux_maxreset";
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js?v=' + SW_VER).catch(console.error);
@@ -738,10 +738,11 @@ h3::before{content:""; display:none;}
   background:rgba(255,255,255,.70);
   box-shadow:0 10px 18px rgba(9,18,33,.08);
   font-size:12px;
-  line-height:1.35;
+  line-height:1.4;
   color:rgba(11,18,32,.78);
   display:none;
 }
+#swapStatus b{color:rgba(11,18,32,.92)}
 #swapStatus a{color:rgba(11,18,32,.90); font-weight:900; text-decoration:none}
 #swapStatus a:hover{text-decoration:underline}
 
@@ -993,7 +994,7 @@ h3::before{content:""; display:none;}
         <h3>Swap</h3>
 
         <div class="input" id="swapSellWrap">
-          <div class="balTag" id="sellBal">Bal: —</div>
+          <div class="balTag" id="sellBal" data-raw="" data-decimals="" data-symbol="" data-iseth="">Bal: —</div>
           <input id="sell" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
           <button class="maxBtn" id="swapMax" type="button">MAX</button>
           <button class="tokenBtn" id="sellBtn" type="button"><img id="sellI" src="" alt=""><span id="sellS" data-address="">ETH</span></button>
@@ -1002,7 +1003,7 @@ h3::before{content:""; display:none;}
         <div class="row" style="justify-content:center"><div class="flip" id="flip">⇅</div></div>
 
         <div class="input" id="swapBuyWrap">
-          <div class="balTag" id="buyBal">Bal: —</div>
+          <div class="balTag" id="buyBal" data-raw="" data-decimals="" data-symbol="" data-iseth="">Bal: —</div>
           <input id="buy" placeholder="0.0" type="number" disabled>
           <button class="tokenBtn" id="buyBtn" type="button"><img id="buyI" src="" alt=""><span id="buyS" data-address="">GLIP</span></button>
         </div>
@@ -1095,7 +1096,7 @@ h3::before{content:""; display:none;}
         </div>
 
         <div class="input leftToken" id="pool0Wrap">
-          <div class="balTag" id="pBal0">Bal: —</div>
+          <div class="balTag" id="pBal0" data-raw="" data-decimals="" data-symbol="" data-iseth="">Bal: —</div>
           <button class="tokenBtn" id="pT0Btn" type="button"><img id="pT0Img" src="" alt=""><span id="pT0Sym" data-address="">ETH</span></button>
           <input id="pAmt0" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
         </div>
@@ -1103,7 +1104,7 @@ h3::before{content:""; display:none;}
         <div class="row" style="justify-content:center"><div class="flip" id="pFlip">⇅</div></div>
 
         <div class="input leftToken" id="pool1Wrap">
-          <div class="balTag" id="pBal1">Bal: —</div>
+          <div class="balTag" id="pBal1" data-raw="" data-decimals="" data-symbol="" data-iseth="">Bal: —</div>
           <button class="tokenBtn" id="pT1Btn" type="button"><img id="pT1Img" src="" alt=""><span id="pT1Sym" data-address="">GLIP</span></button>
           <input id="pAmt1" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
         </div>
@@ -1246,7 +1247,7 @@ h3::before{content:""; display:none;}
             <button class="max" id="stakeMax" type="button">MAX</button>
           </div>
           <div style="margin-top:10px">Wallet: <span id="wAddr">—</span></div>
-          <div style="margin-top:6px; opacity:.72; font-size:12px;">Wallet balance: <span id="stakeBalText">—</span></div>
+          <div style="margin-top:6px; opacity:.72; font-size:12px;">Wallet balance: <span id="stakeBalText" data-raw="" data-decimals="">—</span></div>
 
           <div class="stake-actions">
             <button class="btn" id="btnConn" type="button">Connect Wallet</button>
@@ -1356,7 +1357,9 @@ function fmtAgo(ts){
   }catch{ return "—"; }
 }
 
-function setSwapStatus(msg, {show=true}={}){
+/* swap status (rich + 단계 누적) */
+let __swapStatusLines = [];
+function setSwapStatus(msg, {show=true}={}){ // 기존 API 유지
   const el = document.getElementById('swapStatus');
   if(!el) return;
   if(!msg){
@@ -1366,6 +1369,23 @@ function setSwapStatus(msg, {show=true}={}){
   }
   el.innerHTML = msg;
   el.style.display = show ? 'block' : 'none';
+}
+function swapStatusClear(){
+  __swapStatusLines = [];
+  setSwapStatus("");
+}
+function swapStatusPush(htmlLine){
+  __swapStatusLines.push(htmlLine);
+  setSwapStatus(__swapStatusLines.join("<br>"), {show:true});
+}
+function swapStatusReplaceLast(htmlLine){
+  if(!__swapStatusLines.length){ swapStatusPush(htmlLine); return; }
+  __swapStatusLines[__swapStatusLines.length-1] = htmlLine;
+  setSwapStatus(__swapStatusLines.join("<br>"), {show:true});
+}
+function etherscanTxLink(hash){
+  if(!hash) return "";
+  return `https://etherscan.io/tx/${hash}`;
 }
 
 /* debug */
@@ -1456,7 +1476,7 @@ function showErrorPopup(title, payload) {
   if (payload instanceof Error) msg = payload.message || String(payload);
   else if (typeof payload === "string") msg = payload;
   else msg = JSON.stringify(payload, null, 2);
-  setSwapStatus("");
+  swapStatusClear();
   uiAlert(title, msg, {copy:true});
 }
 
@@ -3213,6 +3233,7 @@ async function boot(){
 </script>
 </body>
 </html>
+
 
 
 
