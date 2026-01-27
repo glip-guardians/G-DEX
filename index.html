@@ -28,25 +28,44 @@
 
 <style>
 :root{
-  --bg0:#ffffff; --bg1:#f6fbff; --bg2:#f3f7fb;
-  --panel:rgba(255,255,255,.72); --panel-2:rgba(255,255,255,.82); --inner:rgba(255,255,255,.62);
-  --text:#0b1220; --muted:rgba(11,18,32,.68);
-  --accent:#7bb7ff; --accent-2:#9ad7ff;
-  --line:rgba(12,25,45,.10); --line-2:rgba(12,25,45,.16);
-  --shadow:0 18px 40px rgba(9,18,33,.12);
-  --shadow-soft:0 12px 26px rgba(9,18,33,.10);
+  /* Dark base */
+  --bg0:#05070b;
+  --bg1:#070c12;
+  --bg2:#0a111a;
+
+  /* Glass panels */
+  --panel:rgba(10,16,26,.62);
+  --panel-2:rgba(10,16,26,.72);
+  --inner:rgba(10,16,26,.58);
+
+  /* Text */
+  --text:rgba(245,250,255,.92);
+  --muted:rgba(245,250,255,.62);
+
+  /* Accent */
+  --accent:#7bb7ff;
+  --accent-2:#39d98a;
+
+  /* Lines / shadows */
+  --line:rgba(255,255,255,.08);
+  --line-2:rgba(255,255,255,.12);
+  --shadow:0 18px 50px rgba(0,0,0,.55);
+  --shadow-soft:0 12px 28px rgba(0,0,0,.45);
+
   --r:22px;
 }
+
 *{box-sizing:border-box}
 html,body{margin:0}
 html,body{
   color:var(--text);
   font-family:"Plus Jakarta Sans",Pretendard,system-ui,-apple-system,Roboto,"Segoe UI","Noto Sans KR",sans-serif;
   background:
-    radial-gradient(1200px 700px at 20% 0%, rgba(123,183,255,.18), transparent 60%),
-    radial-gradient(900px 600px at 80% 10%, rgba(154,215,255,.14), transparent 55%),
-    radial-gradient(900px 900px at 50% 110%, rgba(255,255,255,1), rgba(243,247,251,1) 55%, rgba(246,251,255,1) 100%);
+    radial-gradient(1200px 700px at 15% 0%, rgba(123,183,255,.10), transparent 60%),
+    radial-gradient(900px 600px at 85% 10%, rgba(57,217,138,.08), transparent 58%),
+    radial-gradient(1200px 900px at 50% 120%, rgba(12,18,30,1), rgba(6,8,12,1) 55%, rgba(5,7,11,1) 100%);
 }
+
 img{max-width:100%;display:block}
 body{position:relative;overflow-x:hidden}
 body::before, body::after{
@@ -368,6 +387,204 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(11,18,32,.92)
   text-decoration:none;cursor:pointer;min-width:110px;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;}
 .miniBtn:hover{transform:translateY(-1px);background:rgba(255,255,255,.92);border-color:rgba(123,183,255,.38);box-shadow:0 14px 24px rgba(9,18,33,.10);}
 .miniBtn.ghost{ background:rgba(255,255,255,.62); }
+
+/* =========================
+   DARK THEME OVERRIDES
+   (layout unchanged)
+========================= */
+
+/* overall text rendering */
+body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+a, button, input{ color:inherit; }
+
+/* HERO: keep image, make it premium dark */
+.hero{ background:linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.75) 55%, rgba(0,0,0,.92) 100%); }
+.hero::after{
+  filter:saturate(1.05) contrast(1.12) brightness(.70);
+  opacity:.98;
+}
+.heroOverlaySnow{ opacity:.08; }
+
+/* top link bar */
+.heroLinks{
+  background:rgba(0,0,0,.40);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+.heroBtn{
+  background:rgba(10,16,26,.55);
+  border:1px solid var(--line-2);
+  color:rgba(245,250,255,.90);
+}
+.heroBtn:hover{
+  background:rgba(10,16,26,.78);
+  border-color:rgba(123,183,255,.35);
+}
+
+/* nav + cards */
+.nav,.card{
+  background:var(--panel-2);
+  border:1px solid var(--line-2);
+  box-shadow:var(--shadow);
+}
+.nav::before,.card::before{
+  opacity:.55;
+  background:
+    radial-gradient(700px 240px at 20% 0%, rgba(123,183,255,.10), transparent 60%),
+    radial-gradient(700px 240px at 80% 10%, rgba(57,217,138,.08), transparent 55%);
+}
+
+.brand h1{ color:rgba(245,250,255,.92); }
+.nav .note{ color:rgba(245,250,255,.60); }
+
+/* sidebar buttons */
+.nav a{
+  background:rgba(10,16,26,.55);
+  border:1px solid var(--line);
+  color:rgba(245,250,255,.90);
+}
+.nav a:is(:hover,:focus){
+  background:rgba(10,16,26,.78);
+  border-color:rgba(123,183,255,.32);
+}
+
+/* headings */
+h3{ color:rgba(245,250,255,.92); }
+.metric h4{ color:rgba(245,250,255,.70); }
+.metric .v{ color:rgba(245,250,255,.92); }
+
+/* inputs */
+.input{
+  background:rgba(10,16,26,.62);
+  border:1px solid var(--line-2);
+  box-shadow:var(--shadow-soft);
+}
+.balTag{ color:rgba(245,250,255,.62); }
+.input input{
+  color:rgba(245,250,255,.94);
+}
+.input input::placeholder{ color:rgba(245,250,255,.35); }
+
+/* token / max / flip */
+.tokenBtn, .maxBtn, .flip{
+  background:rgba(10,16,26,.70);
+  border:1px solid var(--line-2);
+  color:rgba(245,250,255,.92);
+}
+.tokenBtn:hover, .maxBtn:hover, .flip:hover{
+  background:rgba(10,16,26,.86);
+  border-color:rgba(123,183,255,.35);
+}
+.tokenBtn img,#tokList .item img{
+  box-shadow:0 0 0 2px rgba(255,255,255,.12), 0 10px 18px rgba(0,0,0,.45);
+  background:#000;
+}
+
+/* primary buttons: readable on dark */
+.btn{
+  color:rgba(245,250,255,.92);
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(135deg, rgba(123,183,255,.26), rgba(10,16,26,.70));
+  box-shadow:0 14px 28px rgba(0,0,0,.45);
+}
+.btn:hover{
+  border-color:rgba(123,183,255,.30);
+  box-shadow:0 18px 34px rgba(0,0,0,.55);
+}
+.btn.ghost{
+  background:rgba(10,16,26,.55);
+  border:1px solid rgba(255,255,255,.10);
+  color:rgba(245,250,255,.88);
+}
+
+/* helper inputs (slippage) */
+.helper input{
+  background:rgba(10,16,26,.70);
+  border:1px solid rgba(255,255,255,.12);
+  color:rgba(245,250,255,.92);
+}
+#slipHint{ color:rgba(245,250,255,.62) !important; }
+
+/* tickers / mini cards */
+.poolsTicker,
+#metricGlipPrice .chartFrame,
+.miniRow,
+.priceMini,
+.smallPill,
+.statusItem,
+#txLog,
+.ribbon,
+.stake .stat,.stake .amountBox,.kpi,.vizCard{
+  background:rgba(10,16,26,.60) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  box-shadow:var(--shadow-soft) !important;
+}
+.poolsItem{ color:rgba(245,250,255,.92); }
+.poolsItem .meta{ color:rgba(245,250,255,.70); }
+.miniTitle{ color:rgba(245,250,255,.74); }
+.miniHint{ color:rgba(245,250,255,.58); }
+.miniEmpty{ background:rgba(10,16,26,.45); color:rgba(245,250,255,.60); }
+
+.priceMini .sym{ color:rgba(245,250,255,.90); }
+.priceMini .price{ color:rgba(245,250,255,.86); }
+.priceMini .chg{ color:rgba(245,250,255,.72); }
+.priceMini .chg.up{ color:rgba(57,217,138,.92) !important; }
+.priceMini .chg.down{ color:rgba(255,120,120,.92) !important; }
+
+/* pool info boxes (inline styles override) */
+#pool .card,
+#pool section,
+#pool [style*="background:rgba(255,255,255"]{
+  background:rgba(10,16,26,.58) !important;
+  border-color:rgba(255,255,255,.10) !important;
+  color:rgba(245,250,255,.78) !important;
+}
+
+/* notes inner */
+.notes .inner,
+.notes .inner p{
+  color:rgba(245,250,255,.82) !important;
+}
+
+/* dialogs */
+#tokModal, #uiModal{
+  background:rgba(10,16,26,.88) !important;
+  border:1px solid rgba(255,255,255,.14) !important;
+  color:rgba(245,250,255,.92) !important;
+}
+#tokModal header, #uiModal header{
+  background:rgba(10,16,26,.92) !important;
+  border-bottom:1px solid rgba(255,255,255,.10) !important;
+}
+#tokSearch{
+  background:rgba(0,0,0,.35) !important;
+  border:1px solid rgba(255,255,255,.12) !important;
+  color:rgba(245,250,255,.92) !important;
+}
+#tokSearch::placeholder{ color:rgba(245,250,255,.40) !important; }
+#tokClose, #uiClose{ color:rgba(245,250,255,.88) !important; }
+#tokList .item{ color:rgba(245,250,255,.90) !important; }
+#tokList .item:hover{ background:rgba(123,183,255,.10) !important; }
+
+/* swap status */
+#swapStatus{
+  background:rgba(10,16,26,.60) !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  color:rgba(245,250,255,.74) !important;
+}
+#swapStatus[data-kind="success"]{ background:rgba(57,217,138,.10) !important; }
+#swapStatus[data-kind="error"]{ background:rgba(255,120,120,.10) !important; }
+#swapStatus a{ color:rgba(245,250,255,.92) !important; }
+
+/* Top button */
+#toTop{
+  background:rgba(10,16,26,.72);
+  border:1px solid rgba(255,255,255,.12);
+}
+#toTop svg{ fill:rgba(245,250,255,.88); }
+
+
+
 </style>
 </head>
 
@@ -447,7 +664,7 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(11,18,32,.92)
           <div class="v" id="metricGlipPrice">
             <div class="chartFrame">
               <iframe id="dextools-widget" title="DEXTools Trading Chart" width="500" height="400" loading="lazy"
-                src="https://www.dextools.io/widget-chart/en/ether/pe-light/0xd304b9c49f389f27c5e75e1469e903da5320d3b4?theme=light&chartType=2&chartResolution=30&drawingToolbars=false"></iframe>
+                src="https://www.dextools.io/widget-chart/en/ether/pe-dark/0xd304b9c49f389f27c5e75e1469e903da5320d3b4?theme=dark&chartType=2&chartResolution=30&drawingToolbars=false"></iframe>
             </div>
           </div>
         </div>
@@ -559,7 +776,8 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(11,18,32,.92)
 
       <section class="card notes">
         <h3>Notes</h3>
-        <div class="card inner" style="background:rgba(255,255,255,.70);border:1px solid rgba(12,25,45,.14)">
+        <div style="margin-top:6px;margin-bottom:12px;padding:10px 14px;border-radius:12px;border:1px solid rgba(12,25,45,0.14);
+          background:rgba(255,255,255,.72);font-size:13px;line-height:1.5;color:rgba(11,18,32,.74);box-shadow:0 12px 22px rgba(9,18,33,.08);">
           <p class="wrap" style="margin:.2rem 0">• GLIP contract: 0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e</p>
           <p class="wrap" style="margin:.2rem 0">• Proxy Router (G-DEX): 0xF89Dc5519C2BfDc3dab5BE2F7803dfb2E16E9E64</p>
           <p class="wrap" style="margin:.2rem 0">• Underlying Router: SushiSwap V2 — 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F</p>
@@ -2203,4 +2421,5 @@ async function boot(){
 </script>
 </body>
 </html>
+
 
