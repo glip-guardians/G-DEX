@@ -6,30 +6,27 @@
 <title>G-DEX — GLIP</title>
 
 <script>
+  const ROUTER_ABI_POOL = [
+  "function addLiquidity(address,address,uint,uint,uint,uint,address,uint) returns (uint,uint,uint)",
+  "function addLiquidityETH(address,uint,uint,uint,address,uint) payable returns (uint,uint,uint)",
+  "function removeLiquidity(address,address,uint,uint,uint,address,uint) returns (uint,uint)",
+  "function removeLiquidityETH(address,uint,uint,uint,address,uint) returns (uint,uint)"
+];
+
+const FACTORY_ABI = [
+  "function getPair(address,address) view returns (address)",
+  "function createPair(address,address) returns (address)"
+];
+
+const ERC20_ABI_MIN = [
+  "function approve(address,uint) returns (bool)",
+  "function balanceOf(address) view returns (uint)",
+  "function allowance(address,address) view returns (uint)"
+];
+
+
   const BACKEND_URL = "https://gdex-backend.onrender.com".replace(/\/$/, "");
 </script>
-
-<!-- ✅ 여기부터 ABI 추가 -->
-<script>
-  const ROUTER_ABI_POOL = [
-    "function addLiquidity(address,address,uint,uint,uint,uint,address,uint) returns (uint,uint,uint)",
-    "function addLiquidityETH(address,uint,uint,uint,address,uint) payable returns (uint,uint,uint)",
-    "function removeLiquidity(address,address,uint,uint,uint,address,uint) returns (uint,uint)",
-    "function removeLiquidityETH(address,uint,uint,uint,address,uint) returns (uint,uint)"
-  ];
-
-  const FACTORY_ABI = [
-    "function getPair(address,address) view returns (address)",
-    "function createPair(address,address) returns (address)"
-  ];
-
-  const ERC20_ABI_MIN = [
-    "function approve(address,uint) returns (bool)",
-    "function balanceOf(address) view returns (uint)",
-    "function allowance(address,address) view returns (uint)"
-  ];
-</script>
-
 
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="G_DEX_icon.png">
@@ -2006,99 +2003,6 @@ async function executeSwap(){
   }
 }
 
-/* =========================
-   POOL FUNCTIONS
-========================= */  
-async function createPool(tokenA, tokenB) {
-  const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
-  const pair = await factory.getPair(tokenA, tokenB);
-  if (pair !== ethers.ZeroAddress) return pair;
-
-  setStatus("Creating new pool...");
-  const tx = await factory.createPair(tokenA, tokenB);
-  await tx.wait();
-
-  return await factory.getPair(tokenA, tokenB);
-}
-async function approveIfNeeded(token, amount) {
-  const erc20 = new ethers.Contract(token, ERC20_ABI_MIN, signer);
-  const allowance = await erc20.allowance(userAddress, ROUTER_ADDRESS);
-  if (allowance < amount) {
-    const tx = await erc20.approve(ROUTER_ADDRESS, ethers.MaxUint256);
-    await tx.wait();
-  }
-}
-async function addLiquidity(tokenA, tokenB, amtA, amtB) {
-  const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI_POOL, signer);
-  const deadline = Math.floor(Date.now() / 1000) + 1200;
-
-  if (tokenA === WETH_ADDRESS) {
-    await approveIfNeeded(tokenB, amtB);
-    return router.addLiquidityETH(
-      tokenB,
-      amtB,
-      0,
-      0,
-      userAddress,
-      deadline,
-      { value: amtA }
-    );
-  } else if (tokenB === WETH_ADDRESS) {
-    await approveIfNeeded(tokenA, amtA);
-    return router.addLiquidityETH(
-      tokenA,
-      amtA,
-      0,
-      0,
-      userAddress,
-      deadline,
-      { value: amtB }
-    );
-  } else {
-    await approveIfNeeded(tokenA, amtA);
-    await approveIfNeeded(tokenB, amtB);
-    return router.addLiquidity(
-      tokenA,
-      tokenB,
-      amtA,
-      amtB,
-      0,
-      0,
-      userAddress,
-      deadline
-    );
-  }
-}
-async function removeLiquidity(pair, tokenA, tokenB, lpAmount) {
-  const lp = new ethers.Contract(pair, ERC20_ABI_MIN, signer);
-  await lp.approve(ROUTER_ADDRESS, lpAmount);
-
-  const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI_POOL, signer);
-  const deadline = Math.floor(Date.now() / 1000) + 1200;
-
-  if (tokenA === WETH_ADDRESS || tokenB === WETH_ADDRESS) {
-    const token = tokenA === WETH_ADDRESS ? tokenB : tokenA;
-    return router.removeLiquidityETH(
-      token,
-      lpAmount,
-      0,
-      0,
-      userAddress,
-      deadline
-    );
-  } else {
-    return router.removeLiquidity(
-      tokenA,
-      tokenB,
-      lpAmount,
-      0,
-      0,
-      userAddress,
-      deadline
-    );
-  }
-}
-
 /* MAX buttons */
 function setInputValue(el, v){
   if(!el) return;
@@ -2301,6 +2205,5 @@ boot();
 </body>
 </html>
 <br><br>
-
 
 
