@@ -1331,16 +1331,13 @@ function openSushiGlipEthPool(){
 }
 function bindPoolSupplyButton(){
   const btn=document.getElementById('poolSupply');
-  if(btn) btn.addEventListener('click', openSushiGlipEthPool);
+
 }
 function bindPoolQuickButtons(){
   const add=document.getElementById("poolAdd");
   const rm=document.getElementById("poolRemove");
   const pos=document.getElementById("poolPositions");
-  const go=()=>openSushiGlipEthPool();
-  if(add) add.addEventListener("click",go);
-  if(rm) rm.addEventListener("click",go);
-  if(pos) pos.addEventListener("click",go);
+
 }
 
 /* TOP */
@@ -2189,5 +2186,6 @@ boot();
 </body>
 </html>
 <br><br>
+
 
 
