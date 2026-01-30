@@ -6,25 +6,6 @@
 <title>G-DEX — GLIP</title>
 
 <script>
-  const ROUTER_ABI_POOL = [
-  "function addLiquidity(address,address,uint,uint,uint,uint,address,uint) returns (uint,uint,uint)",
-  "function addLiquidityETH(address,uint,uint,uint,address,uint) payable returns (uint,uint,uint)",
-  "function removeLiquidity(address,address,uint,uint,uint,address,uint) returns (uint,uint)",
-  "function removeLiquidityETH(address,uint,uint,uint,address,uint) returns (uint,uint)"
-];
-
-const FACTORY_ABI = [
-  "function getPair(address,address) view returns (address)",
-  "function createPair(address,address) returns (address)"
-];
-
-const ERC20_ABI_MIN = [
-  "function approve(address,uint) returns (bool)",
-  "function balanceOf(address) view returns (uint)",
-  "function allowance(address,address) view returns (uint)"
-];
-
-
   const BACKEND_URL = "https://gdex-backend.onrender.com".replace(/\/$/, "");
 </script>
 
