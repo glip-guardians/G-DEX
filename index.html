@@ -2005,6 +2005,10 @@ async function executeSwap(){
     updateStatusBoard();
   }
 }
+
+/* =========================
+   POOL FUNCTIONS
+========================= */  
 async function createPool(tokenA, tokenB) {
   const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
   const pair = await factory.getPair(tokenA, tokenB);
@@ -2297,5 +2301,6 @@ boot();
 </body>
 </html>
 <br><br>
+
 
 
