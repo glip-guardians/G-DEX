@@ -1,3 +1,5 @@
+기존 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -715,26 +717,22 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(234,247,240,.
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
 <script>
-/* ===========================
-   G-DEX (Swap + Pool v2)
-   - Pool Create/Add/Remove in-app
-   - Works with SushiSwap V2 Router/Factory
-   =========================== */
+let __bootOk=false, __bootErr=null;
 
-let __bootOk=false;
+const SWAP_SILENT = true;
+const SAFE_GAS_PROXY=650000, SAFE_GAS_DIRECT=450000;
+const WALLET_CONFIRM_TIMEOUT_MS=450000;
 
-/* ---------- Utils ---------- */
-const $ = (s)=>document.querySelector(s);
-const short = (a)=>a ? a.slice(0,6)+'…'+a.slice(-4) : '—';
-function normalizeErr(e){
-  const msg = e?.reason || e?.error?.message || e?.data?.message || e?.message || String(e);
-  return String(msg);
+function withTimeout(promise, ms, tag="timeout"){
+  let timer;
+  const t=new Promise((_,rej)=>{timer=setTimeout(()=>rej(new Error(tag)),ms);});
+  return Promise.race([Promise.resolve(promise).finally(()=>{try{clearTimeout(timer);}catch{}}),t]);
 }
-function isUserRejected(e){
-  const m = normalizeErr(e).toLowerCase();
-  return m.includes("user rejected") || m.includes("rejected") || m.includes("denied transaction") || m.includes("user denied");
-}
+const $ = s => document.querySelector(s);
+const short = a => a ? a.slice(0,6)+'…'+a.slice(-4) : '—';
+
 function fmtAgo(ts){
   try{
     const s=Math.max(0, Math.floor((Date.now()-Number(ts))/1000));
@@ -748,13 +746,33 @@ function fmtAgo(ts){
     return `${d}d ago`;
   }catch{return "—";}
 }
-function withTimeout(promise, ms, tag="timeout"){
-  let timer;
-  const t=new Promise((_,rej)=>{timer=setTimeout(()=>rej(new Error(tag)),ms);});
-  return Promise.race([Promise.resolve(promise).finally(()=>{try{clearTimeout(timer);}catch{}}),t]);
+
+function setSwapStatus(msg, {show=true, kind="info"}={}){
+  const el=document.getElementById('swapStatus');
+  if(!el) return;
+  if(!msg){ el.style.display='none'; el.innerHTML=''; el.dataset.kind='info'; return; }
+  el.dataset.kind = kind || "info";
+  el.innerHTML = msg;
+  el.style.display = show ? 'block' : 'none';
+}
+function normalizeErr(e){
+  const msg = e?.reason || e?.error?.message || e?.data?.message || e?.message || String(e);
+  return String(msg);
+}
+function isUserRejected(e){
+  const m = normalizeErr(e).toLowerCase();
+  return m.includes("user rejected") || m.includes("rejected") || m.includes("denied transaction") || m.includes("user denied");
+}
+function showErrorPopup(title, payload){
+  let msg="";
+  if(payload instanceof Error) msg = payload.message || String(payload);
+  else if(typeof payload==="string") msg=payload;
+  else msg=JSON.stringify(payload,null,2);
+  setSwapStatus("",{show:false});
+  uiAlert(title,msg,{copy:true});
 }
 
-/* ---------- In-app Modal (reuse your #uiModal) ---------- */
+/* In-app modal */
 const uiModal=document.getElementById('uiModal');
 const uiTitle=document.getElementById('uiTitle');
 const uiMessage=document.getElementById('uiMessage');
@@ -763,7 +781,6 @@ const uiCancel=document.getElementById('uiCancel');
 const uiClose=document.getElementById('uiClose');
 const uiCopy=document.getElementById('uiCopy');
 let __uiResolve=null, __uiMode="alert";
-
 function uiSupported(){return !!(uiModal && typeof uiModal.showModal==="function");}
 function _uiOpen({title="Notice", message="", mode="alert", okText="OK", cancelText="Cancel", copy=false}){
   if(!uiSupported()){
@@ -810,70 +827,246 @@ if(uiSupported()){
   };
 }
 
-/* ---------- Swap status line ---------- */
-function setSwapStatus(msg, {show=true, kind="info"}={}){
-  const el=document.getElementById('swapStatus');
-  if(!el) return;
-  if(!msg){ el.style.display='none'; el.innerHTML=''; el.dataset.kind='info'; return; }
-  el.dataset.kind = kind || "info";
-  el.innerHTML = msg;
-  el.style.display = show ? 'block' : 'none';
+/* Manual config */
+let gdexPoolConfig={};
+(function readGdexConfig(){
+  const el=document.getElementById('gdexPoolConfig'); if(!el) return;
+  try{ const txt=el.textContent.trim(); if(!txt) return; gdexPoolConfig=JSON.parse(txt); }
+  catch(e){ console.warn('[G-DEX] invalid gdexPoolConfig JSON', e); }
+})();
+function applyManualPoolConfig(){
+  const cfg=gdexPoolConfig||{};
+  const noteEl=document.getElementById('pManualNote');
+  const footEl=document.getElementById('poolFooterNote');
+  if(noteEl && cfg.poolManualNote) noteEl.textContent=cfg.poolManualNote;
+  if(footEl && cfg.poolFooterNote) footEl.textContent=cfg.poolFooterNote;
+}
+applyManualPoolConfig();
+
+/* Tickers (원본 유지) */
+let __sushiPools=[], __sushiTickerIdx=0, __sushiTickerTimer=null, __backendOk=null, __backendLastAt=null;
+function setPoolsTicker(item){
+  const link=document.getElementById('poolsTickerLink');
+  const pair=document.getElementById('poolsTickerPair');
+  const meta=document.getElementById('poolsTickerMeta');
+  if(!link||!pair||!meta) return;
+  const feeTxt=(item&&item.feePct!=null)?` · ${Number(item.feePct).toFixed(1)}%`:"";
+  const tvlTxt=(item&&item.tvlText)?`TVL ${item.tvlText}`:"";
+  link.href=(item&&item.url)?item.url:"https://www.sushi.com/ethereum/explore/pools";
+  pair.textContent=(item&&item.name)?item.name:"—";
+  meta.textContent=(tvlTxt+feeTxt).trim();
+  renderPoolsMiniList();
+}
+function setPoolsTickerFallbackFromManual(){
+  const cfg=gdexPoolConfig||{};
+  const name=cfg.recentPoolsText||"GLIP–ETH - SushiSwap V2";
+  setPoolsTicker({name,tvlText:"$—",feePct:0.3,url:"https://www.sushi.com/ethereum/explore/pools"});
+}
+async function fetchSushiPools(limit=5){
+  const url=`${BACKEND_URL}/sushi/pools?chain=ethereum&limit=${encodeURIComponent(limit)}`;
+  const r=await fetch(url,{method:'GET'});
+  const j=await r.json().catch(()=> ({}));
+  const items=j && Array.isArray(j.items)?j.items:[];
+  return items.slice(0,limit);
+}
+function rotateSushiPools(){
+  if(!__sushiPools.length) return;
+  const wrap=document.getElementById('poolsTicker'); if(!wrap) return;
+  wrap.classList.remove('fadeIn'); wrap.classList.add('fadeOut');
+  setTimeout(()=>{
+    __sushiTickerIdx=(__sushiTickerIdx+1)%__sushiPools.length;
+    setPoolsTicker(__sushiPools[__sushiTickerIdx]);
+    wrap.classList.remove('fadeOut'); wrap.classList.add('fadeIn');
+  },220);
+}
+async function bootSushiPoolsTicker(){
+  const wrap=document.getElementById('poolsTicker'); if(!wrap) return;
+  try{
+    __sushiPools=await fetchSushiPools(5);
+    __backendOk=true; __backendLastAt=Date.now();
+    if(!__sushiPools.length){ setPoolsTickerFallbackFromManual(); return; }
+    __sushiTickerIdx=0; setPoolsTicker(__sushiPools[0]);
+    if(__sushiTickerTimer) clearInterval(__sushiTickerTimer);
+    __sushiTickerTimer=setInterval(rotateSushiPools,3500);
+
+    setInterval(async()=>{
+      try{
+        const fresh=await fetchSushiPools(5);
+        __backendOk=true; __backendLastAt=Date.now();
+        if(Array.isArray(fresh)&&fresh.length){
+          __sushiPools=fresh; __sushiTickerIdx=0; setPoolsTicker(__sushiPools[0]);
+        }
+      }catch(e){ __backendOk=false; console.warn('[sushi ticker refresh] failed',e); }
+      finally{ updateStatusBoard(); }
+    },60000);
+  }catch(e){
+    __backendOk=false; console.warn('[bootSushiPoolsTicker] failed',e);
+    setPoolsTickerFallbackFromManual();
+  }finally{ updateStatusBoard(); }
+}
+function renderPoolsMiniList(){
+  const box=document.getElementById("poolsMiniList");
+  const upd=document.getElementById("poolsUpdated");
+  if(!box) return;
+  const items=(Array.isArray(__sushiPools)&&__sushiPools.length)?__sushiPools.slice(0,3):[{
+    name:(gdexPoolConfig?.recentPoolsText||"GLIP–ETH - SushiSwap V2"),tvlText:"$—",url:"https://www.sushi.com/ethereum/explore/pools"
+  }];
+  box.innerHTML=items.map(it=>`
+    <a class="miniRow" href="${it.url||"https://www.sushi.com/ethereum/explore/pools"}" target="_blank" rel="noopener">
+      <span class="l">${(it.name||"—")}</span>
+      <span class="r">${it.tvlText?("TVL "+it.tvlText):""}</span>
+    </a>`).join("");
+  if(upd){ upd.textContent=__backendLastAt?(`Updated ${fmtAgo(__backendLastAt)}`):"Updated —"; }
 }
 
-/* ---------- Addresses ---------- */
+/* Major prices */
+let __pricesItems=[], __pricesIdx=0, __pricesTimer=null, __cgOk=null, __cgLastAt=null;
+function setPricesTicker(item){
+  const link=document.getElementById('pricesTickerLink');
+  const pair=document.getElementById('pricesTickerPair');
+  const meta=document.getElementById('pricesTickerMeta');
+  if(!link||!pair||!meta) return;
+  link.href=item?.url||"https://www.coingecko.com";
+  pair.textContent=item?.label||"—";
+  meta.textContent=item?.meta||"";
+  renderPricesMiniGrid();
+}
+function formatUSD(n){
+  if(n==null||!Number.isFinite(Number(n))) return "—";
+  const v=Number(n);
+  const opt=v>=1000?{maximumFractionDigits:2}:v>=1?{maximumFractionDigits:4}:{maximumFractionDigits:8};
+  return "$ "+v.toLocaleString(undefined,opt);
+}
+function formatPct(p){
+  if(p==null||!Number.isFinite(Number(p))) return "";
+  const v=Number(p); const sign=v>=0?"+":"";
+  return `${sign}${v.toFixed(2)}%`;
+}
+const PRICE_TICKER_COINS=[
+  { id:"bitcoin",  sym:"BTC", url:"https://www.coingecko.com/en/coins/bitcoin" },
+  { id:"ethereum", sym:"ETH", url:"https://www.coingecko.com/en/coins/ethereum" },
+  { id:"tether",   sym:"USDT",url:"https://www.coingecko.com/en/coins/tether" },
+  { id:"usd-coin", sym:"USDC",url:"https://www.coingecko.com/en/coins/usd-coin" },
+  { id:"solana",   sym:"SOL", url:"https://www.coingecko.com/en/coins/solana" },
+  { id:"ripple",   sym:"XRP", url:"https://www.coingecko.com/en/coins/xrp" }
+];
+async function fetchMajorCoinPrices(){
+  const ids=PRICE_TICKER_COINS.map(x=>x.id).join(",");
+  const url=`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true`;
+  const r=await fetch(url,{method:"GET"});
+  const j=await r.json().catch(()=> ({}));
+  const items=[];
+  for(const c of PRICE_TICKER_COINS){
+    const row=j?.[c.id];
+    items.push({label:`${c.sym} · ${formatUSD(row?.usd)}`, meta:`24h ${formatPct(row?.usd_24h_change)}`, url:c.url});
+  }
+  return items.filter(x=>x && x.label);
+}
+function rotatePricesTicker(){
+  if(!__pricesItems.length) return;
+  const wrap=document.getElementById('pricesTicker'); if(!wrap) return;
+  wrap.classList.remove('fadeIn'); wrap.classList.add('fadeOut');
+  setTimeout(()=>{
+    __pricesIdx=(__pricesIdx+1)%__pricesItems.length;
+    setPricesTicker(__pricesItems[__pricesIdx]);
+    wrap.classList.remove('fadeOut'); wrap.classList.add('fadeIn');
+  },220);
+}
+function setPricesFallback(){
+  __pricesItems=[
+    { label:"BTC · —", meta:"24h —", url:"https://www.coingecko.com" },
+    { label:"ETH · —", meta:"24h —", url:"https://www.coingecko.com" },
+    { label:"USDT · —", meta:"24h —", url:"https://www.coingecko.com" }
+  ];
+  __pricesIdx=0; setPricesTicker(__pricesItems[0]);
+}
+function renderPricesMiniGrid(){
+  const box=document.getElementById("pricesMiniGrid");
+  const upd=document.getElementById("pricesUpdated");
+  if(!box) return;
+  const items=(Array.isArray(__pricesItems)&&__pricesItems.length)?__pricesItems.slice(0,4):[
+    { label:"BTC · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/bitcoin" },
+    { label:"ETH · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/ethereum" },
+    { label:"USDT · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/tether" },
+    { label:"SOL · —", meta:"24h —", url:"https://www.coingecko.com/en/coins/solana" },
+  ];
+  box.innerHTML=items.map(it=>{
+    const parts=String(it.label||"—").split("·").map(s=>s.trim());
+    const sym=parts[0]||"—";
+    const price=parts[1]||"—";
+    const ch=String(it.meta||"").replace("24h","").trim();
+    const isUp=ch && !ch.startsWith("-");
+    return `
+      <a class="priceMini" href="${it.url||"https://www.coingecko.com"}" target="_blank" rel="noopener">
+        <div class="sym">${sym}</div><div class="price">${price}</div>
+        <div class="chg ${isUp ? "up":"down"}">${ch||"—"}</div>
+      </a>`;
+  }).join("");
+  if(upd){ upd.textContent=__cgLastAt?(`Updated ${fmtAgo(__cgLastAt)}`):"Updated —"; }
+}
+async function bootMajorCoinPricesTicker(){
+  const wrap=document.getElementById('pricesTicker'); if(!wrap) return;
+  try{
+    const items=await fetchMajorCoinPrices();
+    __cgOk=true; __cgLastAt=Date.now();
+    if(items && items.length){
+      __pricesItems=items; __pricesIdx=0; setPricesTicker(__pricesItems[0]);
+      if(__pricesTimer) clearInterval(__pricesTimer);
+      __pricesTimer=setInterval(rotatePricesTicker,3000);
+
+      setInterval(async()=>{
+        try{
+          const fresh=await fetchMajorCoinPrices();
+          __cgOk=true; __cgLastAt=Date.now();
+          if(fresh && fresh.length){
+            __pricesItems=fresh; __pricesIdx=0; setPricesTicker(__pricesItems[0]);
+          }
+        }catch{ __cgOk=false; }
+        finally{ updateStatusBoard(); }
+      },60000);
+      return;
+    }
+    setPricesFallback();
+  }catch{ __cgOk=false; setPricesFallback(); }
+  finally{ updateStatusBoard(); }
+}
+function bindMetricFillActions(){
+  const pr=document.getElementById("poolsRefreshBtn");
+  if(pr) pr.addEventListener("click", async ()=>{
+    try{
+      const fresh=await fetchSushiPools(5);
+      __backendOk=true; __backendLastAt=Date.now();
+      if(Array.isArray(fresh)&&fresh.length){ __sushiPools=fresh; __sushiTickerIdx=0; setPoolsTicker(__sushiPools[0]); }
+    }catch{ __backendOk=false; }
+    finally{ renderPoolsMiniList(); updateStatusBoard(); }
+  });
+  const cr=document.getElementById("pricesRefreshBtn");
+  if(cr) cr.addEventListener("click", async ()=>{
+    try{
+      const fresh=await fetchMajorCoinPrices();
+      __cgOk=true; __cgLastAt=Date.now();
+      if(Array.isArray(fresh)&&fresh.length){ __pricesItems=fresh; __pricesIdx=0; setPricesTicker(__pricesItems[0]); }
+    }catch{ __cgOk=false; }
+    finally{ renderPricesMiniGrid(); updateStatusBoard(); }
+  });
+}
+
+/* DApp / addresses */
 const DAPP_HOST='gdex-app.com';
 const GLIP_TOKEN_ADDRESS='0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e';
+const SUSHI_ETHEREUM_POOL_BASE='https://www.sushi.com/ethereum/pool';
 const SUSHI_ROUTER_V2="0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
 const SUSHI_FACTORY_V2="0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const WETH_MAINNET="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 const GDEX_PROXY_ROUTER="0xF89Dc5519C2BfDc3dab5BE2F7803dfb2E16E9E64";
+const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+function openMetaMaskDeepLink(){
+  const dappUrl=`https://${DAPP_HOST}`;
+  const target=dappUrl.replace(/^https?:\/\//,'');
+  window.location.href=`https://metamask.app.link/dapp/${target}`;
+}
 
-const SAFE_GAS_DIRECT=450000;
-const SAFE_GAS_PROXY=650000;
-const WALLET_CONFIRM_TIMEOUT_MS=450000;
-
-/* ---------- ABIs ---------- */
-const SUSHI_ROUTER_RO_ABI=[
-  "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"
-];
-const SUSHI_ROUTER_RW_ABI=[
-  "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable",
-  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)",
-  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)"
-];
-const ROUTER_ABI_POOL = [
-  "function addLiquidity(address,address,uint,uint,uint,uint,address,uint) returns (uint,uint,uint)",
-  "function addLiquidityETH(address,uint,uint,uint,address,uint) payable returns (uint,uint,uint)",
-  "function removeLiquidity(address,address,uint,uint,uint,address,uint) returns (uint,uint)",
-  "function removeLiquidityETH(address,uint,uint,uint,address,uint) returns (uint,uint)"
-];
-const FACTORY_ABI_POOL = [
-  "function getPair(address,address) view returns (address)",
-  "function createPair(address,address) returns (address)"
-];
-const PAIR_ABI=[
-  "function token0() view returns (address)",
-  "function token1() view returns (address)",
-  "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
-];
-const ERC20_ABI=[
-  "function decimals() view returns (uint8)",
-  "function symbol() view returns (string)",
-  "function balanceOf(address) view returns (uint256)",
-  "function allowance(address,address) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)"
-];
-const PROXY_ABI=[
-  "function BPS_DENOM() view returns (uint16)",
-  "function PERCENT_BPS() view returns (uint16)",
-  "function flatFeeWei() view returns (uint256)",
-  "function feeRecipient() view returns (address)",
-  "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable",
-  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) payable",
-  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) payable"
-];
-
-/* ---------- Token list (use yours if already defined above; fallback if not) ---------- */
+/* Token list (원본 그대로) */
 const tokenList = [
   {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
   {symbol:"GLIP", name:"GLIP Token", address:GLIP_TOKEN_ADDRESS, decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
@@ -913,22 +1106,16 @@ const tokenList = [
   {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
 ];
 
-
 function getTokenMeta(symbolOrAddress){
   return tokenList.find(t=>t.symbol===symbolOrAddress || t.address?.toLowerCase()===symbolOrAddress?.toLowerCase());
 }
 function metaIsETH(meta){ return !!meta && (meta.symbol==="ETH" || meta.address==="ETH"); }
-function addrForPath(meta){ return metaIsETH(meta) ? WETH_MAINNET : meta.address; }
 function getSelectedMeta(symEl){
   if(!symEl) return null;
   const sym=String(symEl.textContent||"").trim();
   const addr=String(symEl.dataset.address||"").trim();
-  if(addr){
-    const byAddr=getTokenMeta(addr);
-    if(byAddr) return byAddr;
-  }
-  const bySym=getTokenMeta(sym);
-  if(bySym) return bySym;
+  if(addr){ const byAddr=getTokenMeta(addr); if(byAddr) return byAddr; }
+  const bySym=getTokenMeta(sym); if(bySym) return bySym;
   return null;
 }
 function safeSetImg(imgEl, src){
@@ -936,65 +1123,341 @@ function safeSetImg(imgEl, src){
   imgEl.onerror=()=>{ imgEl.src="G_DEX_icon.png"; };
   imgEl.src=src||"G_DEX_icon.png";
 }
+function initDefaults(){
+  const ETH=tokenList.find(t=>t.symbol==="ETH");
+  const GLIP=getTokenMeta("GLIP");
+  safeSetImg($('#sellI'), ETH?.logo);  $('#sellS').textContent="ETH";  $('#sellS').dataset.address="ETH";
+  safeSetImg($('#buyI'),  GLIP?.logo); $('#buyS').textContent="GLIP";  $('#buyS').dataset.address=GLIP?.address||GLIP_TOKEN_ADDRESS;
+  safeSetImg($('#pT0Img'), ETH?.logo);  $('#pT0Sym').textContent="ETH"; $('#pT0Sym').dataset.address="ETH";
+  safeSetImg($('#pT1Img'), GLIP?.logo); $('#pT1Sym').textContent="GLIP"; $('#pT1Sym').dataset.address=GLIP?.address||GLIP_TOKEN_ADDRESS;
+}
 
-/* ---------- Web3 ---------- */
+/* Token modal */
+const dlg=document.getElementById('tokModal');
+const list=document.getElementById('tokList');
+const tokSearchInput=document.getElementById('tokSearch');
+let target=null;
+function dialogSupported(d){return !!(d && typeof d.showModal==="function");}
+function renderTokenList(query=""){
+  const q=query.trim().toLowerCase();
+  const filtered=!q?tokenList:tokenList.filter(t=>
+    t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || (t.address && t.address.toLowerCase().includes(q))
+  );
+  if(!filtered.length){ list.innerHTML=`<div style="padding:6px 0;opacity:.8;font-size:13px;color:rgba(234,247,240,.74)">No tokens match.</div>`; return; }
+  list.innerHTML=filtered.map(t=>`
+    <div class="item" data-sym="${t.symbol}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
+      <img src="${t.logo}" onerror="this.src='G_DEX_icon.png'" alt="">
+      <strong>${t.symbol}</strong>
+      <span style="margin-left:6px;opacity:.85">${t.name}</span>
+      <span style="margin-left:auto;opacity:.72">${t.address==="ETH"?"ETH":t.address.slice(0,6)+"…"+t.address.slice(-4)}</span>
+    </div>`).join('');
+}
+function openFor(imgEl, symEl){
+  target={imgEl,symEl};
+  if(tokSearchInput) tokSearchInput.value="";
+  renderTokenList("");
+  if(dialogSupported(dlg)){
+    dlg.showModal();
+    setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); },10);
+  }else{
+    uiAlert("Token selector","Your browser does not support <dialog>. Please open on a modern browser.",{copy:false});
+  }
+}
+if(list){
+  list.onclick=async e=>{
+    const row=e.target.closest('.item'); if(!row||!target) return;
+    const t=tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
+    safeSetImg(target.imgEl, t.logo);
+    target.symEl.textContent=t.symbol;
+    target.symEl.dataset.address=t.address;
+    try{ dlg.close(); }catch{}
+    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); updateStatusBoard(); },50);
+  };
+}
+const tokCloseBtn=document.getElementById('tokClose');
+if(tokCloseBtn) tokCloseBtn.onclick=()=>{ try{ dlg.close(); }catch{} };
+if(dlg) dlg.addEventListener('click',e=>{ if(e.target===dlg){ try{ dlg.close(); }catch{} } });
+if(tokSearchInput) tokSearchInput.addEventListener('input', e=> renderTokenList(e.target.value));
+function bindTokenButtons(){
+  const sellBtn=document.getElementById('sellBtn');
+  const buyBtn=document.getElementById('buyBtn');
+  const pT0Btn=document.getElementById('pT0Btn');
+  const pT1Btn=document.getElementById('pT1Btn');
+  if(sellBtn) sellBtn.addEventListener('click', ()=>openFor($('#sellI'), $('#sellS')));
+  if(buyBtn)  buyBtn.addEventListener('click',  ()=>openFor($('#buyI'),  $('#buyS')));
+  if(pT0Btn)  pT0Btn.addEventListener('click',  ()=>openFor($('#pT0Img'),$('#pT0Sym')));
+  if(pT1Btn)  pT1Btn.addEventListener('click',  ()=>openFor($('#pT1Img'),$('#pT1Sym')));
+}
+
+/* Flip */
+function flipTokenMeta(imgA,symA,imgB,symB){
+  const s=imgA.src; imgA.src=imgB.src; imgB.src=s;
+  const t=symA.textContent; symA.textContent=symB.textContent; symB.textContent=t;
+  const a=symA.dataset.address,b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
+}
+function bindFlip(){
+  const flipBtn=document.getElementById('flip');
+  const pFlipBtn=document.getElementById('pFlip');
+  if(flipBtn) flipBtn.addEventListener('click', ()=>{
+    flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
+    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); updateStatusBoard(); },50);
+  });
+  if(pFlipBtn) pFlipBtn.addEventListener('click', ()=>{
+    flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
+    setTimeout(()=>{ refreshAllBalances(); updateStatusBoard(); },50);
+  });
+}
+
+/* Web3 / contracts */
 let userAddress=null, provider=null, signer=null;
-let sushiRouterRO=null, sushiRouterRW=null, sushiRouterPoolRW=null;
-let factory=null, factoryPool=null, proxyRouter=null;
-
+let sushiRouterRO=null, sushiRouterRW=null, factory=null, proxyRouter=null;
 let __proxyFeeLoaded=false, __proxyPERCENT_BPS=0, __proxyFlatFeeWei=null, __proxyFeeWallet=null;
 let __lastSwapMode="—";
+
+const SUSHI_ROUTER_RO_ABI=["function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)"];
+const SUSHI_ROUTER_RW_ABI=[
+  "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable",
+  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)",
+  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)"
+];
+const FACTORY_ABI=["function getPair(address tokenA, address tokenB) view returns (address pair)"];
+const PAIR_ABI=[
+  "function token0() view returns (address)","function token1() view returns (address)",
+  "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
+];
+const ERC20_ABI=[
+  "function decimals() view returns (uint8)","function symbol() view returns (string)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)"
+];
+const PROXY_ABI=[
+  "function BPS_DENOM() view returns (uint16)",
+  "function PERCENT_BPS() view returns (uint16)",
+  "function flatFeeWei() view returns (uint256)",
+  "function WETH() view returns (address)",
+  "function feeRecipient() view returns (address)",
+  "function sushiRouter() view returns (address)",
+  "function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable",
+  "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) payable",
+  "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) payable",
+  "event FeeTaken(address indexed payer, address indexed token, uint256 amount, uint16 bps)",
+  "event Forwarded(address indexed sushiRouter, address indexed user, uint8 swapType)"
+];
 
 function ensureWeb3(){
   if(!window.ethereum) throw new Error("No wallet detected.");
   if(!window.ethers) throw new Error("ethers.js failed to load.");
   if(!provider) provider=new ethers.providers.Web3Provider(window.ethereum,"any");
   if(!signer) signer=provider.getSigner();
-
   if(!sushiRouterRO) sushiRouterRO=new ethers.Contract(SUSHI_ROUTER_V2,SUSHI_ROUTER_RO_ABI,provider);
   if(!sushiRouterRW) sushiRouterRW=new ethers.Contract(SUSHI_ROUTER_V2,SUSHI_ROUTER_RW_ABI,signer);
-
-  if(!sushiRouterPoolRW) sushiRouterPoolRW=new ethers.Contract(SUSHI_ROUTER_V2,ROUTER_ABI_POOL,signer);
-
-  if(!factory) factory=new ethers.Contract(SUSHI_FACTORY_V2,["function getPair(address,address) view returns (address)"],provider);
-  if(!factoryPool) factoryPool=new ethers.Contract(SUSHI_FACTORY_V2,FACTORY_ABI_POOL,signer);
-
+  if(!factory) factory=new ethers.Contract(SUSHI_FACTORY_V2,FACTORY_ABI,provider);
   if(!proxyRouter) proxyRouter=new ethers.Contract(GDEX_PROXY_ROUTER,PROXY_ABI,signer);
 }
 async function ensureMainnet(){
   ensureWeb3();
   const net=await provider.getNetwork();
-  if(!net || net.chainId!==1) throw new Error(`Wrong network (chainId=${net?.chainId}). Switch to Ethereum Mainnet.`);
+  if(!net || net.chainId!==1) throw new Error(`Wrong network detected (chainId=${net?.chainId}). Please switch to Ethereum Mainnet.`);
 }
-
-/* ---------- Deep link (mobile) ---------- */
-const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-function openMetaMaskDeepLink(){
-  const dappUrl=`https://${DAPP_HOST}`;
-  const target=dappUrl.replace(/^https?:\/\//,'');
-  window.location.href=`https://metamask.app.link/dapp/${target}`;
-}
-
-/* ---------- Proxy fee params ---------- */
 async function loadProxyFeeParams(){
   try{
     ensureWeb3();
-    __proxyFeeWallet = await proxyRouter.feeRecipient();
-    __proxyPERCENT_BPS = Number((await proxyRouter.PERCENT_BPS()).toString());
-    __proxyFlatFeeWei = await proxyRouter.flatFeeWei();
+    const feeWallet=await proxyRouter.feeRecipient();
+    const PERCENT_BPSBN=await proxyRouter.PERCENT_BPS();
+    const flatFee=await proxyRouter.flatFeeWei();
+    __proxyFeeWallet=feeWallet;
+    __proxyPERCENT_BPS=Number(PERCENT_BPSBN.toString());
+    __proxyFlatFeeWei=flatFee;
     __proxyFeeLoaded=true;
   }catch(e){
     console.warn('[proxy fee params] failed',e);
     try{
-      __proxyPERCENT_BPS = (__proxyPERCENT_BPS||30);
-      __proxyFlatFeeWei = (__proxyFlatFeeWei||ethers.utils.parseEther("0"));
+      __proxyPERCENT_BPS=(__proxyPERCENT_BPS||30);
+      __proxyFlatFeeWei=(__proxyFlatFeeWei||ethers.utils.parseEther("0"));
     }catch{}
     __proxyFeeLoaded=false;
-  }
+  }finally{ updateStatusBoard(); }
 }
-/* ---------- Balances (fast eth_call) ---------- */
+
+/* Connect */
+async function connectWallet(){
+  try{
+    if(typeof window.ethereum==='undefined'){
+      if(isMobile){ openMetaMaskDeepLink(); return; }
+      await uiAlert("No wallet detected","• Mobile: open this site in MetaMask in-app browser.\n• Desktop: install MetaMask extension.");
+      return;
+    }
+    ensureWeb3();
+    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
+    if(!accounts || !accounts.length) throw new Error('No accounts returned');
+    userAddress=accounts[0];
+    const wAddrEl=document.getElementById('wAddr');
+    if(wAddrEl) wAddrEl.textContent=short(userAddress);
+    ['poolConnect','btnConn','swapConnect'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){ el.textContent='Connected'; el.classList.add('ghost'); }
+    });
+
+    await ensureMainnet();
+    await loadProxyFeeParams();
+    await refreshAllBalances();
+    updatePricePreview();
+    updateStatusBoard();
+
+    if(window.ethereum.on){
+      window.ethereum.on('accountsChanged', async acc=>{
+        userAddress = acc && acc.length ? acc[0] : null;
+        const wAddrEl2=document.getElementById('wAddr');
+        if(wAddrEl2) wAddrEl2.textContent=short(userAddress);
+        __proxyFeeLoaded=false;
+        await loadProxyFeeParams();
+        await refreshAllBalances();
+        updatePricePreview();
+        updateStatusBoard();
+      });
+      window.ethereum.on('chainChanged', _=> location.reload());
+    }
+  }catch(e){
+    console.error('[connectWallet]',e);
+    await uiAlert('Wallet connection failed', (e?.message||'Please check MetaMask and try again.'), {copy:true});
+  }finally{ updateStatusBoard(); }
+}
+
+/* Pool → Sushi */
+function openSushiGlipEthPool(){
+  const url=`${SUSHI_ETHEREUM_POOL_BASE}?token0=NATIVE&token1=${GLIP_TOKEN_ADDRESS}`;
+  window.open(url,'_blank','noopener');
+}
+function bindPoolSupplyButton(){
+  const btn=document.getElementById('poolSupply');
+  if(btn) btn.addEventListener('click', openSushiGlipEthPool);
+}
+function bindPoolQuickButtons(){
+  const add=document.getElementById("poolAdd");
+  const rm=document.getElementById("poolRemove");
+  const pos=document.getElementById("poolPositions");
+  const go=()=>openSushiGlipEthPool();
+  if(add) add.addEventListener("click",go);
+  if(rm) rm.addEventListener("click",go);
+  if(pos) pos.addEventListener("click",go);
+}
+
+/* TOP */
+function bindTop(){
+  const toTop=document.getElementById('toTop');
+  function toggleTop(){ (window.scrollY>200)?toTop.classList.add('show'):toTop.classList.remove('show'); }
+  toggleTop(); window.addEventListener('scroll',toggleTop);
+  toTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+}
+
+/* PWA install */
+let deferredPrompt=null;
+const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
+function isStandaloneMode(){ return matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true; }
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
+});
+window.addEventListener('appinstalled', ()=>{ document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); });
+async function handleInstallClick(){
+  if(isStandaloneMode()){ await uiAlert('Install','G-DEX is already installed.'); return; }
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(()=>{
+      deferredPrompt=null; document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none');
+    });
+    return;
+  }
+  if(isIos){ await uiAlert('Install on iOS','In Safari: share → "Add to Home Screen".'); return; }
+  await uiAlert('Install','Use browser menu → "Add to home screen".');
+}
+
+/* Analytics demo (원본 유지) */
+const demoAnalytics={rebateRate:12,feeNet:420000,split:{users:0.70,esg:0.20,treasury:0.10},
+  returnedSeries:[1200,3400,5600,8300,12000,16200,21000,27900,35000,43600,52000,61500,72000,84500,98000,112000,127800,145200,163500,182400],
+  turnout:38,transparency:92,co2:{current:152,target:220}};
+function fillKpis(d){
+  const {rebateRate,feeNet,split,turnout,transparency}=d;
+  const returned=feeNet*(rebateRate/100)*split.users;
+  const esgAccrual=feeNet*(rebateRate/100)*split.esg;
+  document.getElementById('kRebate').textContent=rebateRate.toFixed(0)+"%";
+  document.getElementById('kReturned').textContent="$ "+Math.round(returned).toLocaleString();
+  document.getElementById('kESG').textContent="$ "+Math.round(esgAccrual).toLocaleString();
+  document.getElementById('kTransparency').textContent=transparency.toFixed(0)+"%";
+  document.getElementById('kTurnout').textContent=turnout.toFixed(0)+"%";
+  const greenScore=Math.round((transparency/100)*(split.esg*rebateRate)*10);
+  document.getElementById('kGreen').textContent=greenScore;
+  document.getElementById('rvHint').textContent="Net Fees $"+feeNet.toLocaleString()+" · R% "+rebateRate+"%";
+  document.getElementById('esgNote').textContent=`Current quarter alloc: Users ${(split.users*100).toFixed(0)}% · ESG ${(split.esg*100).toFixed(0)}% · Treasury ${(split.treasury*100).toFixed(0)}%.`;
+  document.getElementById('giHint').textContent=`tCO₂e offset est. ${d.co2.current}/${d.co2.target}`;
+}
+function drawSpark(d){
+  const el=document.getElementById('spark'); const ctx=el.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const w=el.clientWidth*DPR, h=el.clientHeight*DPR;
+  el.width=w; el.height=h;
+  const data=d.returnedSeries;
+  const min=Math.min(...data), max=Math.max(...data);
+  const padX=20*DPR, padY=16*DPR;
+  const x=i=>padX+(i/(data.length-1))*(w-padX*2);
+  const y=v=>{ const t=(v-min)/(max-min||1); return h-padY-t*(h-padY*2); };
+  const grad=ctx.createLinearGradient(0,y(max),0,h-padY);
+  grad.addColorStop(0,"rgba(123,183,255,.35)");
+  grad.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.moveTo(x(0),y(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(x(i),y(v)));
+  ctx.lineTo(x(data.length-1),h-padY); ctx.lineTo(x(0),h-padY); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x(0),y(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(x(i),y(v)));
+  ctx.lineWidth=2.5*DPR; ctx.strokeStyle="#7bb7ff"; ctx.stroke();
+}
+function drawDonut(d){
+  const canvas=document.getElementById('donut'); const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const size=canvas.parentElement.clientWidth;
+  const dim=Math.min(200,size);
+  canvas.width=dim*DPR; canvas.height=dim*DPR;
+  const cx=canvas.width/2, cy=canvas.height/2;
+  const rOuter=(dim*DPR)/2-6*DPR;
+  const rInner=rOuter*0.62;
+  const parts=[
+    {key:"Users",val:d.split.users,color:"#7bb7ff"},
+    {key:"ESG",val:d.split.esg,color:"#39d98a"},
+    {key:"Treasury",val:d.split.treasury,color:"rgba(234,247,240,.35)"}
+  ];
+  let start=-Math.PI/2;
+  parts.forEach(p=>{
+    const arc=p.val*Math.PI*2;
+    ctx.beginPath();
+    ctx.arc(cx,cy,rOuter,start,start+arc);
+    ctx.arc(cx,cy,rInner,start+arc,start,true);
+    ctx.closePath();
+    ctx.fillStyle=p.color; ctx.fill();
+    start+=arc;
+  });
+  document.getElementById('donutCenter').textContent=d.rebateRate+"%";
+  const leg=document.getElementById('donutLegend');
+  leg.innerHTML=parts.map(p=>`<div class="item"><span class="dot" style="background:${p.color}"></span>${p.key} ${(p.val*100).toFixed(0)}%</div>`).join("");
+}
+function drawGauge(d){
+  const canvas=document.getElementById('gauge'); const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const w=canvas.parentElement.clientWidth, h=120;
+  canvas.width=w*DPR; canvas.height=h*DPR;
+  const cx=canvas.width/2, cy=canvas.height*0.95;
+  const r=Math.min(w*DPR*0.42,h*DPR*0.9);
+  ctx.lineWidth=16*DPR; ctx.lineCap="round";
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,Math.PI*2);
+  ctx.strokeStyle="rgba(234,247,240,.12)"; ctx.stroke();
+  const pct=Math.max(0,Math.min(1,d.co2.current/d.co2.target));
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,Math.PI+pct*Math.PI);
+  ctx.strokeStyle="#7bb7ff"; ctx.stroke();
+}
+
+/* Balances (RAW 저장 + 초소액 표시 개선) */
 function hexToBigInt(hex){ return (!hex)?0n:BigInt(hex); }
-function pad32(addr){ return addr.toLowerCase().replace(/^0x/,'').padStart(64,'0'); }
 function formatUnitsBigIntFull(bn, decimals){
   const d=BigInt(decimals);
   const base=10n**d;
@@ -1003,6 +1466,7 @@ function formatUnitsBigIntFull(bn, decimals){
   frac=frac.replace(/0+$/,'');
   return frac ? `${whole.toString()}.${frac}` : whole.toString();
 }
+function pad32(addr){ return addr.toLowerCase().replace(/^0x/,'').padStart(64,'0'); }
 async function ethGetBalance(addr){
   const hex=await ethereum.request({method:'eth_getBalance', params:[addr,'latest']});
   return hexToBigInt(hex);
@@ -1048,17 +1512,26 @@ async function refreshAllBalances(){
     setBalText('pBal0',$('#pT0Sym')?.textContent||'',null);
     setBalText('pBal1',$('#pT1Sym')?.textContent||'',null);
     const sb=document.getElementById('stakeBalText'); if(sb){ sb.textContent='—'; sb.dataset.raw=""; }
-    return;
+    updateStatusBoard(); return;
   }
-  const sellMeta=getSelectedMeta($('#sellS'));
-  const buyMeta=getSelectedMeta($('#buyS'));
-  setBalText('sellBal',$('#sellS')?.textContent||'', await fetchTokenBalanceString(sellMeta));
-  setBalText('buyBal',$('#buyS')?.textContent||'', await fetchTokenBalanceString(buyMeta));
+  const sellMeta=getSelectedMeta(document.getElementById('sellS'));
+  const buyMeta=getSelectedMeta(document.getElementById('buyS'));
+  const sellSym=document.getElementById('sellS').textContent;
+  const buySym=document.getElementById('buyS').textContent;
 
-  const p0Meta=getSelectedMeta($('#pT0Sym'));
-  const p1Meta=getSelectedMeta($('#pT1Sym'));
-  setBalText('pBal0',$('#pT0Sym')?.textContent||'', await fetchTokenBalanceString(p0Meta));
-  setBalText('pBal1',$('#pT1Sym')?.textContent||'', await fetchTokenBalanceString(p1Meta));
+  const sellBalStr=await fetchTokenBalanceString(sellMeta);
+  const buyBalStr=await fetchTokenBalanceString(buyMeta);
+  setBalText('sellBal',sellSym,sellBalStr);
+  setBalText('buyBal',buySym,buyBalStr);
+
+  const p0Meta=getSelectedMeta(document.getElementById('pT0Sym'));
+  const p1Meta=getSelectedMeta(document.getElementById('pT1Sym'));
+  const p0Sym=document.getElementById('pT0Sym').textContent;
+  const p1Sym=document.getElementById('pT1Sym').textContent;
+  const p0BalStr=await fetchTokenBalanceString(p0Meta);
+  const p1BalStr=await fetchTokenBalanceString(p1Meta);
+  setBalText('pBal0',p0Sym,p0BalStr);
+  setBalText('pBal1',p1Sym,p1BalStr);
 
   const glip=getTokenMeta("GLIP");
   const glipBalStr=await fetchTokenBalanceString(glip);
@@ -1068,154 +1541,65 @@ async function refreshAllBalances(){
     sb.textContent = (!glipBalStr) ? '—'
       : `${Number(glipBalStr).toLocaleString(undefined,{maximumFractionDigits:6})} GLIP`;
   }
+  updateStatusBoard();
 }
 
-/* ---------- Connect wallet ---------- */
-async function connectWallet(){
+/* Routing helpers */
+function addrForPath(meta){ return metaIsETH(meta) ? WETH_MAINNET : meta.address; }
+const __pairCache=new Map();
+async function getPairAddressCached(a,b){
+  const A=a.toLowerCase(), B=b.toLowerCase();
+  const key=(A<B)?`${A}-${B}`:`${B}-${A}`;
+  if(__pairCache.has(key)) return __pairCache.get(key);
+  const p=await factory.getPair(a,b);
+  __pairCache.set(key,p); return p;
+}
+async function hasPair(a,b){
+  try{ const p=await getPairAddressCached(a,b); return !!p && p!==ethers.constants.AddressZero; }
+  catch{ return false; }
+}
+function uniqPaths(paths){
+  const seen=new Set(), out=[];
+  for(const p of paths){
+    const k=p.map(x=>x.toLowerCase()).join('>');
+    if(seen.has(k)) continue;
+    seen.add(k); out.push(p);
+  }
+  return out;
+}
+async function getPathCandidates(tokenIn, tokenOut){
+  if(!tokenIn || !tokenOut) return [];
+  const A=tokenIn.toLowerCase(), B=tokenOut.toLowerCase();
+  if(A===B) return [[tokenIn, tokenOut]];
+  if(A===WETH_MAINNET.toLowerCase() || B===WETH_MAINNET.toLowerCase()) return [[tokenIn, tokenOut]];
+  const paths=[];
+  if(await hasPair(tokenIn,tokenOut)) paths.push([tokenIn,tokenOut]);
+  paths.push([tokenIn,WETH_MAINNET,tokenOut]);
+  return uniqPaths(paths);
+}
+async function getEthReserveIfWethInvolved(path){
   try{
-    if(typeof window.ethereum==='undefined'){
-      if(isMobile){ openMetaMaskDeepLink(); return; }
-      await uiAlert("No wallet detected","• Mobile: open this site in MetaMask in-app browser.\n• Desktop: install MetaMask extension.");
-      return;
-    }
-    ensureWeb3();
-    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
-    if(!accounts || !accounts.length) throw new Error('No accounts returned');
-    userAddress=accounts[0];
-
-    const wAddrEl=document.getElementById('wAddr');
-    if(wAddrEl) wAddrEl.textContent=short(userAddress);
-
-    ['poolConnect','btnConn','swapConnect'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el){ el.textContent='Connected'; el.classList.add('ghost'); }
-    });
-
-    await ensureMainnet();
-    await loadProxyFeeParams();
-    await refreshAllBalances();
-    updatePricePreview();
-
-    if(window.ethereum.on){
-      window.ethereum.on('accountsChanged', async acc=>{
-        userAddress = acc && acc.length ? acc[0] : null;
-        if(wAddrEl) wAddrEl.textContent=short(userAddress);
-        __proxyFeeLoaded=false;
-        await loadProxyFeeParams();
-        await refreshAllBalances();
-        updatePricePreview();
-      });
-      window.ethereum.on('chainChanged', _=> location.reload());
-    }
-  }catch(e){
-    console.error('[connectWallet]',e);
-    await uiAlert('Wallet connection failed', (e?.message||'Please check MetaMask and try again.'), {copy:true});
-  }
+    const idx=path.findIndex(a=>a.toLowerCase()===WETH_MAINNET.toLowerCase());
+    if(idx<0) return null;
+    const other=(idx===0)?path[1]:path[idx-1];
+    const pairAddr=await getPairAddressCached(WETH_MAINNET,other);
+    if(!pairAddr || pairAddr===ethers.constants.AddressZero) return null;
+    const pair=new ethers.Contract(pairAddr,PAIR_ABI,provider);
+    const [r0,r1]=await pair.getReserves();
+    const t0=(await pair.token0()).toLowerCase();
+    const wethIs0=(t0===WETH_MAINNET.toLowerCase());
+    const wethReserve=wethIs0 ? r0 : r1;
+    return Number(ethers.utils.formatUnits(wethReserve,18));
+  }catch{ return null; }
 }
-
-/* ---------- Token modal (uses your existing #tokModal markup) ---------- */
-const dlg=document.getElementById('tokModal');
-const list=document.getElementById('tokList');
-const tokSearchInput=document.getElementById('tokSearch');
-let target=null;
-function dialogSupported(d){return !!(d && typeof d.showModal==="function");}
-
-function renderTokenList(query=""){
-  const q=query.trim().toLowerCase();
-  const filtered=!q?tokenList:tokenList.filter(t=>
-    t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || (t.address && t.address.toLowerCase().includes(q))
-  );
-  if(!filtered.length){
-    list.innerHTML=`<div style="padding:6px 0;opacity:.8;font-size:13px;color:rgba(234,247,240,.74)">No tokens match.</div>`;
-    return;
-  }
-  list.innerHTML=filtered.map(t=>`
-    <div class="item" data-sym="${t.symbol}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer">
-      <img src="${t.logo}" onerror="this.src='G_DEX_icon.png'" alt="">
-      <strong>${t.symbol}</strong>
-      <span style="margin-left:6px;opacity:.85">${t.name}</span>
-      <span style="margin-left:auto;opacity:.72">${t.address==="ETH"?"ETH":t.address.slice(0,6)+"…"+t.address.slice(-4)}</span>
-    </div>`).join('');
+function recommendedSlippagePctByEthReserve(ethReserve){
+  if(ethReserve==null) return null;
+  if(ethReserve<0.2) return 25;
+  if(ethReserve<0.5) return 15;
+  if(ethReserve<1.0) return 10;
+  if(ethReserve<2.0) return 6;
+  return 3;
 }
-function openFor(imgEl, symEl){
-  target={imgEl,symEl};
-  if(tokSearchInput) tokSearchInput.value="";
-  renderTokenList("");
-  if(dialogSupported(dlg)){
-    dlg.showModal();
-    setTimeout(()=>{ tokSearchInput && tokSearchInput.focus(); },10);
-  }else{
-    uiAlert("Token selector","Your browser does not support <dialog>. Please open on a modern browser.");
-  }
-}
-if(list){
-  list.onclick=async e=>{
-    const row=e.target.closest('.item'); if(!row||!target) return;
-    const t=tokenList.find(x=>x.symbol===row.dataset.sym); if(!t) return;
-    safeSetImg(target.imgEl, t.logo);
-    target.symEl.textContent=t.symbol;
-    target.symEl.dataset.address=t.address;
-    try{ dlg.close(); }catch{}
-    setTimeout(async()=>{
-      await refreshAllBalances();
-      updatePricePreview();
-      await poolRefreshPairInfo();   // pool pair/LP info update
-      poolRequoteIfPossible();       // ✅ NEW: re-quote after token change
-    },50);
-  };
-}
-const tokCloseBtn=document.getElementById('tokClose');
-if(tokCloseBtn) tokCloseBtn.onclick=()=>{ try{ dlg.close(); }catch{} };
-if(dlg) dlg.addEventListener('click',e=>{ if(e.target===dlg){ try{ dlg.close(); }catch{} } });
-if(tokSearchInput) tokSearchInput.addEventListener('input', e=> renderTokenList(e.target.value));
-
-function bindTokenButtons(){
-  const sellBtn=document.getElementById('sellBtn');
-  const buyBtn=document.getElementById('buyBtn');
-  const pT0Btn=document.getElementById('pT0Btn');
-  const pT1Btn=document.getElementById('pT1Btn');
-  if(sellBtn) sellBtn.addEventListener('click', ()=>openFor($('#sellI'), $('#sellS')));
-  if(buyBtn)  buyBtn.addEventListener('click',  ()=>openFor($('#buyI'),  $('#buyS')));
-  if(pT0Btn)  pT0Btn.addEventListener('click',  ()=>openFor($('#pT0Img'),$('#pT0Sym')));
-  if(pT1Btn)  pT1Btn.addEventListener('click',  ()=>openFor($('#pT1Img'),$('#pT1Sym')));
-}
-
-/* ---------- Flip ---------- */
-function flipTokenMeta(imgA,symA,imgB,symB){
-  const s=imgA.src; imgA.src=imgB.src; imgB.src=s;
-  const t=symA.textContent; symA.textContent=symB.textContent; symB.textContent=t;
-  const a=symA.dataset.address,b=symB.dataset.address; symA.dataset.address=b||""; symB.dataset.address=a||"";
-}
-function bindFlip(){
-  const flipBtn=document.getElementById('flip');
-  const pFlipBtn=document.getElementById('pFlip');
-  if(flipBtn) flipBtn.addEventListener('click', async ()=>{
-    flipTokenMeta($('#sellI'),$('#sellS'),$('#buyI'),$('#buyS'));
-    await refreshAllBalances();
-    updatePricePreview();
-  });
-  if(pFlipBtn) pFlipBtn.addEventListener('click', async ()=>{
-    flipTokenMeta($('#pT0Img'),$('#pT0Sym'),$('#pT1Img'),$('#pT1Sym'));
-    await refreshAllBalances();
-    await poolRefreshPairInfo();
-    poolRequoteIfPossible(); // ✅ NEW: re-quote after flip
-  });
-}
-
-/* ---------- Defaults ---------- */
-function initDefaults(){
-  const ETH=getTokenMeta("ETH");
-  const GLIP=getTokenMeta("GLIP");
-  safeSetImg($('#sellI'), ETH?.logo);  $('#sellS').textContent="ETH";  $('#sellS').dataset.address="ETH";
-  safeSetImg($('#buyI'),  GLIP?.logo); $('#buyS').textContent="GLIP";  $('#buyS').dataset.address=GLIP?.address||GLIP_TOKEN_ADDRESS;
-  safeSetImg($('#pT0Img'), ETH?.logo);  $('#pT0Sym').textContent="ETH"; $('#pT0Sym').dataset.address="ETH";
-  safeSetImg($('#pT1Img'), GLIP?.logo); $('#pT1Sym').textContent="GLIP"; $('#pT1Sym').dataset.address=GLIP?.address||GLIP_TOKEN_ADDRESS;
-}
-
-/* ===========================
-   SWAP (Direct + Proxy)
-   =========================== */
-
 function bnFromInput(valStr, decimals){
   if(!valStr || Number(valStr)<=0) return ethers.constants.Zero;
   return ethers.utils.parseUnits(String(valStr), decimals);
@@ -1229,6 +1613,16 @@ function calcOutMin(outBN, slipPct){
   const bp=Math.max(0,Math.min(9500,Math.floor(slipPct*100)));
   return outBN.mul(10000-bp).div(10000);
 }
+function feePctText(){
+  const pct=(__proxyPERCENT_BPS||0)/100;
+  return `Fee: ${pct.toFixed(2)}%`;
+}
+function flatFeeText(){
+  try{
+    const flat=__proxyFlatFeeWei || ethers.constants.Zero;
+    return `Flat fee: ${ethers.utils.formatEther(flat)} ETH`;
+  }catch{return `Flat fee: —`;}
+}
 function applyPctFeeToEthAmount(amountInBN){
   const bps=Math.max(0,Number(__proxyPERCENT_BPS||0));
   if(!bps) return amountInBN;
@@ -1236,6 +1630,71 @@ function applyPctFeeToEthAmount(amountInBN){
   if(amountInBN.lte(feeBN)) return ethers.constants.Zero;
   return amountInBN.sub(feeBN);
 }
+
+/* Quote preview */
+let __quoteTimer=null;
+async function updatePricePreview(){
+  if(__quoteTimer) clearTimeout(__quoteTimer);
+  __quoteTimer=setTimeout(async()=>{
+    const sellInput=document.getElementById("sell");
+    const buyInput=document.getElementById("buy");
+    const sellValStr=(sellInput.value||"").trim();
+    const hint=document.getElementById('slipHint');
+
+    if(!sellValStr || Number(sellValStr)<=0){
+      buyInput.value=""; if(hint) hint.textContent=""; return;
+    }
+    const sellMeta=getSelectedMeta(document.getElementById("sellS"));
+    const buyMeta=getSelectedMeta(document.getElementById("buyS"));
+    if(!sellMeta || !buyMeta) return;
+
+    try{
+      ensureWeb3(); await loadProxyFeeParams();
+      const sellIsEth=metaIsETH(sellMeta), buyIsEth=metaIsETH(buyMeta);
+      const amountInBN_raw=bnFromInput(sellValStr, sellMeta.decimals ?? 18);
+      if(amountInBN_raw.lte(0)){ buyInput.value=""; return; }
+      if(sellIsEth && buyIsEth){ buyInput.value=""; if(hint) hint.textContent="ETH → ETH not supported"; return; }
+
+      const tokenIn=addrForPath(sellMeta);
+      const tokenOut=addrForPath(buyMeta);
+      const paths=await getPathCandidates(tokenIn, tokenOut);
+      if(!paths.length) throw new Error("No route candidates.");
+
+      const amountForQuoteBN=sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
+      if(amountForQuoteBN.lte(0)){
+        buyInput.value="";
+        const feeTxt=sellIsEth?feePctText():flatFeeText();
+        if(hint) hint.textContent=feeTxt;
+        return;
+      }
+
+      let best=null;
+      for(const path of paths){
+        try{
+          if(sellIsEth && path[0].toLowerCase()!==WETH_MAINNET.toLowerCase()) continue;
+          const amounts=await sushiRouterRO.getAmountsOut(amountForQuoteBN, path);
+          const out=amounts[amounts.length-1];
+          if(!best || out.gt(best.out)) best={path,out};
+        }catch{}
+      }
+      if(!best) throw new Error("No quote route found (liquidity).");
+      const outStr=ethers.utils.formatUnits(best.out, buyMeta.decimals ?? 18);
+      const outNum=Number(outStr);
+      buyInput.value = Number.isFinite(outNum) ? (outNum>=1? outNum.toFixed(6) : outNum.toPrecision(6)) : outStr;
+
+      const ethReserve=await getEthReserveIfWethInvolved(best.path);
+      const rec=recommendedSlippagePctByEthReserve(ethReserve);
+      const recTxt=(rec!=null)?`Recommended ~ ${rec}%`:"";
+      const feeTxt=sellIsEth?feePctText():flatFeeText();
+      if(hint) hint.textContent=[recTxt, feeTxt].filter(Boolean).join(" · ");
+    }catch(err){
+      console.warn("[quote] failed",err);
+      buyInput.value=""; if(hint) hint.textContent="";
+    }finally{ updateStatusBoard(); }
+  },120);
+}
+
+/* Approvals */
 async function ensureAllowance(tokenMeta, amountInBN, spender){
   if(metaIsETH(tokenMeta)) return;
   if(!userAddress) throw new Error("Wallet not connected");
@@ -1258,53 +1717,6 @@ async function ensureSufficientTokenBalance(tokenMeta, amountInBN){
     );
   }
 }
-const __pairCache=new Map();
-async function getPairAddressCached(a,b){
-  const A=a.toLowerCase(), B=b.toLowerCase();
-  const key=(A<B)?`${A}-${B}`:`${B}-${A}`;
-  if(__pairCache.has(key)) return __pairCache.get(key);
-  const p=await factory.getPair(a,b);
-  __pairCache.set(key,p);
-  return p;
-}
-async function hasPair(a,b){
-  try{
-    const p=await getPairAddressCached(a,b);
-    return !!p && p!==ethers.constants.AddressZero;
-  }catch{ return false; }
-}
-function uniqPaths(paths){
-  const seen=new Set(), out=[];
-  for(const p of paths){
-    const k=p.map(x=>x.toLowerCase()).join('>');
-    if(seen.has(k)) continue;
-    seen.add(k); out.push(p);
-  }
-  return out;
-}
-async function getPathCandidates(tokenIn, tokenOut){
-  if(!tokenIn || !tokenOut) return [];
-  const A=tokenIn.toLowerCase(), B=tokenOut.toLowerCase();
-  if(A===B) return [[tokenIn, tokenOut]];
-  if(A===WETH_MAINNET.toLowerCase() || B===WETH_MAINNET.toLowerCase()) return [[tokenIn, tokenOut]];
-  const paths=[];
-  if(await hasPair(tokenIn,tokenOut)) paths.push([tokenIn,tokenOut]);
-  paths.push([tokenIn,WETH_MAINNET,tokenOut]);
-  return uniqPaths(paths);
-}
-async function chooseBestRoute(amountInBNForQuote, pathCandidates){
-  let best=null;
-  for(const path of pathCandidates){
-    try{
-      const amounts=await sushiRouterRO.getAmountsOut(amountInBNForQuote, path);
-      const out=amounts[amounts.length-1];
-      if(!best || out.gt(best.out)) best={path,out};
-    }catch{}
-  }
-  return best;
-}
-
-function getDeadlineSeconds(){ return Math.floor(Date.now()/1000) + 60*20; }
 
 function setSwapBusy(isBusy){
   const btn=document.getElementById("swapBtn");
@@ -1343,6 +1755,37 @@ function renderTxLog(){
   }).join("");
 }
 
+/* Swap execution */
+function getDeadlineSeconds(){ return Math.floor(Date.now()/1000) + 60*20; }
+function isEstimateOrRevert(e){
+  const m=normalizeErr(e).toLowerCase();
+  return m.includes("cannot estimate gas") || m.includes("unpredictable_gas_limit") || m.includes("execution reverted") || m.includes("revert");
+}
+async function chooseBestRoute(amountInBNForQuote, pathCandidates){
+  let best=null;
+  for(const path of pathCandidates){
+    try{
+      const amounts=await sushiRouterRO.getAmountsOut(amountInBNForQuote, path);
+      const out=amounts[amounts.length-1];
+      if(!best || out.gt(best.out)) best={path,out};
+    }catch{}
+  }
+  return best;
+}
+async function ensureSufficientEthForValue(callValue, txReq=null){
+  const bal=await provider.getBalance(userAddress);
+  let need=callValue ?? ethers.constants.Zero;
+  if(txReq){
+    try{
+      const gas=await provider.estimateGas({from:userAddress,...txReq,value:callValue});
+      const gp=await provider.getGasPrice();
+      need=need.add(gas.mul(gp));
+    }catch{}
+  }
+  if(bal.lt(need)){
+    throw new Error(`Insufficient ETH for fees.\n\nNeed (est): ${ethers.utils.formatEther(need)} ETH\nBalance: ${ethers.utils.formatEther(bal)} ETH`);
+  }
+}
 async function swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path}){
   __lastSwapMode="Direct";
   const sellIsEth=metaIsETH(sellMeta);
@@ -1358,6 +1801,7 @@ async function swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,pat
     const overrides={value:amountInBN_raw};
     try{ overrides.gasLimit=await sushiRouterRW.estimateGas.swapExactETHForTokensSupportingFeeOnTransferTokens(amountOutMinBN,path,userAddress,deadline,overrides); }
     catch{ overrides.gasLimit=SAFE_GAS_DIRECT; }
+    await ensureSufficientEthForValue(amountInBN_raw,null);
     return await withTimeout(
       sushiRouterRW.swapExactETHForTokensSupportingFeeOnTransferTokens(amountOutMinBN,path,userAddress,deadline,overrides),
       WALLET_CONFIRM_TIMEOUT_MS,"wallet_confirm_timeout"
@@ -1382,7 +1826,6 @@ async function swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,pat
     WALLET_CONFIRM_TIMEOUT_MS,"wallet_confirm_timeout"
   );
 }
-
 async function swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path}){
   __lastSwapMode="Proxy";
   const sellIsEth=metaIsETH(sellMeta);
@@ -1393,20 +1836,24 @@ async function swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path
     await ensureSufficientTokenBalance(sellMeta, amountInBN_raw);
     await ensureAllowance(sellMeta, amountInBN_raw, GDEX_PROXY_ROUTER);
   }
+
   const flat=(__proxyFlatFeeWei && ethers.BigNumber.isBigNumber(__proxyFlatFeeWei)) ? __proxyFlatFeeWei : ethers.constants.Zero;
 
   if(sellIsEth){
     const overrides={value:amountInBN_raw};
     try{ overrides.gasLimit=await proxyRouter.estimateGas.swapExactETHForTokensSupportingFeeOnTransferTokens(amountOutMinBN,path,userAddress,deadline,overrides); }
     catch{ overrides.gasLimit=SAFE_GAS_PROXY; }
+    await ensureSufficientEthForValue(amountInBN_raw,null);
     return await withTimeout(
       proxyRouter.swapExactETHForTokensSupportingFeeOnTransferTokens(amountOutMinBN,path,userAddress,deadline,overrides),
       WALLET_CONFIRM_TIMEOUT_MS,"wallet_confirm_timeout"
     );
   }
 
+  const overrides={value:flat};
+  await ensureSufficientEthForValue(flat,null);
+
   if(buyIsEth){
-    const overrides={value:flat};
     try{ overrides.gasLimit=await proxyRouter.estimateGas.swapExactTokensForETHSupportingFeeOnTransferTokens(amountInBN_raw,amountOutMinBN,path,userAddress,deadline,overrides); }
     catch{ overrides.gasLimit=SAFE_GAS_PROXY; }
     return await withTimeout(
@@ -1415,7 +1862,6 @@ async function swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path
     );
   }
 
-  const overrides={value:flat};
   try{ overrides.gasLimit=await proxyRouter.estimateGas.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountInBN_raw,amountOutMinBN,path,userAddress,deadline,overrides); }
   catch{ overrides.gasLimit=SAFE_GAS_PROXY; }
   return await withTimeout(
@@ -1424,745 +1870,321 @@ async function swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path
   );
 }
 
-/* Quote preview */
-let __quoteTimer=null;
-async function updatePricePreview(){
-  if(__quoteTimer) clearTimeout(__quoteTimer);
-  __quoteTimer=setTimeout(async()=>{
-    const sellInput=$('#sell');
-    const buyInput=$('#buy');
-    const hint=$('#slipHint');
-    const sellValStr=(sellInput.value||"").trim();
-    if(!sellValStr || Number(sellValStr)<=0){ buyInput.value=""; if(hint) hint.textContent=""; return; }
-
-    const sellMeta=getSelectedMeta($('#sellS'));
-    const buyMeta=getSelectedMeta($('#buyS'));
-    if(!sellMeta || !buyMeta) return;
-
-    try{
-      ensureWeb3();
-      await loadProxyFeeParams();
-
-      const sellIsEth=metaIsETH(sellMeta);
-      const buyIsEth=metaIsETH(buyMeta);
-      const amountInBN_raw=bnFromInput(sellValStr, sellMeta.decimals ?? 18);
-      if(amountInBN_raw.lte(0)){ buyInput.value=""; return; }
-      if(sellIsEth && buyIsEth){ buyInput.value=""; if(hint) hint.textContent="ETH → ETH not supported"; return; }
-
-      const tokenIn=addrForPath(sellMeta);
-      const tokenOut=addrForPath(buyMeta);
-      const paths=await getPathCandidates(tokenIn, tokenOut);
-      if(!paths.length) throw new Error("No route candidates.");
-
-      const amountForQuoteBN=sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
-      if(amountForQuoteBN.lte(0)){ buyInput.value=""; if(hint) hint.textContent="Fee too high"; return; }
-
-      const best=await chooseBestRoute(amountForQuoteBN, paths);
-      if(!best) throw new Error("No quote route found (liquidity).");
-
-      const outStr=ethers.utils.formatUnits(best.out, buyMeta.decimals ?? 18);
-      const outNum=Number(outStr);
-      buyInput.value = Number.isFinite(outNum) ? (outNum>=1? outNum.toFixed(6) : outNum.toPrecision(6)) : outStr;
-
-      if(hint){
-        const pct=(__proxyPERCENT_BPS||0)/100;
-        const flat=__proxyFlatFeeWei ? ethers.utils.formatEther(__proxyFlatFeeWei) : "0";
-        hint.textContent = sellIsEth ? `Fee: ${pct.toFixed(2)}%` : `Flat fee: ${flat} ETH`;
-      }
-    }catch(err){
-      console.warn("[quote] failed",err);
-      buyInput.value=""; if(hint) hint.textContent="";
-    }
-  },120);
+/* (2)(3) 완료시 리셋 + 진행문구 강화 */
+function resetSwapForm(){
+  const sell=document.getElementById("sell");
+  const buy=document.getElementById("buy");
+  const hint=document.getElementById("slipHint");
+  if(sell) sell.value="";
+  if(buy) buy.value="";
+  if(hint) hint.textContent="";
+  // 상태창은 유지 (완료 안내 남김)
 }
-
-async function onSwapClick(){
+async function executeSwap(){
+  let used="—", tx=null;
   try{
-    if(!userAddress) { await connectWallet(); return; }
-    await ensureMainnet(); ensureWeb3(); await loadProxyFeeParams();
+    setSwapBusy(true);
+    setSwapStatus(`1/5 Preparing… (checking wallet, network, and fees)`,{show:true,kind:"info"});
 
-    const sellMeta=getSelectedMeta($('#sellS'));
-    const buyMeta=getSelectedMeta($('#buyS'));
-    const sellValStr=String($('#sell').value||"").trim();
-    if(!sellValStr || Number(sellValStr)<=0) throw new Error("Enter an amount.");
-    if(!sellMeta || !buyMeta) throw new Error("Select tokens.");
+    if(!userAddress){ setSwapStatus(`1/5 Connecting wallet…`,{show:true,kind:"info"}); await connectWallet(); }
+    await ensureMainnet();
+    ensureWeb3();
+    await loadProxyFeeParams();
+
+    const sellInput=document.getElementById("sell");
+    const sellValStr=(sellInput.value||"").trim();
+    if(!sellValStr || Number(sellValStr)<=0) throw new Error("Enter an amount to swap.");
+
+    const sellMeta=getSelectedMeta(document.getElementById("sellS"));
+    const buyMeta=getSelectedMeta(document.getElementById("buyS"));
+    if(!sellMeta || !buyMeta) throw new Error("Token selection error.");
 
     const sellIsEth=metaIsETH(sellMeta);
     const buyIsEth=metaIsETH(buyMeta);
     if(sellIsEth && buyIsEth) throw new Error("ETH → ETH not supported.");
 
     const amountInBN_raw=bnFromInput(sellValStr, sellMeta.decimals ?? 18);
+    if(amountInBN_raw.lte(0)) throw new Error("Invalid amount.");
+
     const tokenIn=addrForPath(sellMeta);
     const tokenOut=addrForPath(buyMeta);
     const paths=await getPathCandidates(tokenIn, tokenOut);
     if(!paths.length) throw new Error("No route candidates.");
 
-    setSwapBusy(true);
-    setSwapStatus(`Preparing route… <span class="spin">⏳</span>`,{kind:"info"});
-
     const amountForQuoteBN=sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
+    if(amountForQuoteBN.lte(0)) throw new Error("Amount too small after fee.");
+
+    setSwapStatus(`2/5 Calculating route…`,{show:true,kind:"info"});
     const best=await chooseBestRoute(amountForQuoteBN, paths);
-    if(!best) throw new Error("No route found (liquidity).");
+    if(!best) throw new Error("No quote route found (liquidity).");
 
-    const slipPct=getSlipPct();
-    const outMin=calcOutMin(best.out, slipPct);
+    const slip=getSlipPct();
+    const amountOutMinBN=calcOutMin(best.out, slip);
+    const path=best.path;
 
-    const useProxy = true; // 기본은 Proxy 우선 (원하면 false로 바꿀 수 있음)
-    setSwapStatus(`Confirm in wallet… <span class="spin">⏳</span>`,{kind:"info"});
+    setSwapStatus(`3/5 Please confirm the transaction in your wallet…`,{show:true,kind:"info"});
 
-    let tx;
+    // Try Proxy first
+    used="Proxy";
     try{
-      tx = useProxy
-        ? await swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN:outMin,path:best.path})
-        : await swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN:outMin,path:best.path});
+      if(SWAP_SILENT) setSwapStatus(`3/5 Trying proxy route… (will auto-switch to direct if unavailable)`,{show:true,kind:"info"});
+      tx=await swapViaProxy({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path});
     }catch(e){
-      // Proxy 실패 시 Direct 폴백
-      if(useProxy){
-        console.warn("[swap] proxy failed, fallback to direct", e);
-        setSwapStatus(`Proxy failed → Fallback Direct… <span class="spin">⏳</span>`,{kind:"info"});
-        tx = await swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN:outMin,path:best.path});
+      used="Direct"; __lastSwapMode="Direct";
+      if(SWAP_SILENT || isEstimateOrRevert(e)){
+        setSwapStatus(`Proxy route unavailable → switching to Sushi direct route…`,{show:true,kind:"info"});
+        tx=await swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path});
       }else{
-        throw e;
+        const ok=await uiConfirm("Proxy route failed",`Proxy failed with:\n${normalizeErr(e)}\n\nTry Direct Sushi route instead?`,{okText:"Try Direct",cancelText:"Cancel",copy:true});
+        if(!ok) throw e;
+        tx=await swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path});
       }
     }
 
-    addTxLog({title:"Swap submitted", hash:tx.hash, mode:__lastSwapMode});
-    setSwapStatus(`Submitted: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash.slice(0,10)}…</a>`,{kind:"info"});
+    if(!tx || !tx.hash) throw new Error("Transaction not created.");
 
-    await tx.wait(1);
-    addTxLog({title:"Swap confirmed", hash:tx.hash, mode:__lastSwapMode});
-    setSwapStatus(`✅ Success: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash.slice(0,10)}…</a>`,{kind:"success"});
+    addTxLog({title:"Swap sent",hash:tx.hash,mode:used});
+    setSwapStatus(`4/5 Transaction sent. Waiting for confirmation… <span class="spin">⏳</span><br>
+      • Route: <b>${used}</b><br>
+      • TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
+      {show:true,kind:"info"}
+    );
 
-    // reset
-    $('#sell').value="";
-    $('#buy').value="";
+    const receipt=await tx.wait(1).catch(()=>null);
+
+    if(receipt && receipt.status===0){
+      addTxLog({title:"Swap reverted",hash:tx.hash,mode:used});
+      setSwapStatus(`Swap could not be completed (reverted).<br>
+        • Route: <b>${used}</b><br>
+        • TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
+        {show:true,kind:"error"}
+      );
+      return;
+    }
+
+    addTxLog({title:"Swap confirmed",hash:tx.hash,mode:used});
+    setSwapStatus(`5/5 Swap confirmed ✅<br>
+      • Route: <b>${used}</b><br>
+      • TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
+      {show:true,kind:"success"}
+    );
+
+    resetSwapForm();
     await refreshAllBalances();
     updatePricePreview();
   }catch(e){
-    console.error("[swap]",e);
+    console.error('[executeSwap]',e);
     if(isUserRejected(e)){
-      setSwapStatus("Canceled by user.",{kind:"error"});
+      setSwapStatus(`Canceled in wallet. No changes were made.`,{show:true,kind:"error"});
     }else{
-      setSwapStatus(`❌ ${normalizeErr(e)}`,{kind:"error"});
-      await uiAlert("Swap failed", normalizeErr(e), {copy:true});
+      setSwapStatus(`Swap failed.<br><span style="opacity:.9">${normalizeErr(e)}</span>`,{show:true,kind:"error"});
+      showErrorPopup("Swap failed", e);
     }
   }finally{
     setSwapBusy(false);
+    updateStatusBoard();
   }
 }
 
-/* ===========================
-   POOL (Create / Add / Remove)
-   =========================== */
+/* MAX buttons */
+function setInputValue(el, v){
+  if(!el) return;
+  el.value = v;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+  el.dispatchEvent(new Event('change',{bubbles:true}));
+}
+function bindMax(){
+  const swapMax=document.getElementById("swapMax");
+  if(swapMax) swapMax.addEventListener("click", ()=>{
+    const sellMeta=getSelectedMeta(document.getElementById("sellS"));
+    const balEl=document.getElementById("sellBal");
+    const raw=balEl?.dataset?.raw || "";
+    if(!raw || !sellMeta) return;
+    // ETH는 가스 여유 남기기 (0.002 ETH)
+    let val=Number(raw);
+    if(metaIsETH(sellMeta)) val=Math.max(0, val-0.002);
+    if(!Number.isFinite(val) || val<=0) return;
+    setInputValue(document.getElementById("sell"), String(val));
+    updatePricePreview();
+  });
 
-let __poolMode="add"; // "add" | "remove"
-let __poolPairAddr=null;
-
-function getPoolSlipPct(){
-  const v=Number($('#pSlip')?.value||"2");
-  return Math.max(0,Math.min(50,v));
+  const stakeMax=document.getElementById("stakeMax");
+  if(stakeMax) stakeMax.addEventListener("click", ()=>{
+    const sb=document.getElementById("stakeBalText");
+    const raw=sb?.dataset?.raw || "";
+    const v=Number(raw);
+    if(!Number.isFinite(v) || v<=0) return;
+    setInputValue(document.getElementById("stakeAmt"), String(v));
+  });
 }
 
-/* ===========================================================
-   ✅ NEW: Pool Add Auto-Quote (reserves 기반 자동 수량 계산)
-   =========================================================== */
-let __poolQuoteLock=false;
-let __poolQuoteTimer=null;
-
-function poolQuote(amountIn, reserveIn, reserveOut) {
-  if (!amountIn) return ethers.BigNumber.from(0);
-  if (reserveIn.isZero() || reserveOut.isZero()) return ethers.BigNumber.from(0);
-  return amountIn.mul(reserveOut).div(reserveIn);
+/* Status board */
+function setPill(el, ok, text){
+  if(!el) return;
+  el.textContent=text;
+  el.classList.remove('ok','bad');
+  el.classList.add(ok?'ok':'bad');
 }
+function updateStatusBoard(){
+  const stBoot=$("#stBoot"), stBootSub=$("#stBootSub");
+  const stWallet=$("#stWallet"), stWalletSub=$("#stWalletSub");
+  const stNet=$("#stNet"), stNetSub=$("#stNetSub");
+  const stRoute=$("#stRoute"), stRouteSub=$("#stRouteSub");
+  const stSources=$("#stSources"), stSourcesSub=$("#stSourcesSub");
 
-async function poolGetReservesForPairOrdered(pairAddr, tokenA, tokenB){
-  ensureWeb3();
-  const pair = new ethers.Contract(pairAddr, PAIR_ABI, provider);
-  const [r0, r1] = await pair.getReserves();
-  const t0 = (await pair.token0()).toLowerCase();
+  const pillWallet=$("#pillWallet"), pillNet=$("#pillNet"), pillBackend=$("#pillBackend"), pillCG=$("#pillCG");
 
-  const a = tokenA.toLowerCase();
-  const reserveA = (a === t0) ? r0 : r1;
-  const reserveB = (a === t0) ? r1 : r0;
-  return { reserveA, reserveB };
-}
+  // Boot
+  const bootOk=__bootOk && !__bootErr;
+  if(stBoot) stBoot.textContent=bootOk ? "OK" : "Check";
+  if(stBootSub) stBootSub.textContent=bootOk ? "UI loaded" : (__bootErr ? normalizeErr(__bootErr) : "Initializing…");
 
-function poolSetManualNote(msg){
-  const el=document.getElementById('pManualNote');
-  if(el) el.textContent = msg || "";
-}
+  // Wallet
+  const hasWallet=!!window.ethereum;
+  const connected=!!userAddress;
+  if(stWallet) stWallet.textContent=hasWallet ? (connected ? "Connected" : "Detected") : "Not found";
+  if(stWalletSub) stWalletSub.textContent=hasWallet ? (connected ? short(userAddress) : "Connect to trade") : (isMobile ? "Use MetaMask in-app browser" : "Install MetaMask");
+  if(pillWallet) setPill(pillWallet, hasWallet && connected, connected ? "Wallet: Connected" : (hasWallet ? "Wallet: Detected" : "Wallet: Missing"));
 
-function poolRequoteIfPossible(){
-  try{
-    const inp0=$('#pAmt0'), inp1=$('#pAmt1');
-    if(!inp0 || !inp1) return;
-    const v0=String(inp0.value||"").trim();
-    const v1=String(inp1.value||"").trim();
-    if(v0 && Number(v0)>0) poolAutoQuoteFromSide(0);
-    else if(v1 && Number(v1)>0) poolAutoQuoteFromSide(1);
-  }catch{}
-}
-
-async function poolAutoQuoteFromSide(side /* 0 or 1 */){
-  if(__poolQuoteLock) return;
-
-  const inp0=$('#pAmt0');
-  const inp1=$('#pAmt1');
-  if(!inp0 || !inp1) return;
-
-  const m0=getSelectedMeta($('#pT0Sym'));
-  const m1=getSelectedMeta($('#pT1Sym'));
-  if(!m0 || !m1) return;
-
-  // ETH/ETH는 의미 없음
-  if(metaIsETH(m0) && metaIsETH(m1)) return;
-
-  const v0=String(inp0.value||"").trim();
-  const v1=String(inp1.value||"").trim();
-
-  // 입력이 비면 반대도 비움(원하면 주석 처리 가능)
-  if(side===0){
-    if(!v0 || Number(v0)<=0){ __poolQuoteLock=true; try{ inp1.value=""; }finally{ __poolQuoteLock=false; } return; }
+  // Network
+  let netOk=false;
+  if(provider && connected){
+    provider.getNetwork().then(net=>{
+      netOk = (net && net.chainId===1);
+      if(stNet) stNet.textContent=netOk ? "Ethereum Mainnet" : `Wrong (${net?.chainId||"—"})`;
+      if(stNetSub) stNetSub.textContent=netOk ? "Ready" : "Please switch to Mainnet";
+      if(pillNet) setPill(pillNet, netOk, netOk ? "Mainnet" : "Wrong network");
+    }).catch(()=>{
+      if(stNet) stNet.textContent="—";
+      if(stNetSub) stNetSub.textContent="—";
+      if(pillNet) setPill(pillNet, false, "Network");
+    });
   }else{
-    if(!v1 || Number(v1)<=0){ __poolQuoteLock=true; try{ inp0.value=""; }finally{ __poolQuoteLock=false; } return; }
+    if(stNet) stNet.textContent="—";
+    if(stNetSub) stNetSub.textContent="Connect wallet";
+    if(pillNet) setPill(pillNet, false, "Network");
   }
 
-  try{
-    ensureWeb3();
-
-    const token0=addrForPath(m0);
-    const token1=addrForPath(m1);
-
-    // pair 존재해야 reserves로 quote 가능
-    const pair = await factory.getPair(token0, token1);
-    if(!pair || pair===ethers.constants.AddressZero){
-      poolSetManualNote("Auto-quote: pair not created yet.");
-      return;
-    }
-    poolSetManualNote("");
-
-    const { reserveA, reserveB } = await poolGetReservesForPairOrdered(pair, token0, token1);
-
-    const d0 = m0.decimals ?? 18;
-    const d1 = m1.decimals ?? 18;
-
-    __poolQuoteLock=true;
-    try{
-      if(side===0){
-        const amt0=bnFromInput(v0, d0);
-        const out1=poolQuote(amt0, reserveA, reserveB);
-        // 너무 긴 소수 방지(입력 UX)
-        let s=ethers.utils.formatUnits(out1, d1);
-        const [i,dec]=s.split(".");
-        if(dec) s = i + "." + dec.slice(0, 10);
-        inp1.value = s;
-      }else{
-        const amt1=bnFromInput(v1, d1);
-        const out0=poolQuote(amt1, reserveB, reserveA);
-        let s=ethers.utils.formatUnits(out0, d0);
-        const [i,dec]=s.split(".");
-        if(dec) s = i + "." + dec.slice(0, 10);
-        inp0.value = s;
-      }
-    }finally{
-      __poolQuoteLock=false;
-    }
-  }catch(e){
-    console.warn("[pool auto-quote]", e);
-    poolSetManualNote("Auto-quote unavailable.");
-    __poolQuoteLock=false;
+  // Routing (proxy fee loaded?)
+  const routeOk = !!proxyRouter;
+  if(stRoute) stRoute.textContent = routeOk ? "Ready" : "—";
+  if(stRouteSub) stRouteSub.textContent = __proxyFeeLoaded ? (`Proxy fee loaded · ${feePctText()}`) : "Proxy fee params: pending";
+  // Sources
+  const backendOk = (__backendOk!==false);
+  const cgOk = (__cgOk!==false);
+  if(stSources) stSources.textContent = (backendOk && cgOk) ? "OK" : "Partial";
+  if(stSourcesSub) stSourcesSub.textContent = `Backend: ${backendOk?"OK":"Fail"} · CoinGecko: ${cgOk?"OK":"Fail"}`;
+  if(pillBackend) setPill(pillBackend, backendOk, backendOk ? "Backend OK" : "Backend Fail");
+  if(pillCG) setPill(pillCG, cgOk, cgOk ? "CoinGecko OK" : "CoinGecko Fail");
+}
+function buildDiagnostic(){
+  const lines=[];
+  lines.push("G-DEX Diagnostic");
+  lines.push("—");
+  lines.push(`Host: ${location.host}`);
+  lines.push(`UA: ${navigator.userAgent}`);
+  lines.push(`Wallet detected: ${!!window.ethereum}`);
+  lines.push(`Connected: ${!!userAddress} ${userAddress?("(" + userAddress + ")"):""}`);
+  lines.push(`Last route: ${__lastSwapMode}`);
+  lines.push(`Proxy fee loaded: ${__proxyFeeLoaded}`);
+  if(__proxyFeeLoaded){
+    lines.push(`PERCENT_BPS: ${__proxyPERCENT_BPS}`);
+    try{ lines.push(`flatFeeWei: ${ethers.utils.formatEther(__proxyFlatFeeWei||ethers.constants.Zero)} ETH`); }catch{}
+    lines.push(`feeRecipient: ${__proxyFeeWallet||"—"}`);
   }
+  lines.push(`Backend OK: ${__backendOk}`);
+  lines.push(`CoinGecko OK: ${__cgOk}`);
+  lines.push(`Backend last: ${__backendLastAt? new Date(__backendLastAt).toISOString() : "—"}`);
+  lines.push(`CG last: ${__cgLastAt? new Date(__cgLastAt).toISOString() : "—"}`);
+  return lines.join("\n");
 }
 
-function bindPoolAutoQuoteInputs(){
-  const inp0=$('#pAmt0');
-  const inp1=$('#pAmt1');
-  if(!inp0 || !inp1) return;
-
-  if(!inp0.dataset.boundQuote){
-    inp0.addEventListener('input', ()=>{
-      if(__poolQuoteLock) return;
-      if(__poolQuoteTimer) clearTimeout(__poolQuoteTimer);
-      __poolQuoteTimer=setTimeout(()=>poolAutoQuoteFromSide(0), 180);
-    });
-    inp0.dataset.boundQuote="1";
-  }
-  if(!inp1.dataset.boundQuote){
-    inp1.addEventListener('input', ()=>{
-      if(__poolQuoteLock) return;
-      if(__poolQuoteTimer) clearTimeout(__poolQuoteTimer);
-      __poolQuoteTimer=setTimeout(()=>poolAutoQuoteFromSide(1), 180);
-    });
-    inp1.dataset.boundQuote="1";
-  }
-}
-
-/* --- inject remove UI (LP percent + Remove button) without changing your layout drastically --- */
-function ensurePoolRemoveUI(){
-  const host=$('#poolFooterNote')?.parentElement || $('#pool');
-  if(!host) return;
-
-  if($('#poolRemoveBox')) return;
-
-  const box=document.createElement('div');
-  box.id="poolRemoveBox";
-  box.className="card";
-  box.style.cssText="background:rgba(12,18,26,.66);margin-top:10px;border:1px solid rgba(234,247,240,.12);box-shadow:0 14px 26px rgba(0,0,0,.48)";
-  box.innerHTML=`
-    <div style="font-weight:900;color:rgba(234,247,240,.92);margin-bottom:10px">Remove Liquidity</div>
-    <div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div style="font-size:13px;color:rgba(234,247,240,.78);font-weight:900">
-        LP balance: <span id="lpBalText">—</span>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span style="font-size:13px;color:rgba(234,247,240,.78);font-weight:900">Remove %</span>
-        <input id="lpPct" type="number" min="1" max="100" step="1" value="25"
-          style="width:86px;border:1px solid rgba(234,247,240,.16);background:rgba(12,18,26,.72);color:rgba(234,247,240,.92);border-radius:10px;padding:7px 8px;outline:0">
-        <button class="btn ghost" id="lp25" type="button" style="min-width:auto;padding:10px 12px">25%</button>
-        <button class="btn ghost" id="lp50" type="button" style="min-width:auto;padding:10px 12px">50%</button>
-        <button class="btn ghost" id="lp75" type="button" style="min-width:auto;padding:10px 12px">75%</button>
-        <button class="btn ghost" id="lp100" type="button" style="min-width:auto;padding:10px 12px">100%</button>
-      </div>
-    </div>
-    <div style="height:10px"></div>
-    <button class="btn" id="poolRemoveExec" type="button" style="width:100%">Remove</button>
-    <div id="poolMsg" style="margin-top:10px;font-size:12px;line-height:1.45;color:rgba(234,247,240,.76);white-space:pre-wrap"></div>
-  `;
-  host.insertBefore(box, $('#poolFooterNote'));
-
-  const setPct=(v)=>{ const i=$('#lpPct'); if(i) i.value=String(v); };
-  $('#lp25').onclick=()=>setPct(25);
-  $('#lp50').onclick=()=>setPct(50);
-  $('#lp75').onclick=()=>setPct(75);
-  $('#lp100').onclick=()=>setPct(100);
-  $('#poolRemoveExec').onclick=()=>poolRemoveLiquidity();
-}
-function poolSetMsg(msg){ const el=$('#poolMsg'); if(el) el.textContent=msg||""; }
-
-/* --- Pair helpers --- */
-async function poolGetPairAddr(tokenA, tokenB){
-  ensureWeb3();
-  const a=tokenA.toLowerCase(), b=tokenB.toLowerCase();
-  const pair=await factory.getPair(a,b);
-  return pair;
-}
-async function poolEnsurePairExists(tokenA, tokenB){
-  ensureWeb3();
-  const pair=await factory.getPair(tokenA, tokenB);
-  if(pair && pair!==ethers.constants.AddressZero) return pair;
-
-  const ok = await uiConfirm(
-    "Create new pool?",
-    "No existing pair found on SushiSwap V2.\n\nDo you want to create the pair now? (createPair)\n\n• This only creates the pair contract.\n• You still need to Add Liquidity to activate trading.",
-    {okText:"Create Pair", cancelText:"Cancel", copy:false}
-  );
-  if(!ok) throw new Error("Pair not created.");
-
-  const tx=await factoryPool.createPair(tokenA, tokenB, {gasLimit: 350000});
-  poolSetMsg(`Creating pair…\n${tx.hash}`);
-  await tx.wait(1);
-  const created=await factory.getPair(tokenA, tokenB);
-  if(!created || created===ethers.constants.AddressZero) throw new Error("Pair creation failed.");
-  addTxLog({title:"Pair created", hash:tx.hash, mode:"Pool"});
-  return created;
-}
-
-async function poolRefreshPairInfo(){
-  try{
-    ensureWeb3();
-    const m0=getSelectedMeta($('#pT0Sym'));
-    const m1=getSelectedMeta($('#pT1Sym'));
-    if(!m0 || !m1) return;
-    const t0=addrForPath(m0);
-    const t1=addrForPath(m1);
-
-    const pair=await poolGetPairAddr(t0,t1);
-    __poolPairAddr = (pair && pair!==ethers.constants.AddressZero) ? pair : null;
-
-    // show in UI (pShare / footer)
-    const share=$('#pShare');
-    if(share){
-      share.textContent = __poolPairAddr
-        ? `Pair: ${short(__poolPairAddr)} (SushiSwap V2)`
-        : `Pair: Not created yet (you can Create via Add)`;
-    }
-
-    // LP balance
-    const lpEl=$('#lpBalText');
-    if(lpEl){
-      if(!userAddress || !__poolPairAddr){ lpEl.textContent="—"; return; }
-      const lp=new ethers.Contract(__poolPairAddr, ERC20_ABI, provider);
-      const bal=await lp.balanceOf(userAddress);
-      const dec=18;
-      const balStr=ethers.utils.formatUnits(bal, dec);
-      lpEl.textContent = Number(balStr).toLocaleString(undefined,{maximumFractionDigits:6});
-    }
-  }catch(e){
-    console.warn("[poolRefreshPairInfo]", e);
-  }
-}
-
-/* --- Add liquidity --- */
-function getDeadlineSecondsPool(){ return Math.floor(Date.now()/1000)+60*20; }
-
-async function poolAddLiquidity(){
-  try{
-    if(!userAddress){ await connectWallet(); return; }
-    await ensureMainnet(); ensureWeb3();
-
-    ensurePoolRemoveUI(); // ensure it exists (for lp display)
-
-    const m0=getSelectedMeta($('#pT0Sym'));
-    const m1=getSelectedMeta($('#pT1Sym'));
-    if(!m0 || !m1) throw new Error("Select tokens.");
-    const is0Eth=metaIsETH(m0);
-    const is1Eth=metaIsETH(m1);
-    if(is0Eth && is1Eth) throw new Error("ETH/ETH pool not supported.");
-
-    const a0=String($('#pAmt0')?.value||"").trim();
-    const a1=String($('#pAmt1')?.value||"").trim();
-    if(!a0 || Number(a0)<=0) throw new Error("Enter amount for Token0.");
-    if(!a1 || Number(a1)<=0) throw new Error("Enter amount for Token1.");
-
-    const slip=getPoolSlipPct();
-    const deadline=getDeadlineSecondsPool();
-
-    const token0=addrForPath(m0);
-    const token1=addrForPath(m1);
-
-    // 1) ensure pair exists (Create Pair)
-    const pairAddr = await poolEnsurePairExists(token0, token1);
-    __poolPairAddr = pairAddr;
-
-    // 2) approve tokens (if ERC20)
-    const amt0BN = bnFromInput(a0, m0.decimals ?? 18);
-    const amt1BN = bnFromInput(a1, m1.decimals ?? 18);
-
-    // mins by slippage (simple)
-    const min0 = amt0BN.mul(10000 - Math.floor(slip*100)).div(10000);
-    const min1 = amt1BN.mul(10000 - Math.floor(slip*100)).div(10000);
-
-    poolSetMsg(`Preparing Add Liquidity…`);
-
-    let tx;
-    if(is0Eth && !is1Eth){
-      await ensureAllowance(m1, amt1BN, SUSHI_ROUTER_V2);
-
-      const overrides={value: amt0BN};
-      try{
-        overrides.gasLimit = await sushiRouterPoolRW.estimateGas.addLiquidityETH(
-          token1, amt1BN, min1, min0, userAddress, deadline, overrides
-        );
-      }catch{ overrides.gasLimit = 520000; }
-
-      tx = await sushiRouterPoolRW.addLiquidityETH(
-        token1, amt1BN, min1, min0, userAddress, deadline, overrides
-      );
-    }else if(is1Eth && !is0Eth){
-      await ensureAllowance(m0, amt0BN, SUSHI_ROUTER_V2);
-
-      const overrides={value: amt1BN};
-      try{
-        overrides.gasLimit = await sushiRouterPoolRW.estimateGas.addLiquidityETH(
-          token0, amt0BN, min0, min1, userAddress, deadline, overrides
-        );
-      }catch{ overrides.gasLimit = 520000; }
-
-      tx = await sushiRouterPoolRW.addLiquidityETH(
-        token0, amt0BN, min0, min1, userAddress, deadline, overrides
-      );
-    }else{
-      await ensureAllowance(m0, amt0BN, SUSHI_ROUTER_V2);
-      await ensureAllowance(m1, amt1BN, SUSHI_ROUTER_V2);
-
-      const overrides={};
-      try{
-        overrides.gasLimit = await sushiRouterPoolRW.estimateGas.addLiquidity(
-          token0, token1, amt0BN, amt1BN, min0, min1, userAddress, deadline, overrides
-        );
-      }catch{ overrides.gasLimit = 600000; }
-
-      tx = await sushiRouterPoolRW.addLiquidity(
-        token0, token1, amt0BN, amt1BN, min0, min1, userAddress, deadline, overrides
-      );
-    }
-
-    addTxLog({title:"Add Liquidity submitted", hash:tx.hash, mode:"Pool"});
-    poolSetMsg(`Add Liquidity submitted:\n${tx.hash}\nWaiting confirmation…`);
-
-    await tx.wait(1);
-    poolSetMsg(`✅ Add Liquidity confirmed!\n${tx.hash}`);
-    addTxLog({title:"Add Liquidity confirmed", hash:tx.hash, mode:"Pool"});
-
-    // reset
-    $('#pAmt0').value="";
-    $('#pAmt1').value="";
-    await refreshAllBalances();
-    await poolRefreshPairInfo();
-  }catch(e){
-    console.error("[poolAddLiquidity]",e);
-    if(isUserRejected(e)){
-      poolSetMsg("Canceled by user.");
-    }else{
-      poolSetMsg(`❌ ${normalizeErr(e)}`);
-      await uiAlert("Add Liquidity failed", normalizeErr(e), {copy:true});
-    }
-  }
-}
-
-/* --- Remove liquidity --- */
-async function poolRemoveLiquidity(){
-  try{
-    if(!userAddress){ await connectWallet(); return; }
-    await ensureMainnet(); ensureWeb3();
-    ensurePoolRemoveUI();
-
-    const m0=getSelectedMeta($('#pT0Sym'));
-    const m1=getSelectedMeta($('#pT1Sym'));
-    if(!m0 || !m1) throw new Error("Select tokens.");
-
-    const is0Eth=metaIsETH(m0);
-    const is1Eth=metaIsETH(m1);
-    if(is0Eth && is1Eth) throw new Error("ETH/ETH pool not supported.");
-
-    const token0=addrForPath(m0);
-    const token1=addrForPath(m1);
-
-    const pair=await poolGetPairAddr(token0, token1);
-    if(!pair || pair===ethers.constants.AddressZero) throw new Error("Pair not created yet.");
-    __poolPairAddr = pair;
-
-    const lp=new ethers.Contract(pair, ERC20_ABI, signer);
-    const bal=await lp.balanceOf(userAddress);
-    if(bal.lte(0)) throw new Error("No LP tokens found in your wallet.");
-
-    const pct=Math.max(1, Math.min(100, Number($('#lpPct')?.value||"25")));
-    const liquidity = bal.mul(Math.floor(pct*100)).div(10000);
-    if(liquidity.lte(0)) throw new Error("LP amount is too small.");
-
-    const allowance=await lp.allowance(userAddress, SUSHI_ROUTER_V2);
-    if(allowance.lt(liquidity)){
-      const ok = await uiConfirm(
-        "Approve LP token?",
-        "To remove liquidity, you must approve the SushiSwap Router to spend your LP token.\n\nProceed?",
-        {okText:"Approve", cancelText:"Cancel"}
-      );
-      if(!ok) throw new Error("LP approve canceled.");
-
-      const txA=await lp.approve(SUSHI_ROUTER_V2, ethers.constants.MaxUint256);
-      poolSetMsg(`Approving LP…\n${txA.hash}`);
-      await txA.wait(1);
-    }
-
-    const deadline=getDeadlineSecondsPool();
-    const minA = ethers.constants.Zero;
-    const minB = ethers.constants.Zero;
-
-    poolSetMsg(`Removing ${pct}%…`);
-
-    let tx;
-    if(is0Eth && !is1Eth){
-      const token = token1;
-      const overrides={};
-      try{
-        overrides.gasLimit = await sushiRouterPoolRW.estimateGas.removeLiquidityETH(
-          token, liquidity, minB, minA, userAddress, deadline, overrides
-        );
-      }catch{ overrides.gasLimit=520000; }
-      tx = await sushiRouterPoolRW.removeLiquidityETH(token, liquidity, minB, minA, userAddress, deadline, overrides);
-    }else if(is1Eth && !is0Eth){
-      const token = token0;
-      const overrides={};
-      try{
-        overrides.gasLimit = await sushiRouterPoolRW.estimateGas.removeLiquidityETH(
-          token, liquidity, minA, minB, userAddress, deadline, overrides
-        );
-      }catch{ overrides.gasLimit=520000; }
-      tx = await sushiRouterPoolRW.removeLiquidityETH(token, liquidity, minA, minB, userAddress, deadline, overrides);
-    }else{
-      const overrides={};
-      try{
-        overrides.gasLimit = await sushiRouterPoolRW.estimateGas.removeLiquidity(
-          token0, token1, liquidity, minA, minB, userAddress, deadline, overrides
-        );
-      }catch{ overrides.gasLimit=600000; }
-      tx = await sushiRouterPoolRW.removeLiquidity(token0, token1, liquidity, minA, minB, userAddress, deadline, overrides);
-    }
-
-    addTxLog({title:"Remove Liquidity submitted", hash:tx.hash, mode:"Pool"});
-    poolSetMsg(`Remove submitted:\n${tx.hash}\nWaiting confirmation…`);
-
-    await tx.wait(1);
-    poolSetMsg(`✅ Remove Liquidity confirmed!\n${tx.hash}`);
-    addTxLog({title:"Remove Liquidity confirmed", hash:tx.hash, mode:"Pool"});
-
-    await refreshAllBalances();
-    await poolRefreshPairInfo();
-  }catch(e){
-    console.error("[poolRemoveLiquidity]",e);
-    if(isUserRejected(e)){
-      poolSetMsg("Canceled by user.");
-    }else{
-      poolSetMsg(`❌ ${normalizeErr(e)}`);
-      await uiAlert("Remove Liquidity failed", normalizeErr(e), {copy:true});
-    }
-  }
-}
-
-/* --- Pool buttons binding (Add/Remove tab behavior) --- */
-function poolSetMode(mode){
-  __poolMode=mode;
-  const add=$('#poolAdd');
-  const rm=$('#poolRemove');
-  const supply=$('#poolSupply');
-  ensurePoolRemoveUI();
-
-  if(mode==="add"){
-    if(add){ add.classList.remove('ghost'); }
-    if(rm){ rm.classList.add('ghost'); }
-    if(supply){ supply.textContent="Supply (Add)"; supply.onclick=()=>poolAddLiquidity(); }
-    if($('#poolRemoveBox')) $('#poolRemoveBox').style.display="none";
-  }else{
-    if(add){ add.classList.add('ghost'); }
-    if(rm){ rm.classList.remove('ghost'); }
-    if(supply){ supply.textContent="Remove (in-app)"; supply.onclick=()=>poolRemoveLiquidity(); }
-    if($('#poolRemoveBox')) $('#poolRemoveBox').style.display="block";
-  }
-}
-
-/* --- My Positions (shows pair + link) --- */
-async function poolShowPositions(){
-  try{
-    ensureWeb3();
-    const m0=getSelectedMeta($('#pT0Sym'));
-    const m1=getSelectedMeta($('#pT1Sym'));
-    const token0=addrForPath(m0);
-    const token1=addrForPath(m1);
-    const pair=await poolGetPairAddr(token0, token1);
-    const msg = pair && pair!==ethers.constants.AddressZero
-      ? `Pair address:\n${pair}\n\n• You can view it on Etherscan.\n• LP token is the pair contract.`
-      : `Pair is not created yet. Use Add → it will ask to Create Pair.`;
-    await uiAlert("My Positions", msg, {copy:true});
-  }catch(e){
-    await uiAlert("My Positions", normalizeErr(e), {copy:true});
-  }
-}
-
-/* ===========================
-   Misc binds (Top button + install)
-   =========================== */
-function bindTop(){
-  const toTop=document.getElementById('toTop');
-  if(!toTop) return;
-  function toggleTop(){ (window.scrollY>200)?toTop.classList.add('show'):toTop.classList.remove('show'); }
-  toggleTop(); window.addEventListener('scroll',toggleTop);
-  toTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
-}
-
-let deferredPrompt=null;
-const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
-function isStandaloneMode(){ return matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true; }
-window.addEventListener('beforeinstallprompt', e=>{
-  e.preventDefault(); deferredPrompt=e;
-  document.querySelectorAll('.install-cta').forEach(b=>b.style.display='inline-flex');
-});
-window.addEventListener('appinstalled', ()=>{ document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none'); });
-
-async function handleInstallClick(){
-  if(isStandaloneMode()){ await uiAlert('Install','G-DEX is already installed.'); return; }
-  if(deferredPrompt){
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.finally(()=>{
-      deferredPrompt=null; document.querySelectorAll('.install-cta').forEach(b=>b.style.display='none');
-    });
-    return;
-  }
-  if(isIos){ await uiAlert('Install on iOS','In Safari: share → "Add to Home Screen".'); return; }
-  await uiAlert('Install','Use browser menu → "Add to home screen".');
-}
-
-/* ===========================
-   Boot
-   =========================== */
+/* Bindings */
 function bindButtons(){
-  // connect buttons
-  const sc=$('#swapConnect'); if(sc) sc.onclick=connectWallet;
-  const pc=$('#poolConnect'); if(pc) pc.onclick=connectWallet;
-  const bc=$('#btnConn'); if(bc) bc.onclick=connectWallet;
+  const swapConnect=$("#swapConnect");
+  const poolConnect=$("#poolConnect");
+  const btnConn=$("#btnConn");
+  const btnSwap=$("#swapBtn");
 
-  // swap
-  const sb=$('#swapBtn'); if(sb) sb.onclick=onSwapClick;
-  const sell=$('#sell'); if(sell) sell.addEventListener('input', updatePricePreview);
+  if(swapConnect) swapConnect.addEventListener("click", connectWallet);
+  if(poolConnect) poolConnect.addEventListener("click", connectWallet);
+  if(btnConn) btnConn.addEventListener("click", connectWallet);
 
-  // max swap
-  const maxBtn=$('#swapMax');
-  if(maxBtn){
-    maxBtn.onclick=()=>{
-      const balEl=$('#sellBal');
-      const raw=balEl?.dataset?.raw;
-      if(raw){
-        $('#sell').value = raw;
-        updatePricePreview();
-      }
-    };
-  }
+  if(btnSwap) btnSwap.addEventListener("click", executeSwap);
 
-  // pool tab buttons
-  const add=$('#poolAdd'); if(add) add.onclick=()=>poolSetMode("add");
-  const rm=$('#poolRemove'); if(rm) rm.onclick=()=>poolSetMode("remove");
-  const pos=$('#poolPositions'); if(pos) pos.onclick=poolShowPositions;
+  const sell=$("#sell");
+  const slip=$("#slip");
+  if(sell) sell.addEventListener("input", updatePricePreview);
+  if(slip) slip.addEventListener("input", updatePricePreview);
 
-  // pool supply (default add)
-  const supply=$('#poolSupply'); if(supply) supply.onclick=()=>poolAddLiquidity();
+  const installSide=$("#installSide");
+  const installMain=$("#installMain");
+  if(installSide) installSide.addEventListener("click", handleInstallClick);
+  if(installMain) installMain.addEventListener("click", handleInstallClick);
 
-  // ✅ NEW: bind auto-quote inputs
-  bindPoolAutoQuoteInputs();
+  const btnRefresh=$("#btnRefreshStatus");
+  if(btnRefresh) btnRefresh.addEventListener("click", async ()=>{
+    await refreshAllBalances();
+    await loadProxyFeeParams();
+    updatePricePreview();
+    updateStatusBoard();
+    uiAlert("Status refreshed","Balances, fee params, and tickers were refreshed.");
+  });
 
-  // install
-  const i1=$('#installSide'); if(i1) i1.onclick=handleInstallClick;
-  const i2=$('#installMain'); if(i2) i2.onclick=handleInstallClick;
+  const btnCopy=$("#btnCopyDiag");
+  if(btnCopy) btnCopy.addEventListener("click", async ()=>{
+    const txt=buildDiagnostic();
+    try{
+      await navigator.clipboard.writeText(txt);
+      uiAlert("Copied","Diagnostic copied to clipboard.");
+    }catch{
+      uiAlert("Diagnostic",txt,{copy:true});
+    }
+  });
 
-  // stake max
-  const stakeMax=$('#stakeMax');
-  if(stakeMax){
-    stakeMax.onclick=()=>{
-      const sb=$('#stakeBalText');
-      const raw=sb?.dataset?.raw;
-      if(raw) $('#stakeAmt').value = raw;
-    };
-  }
+  // Stake demo buttons
+  const btnStake=$("#btnStake"), btnClaim=$("#btnClaim"), tabStake=$("#tabStake"), tabUnstake=$("#tabUnstake");
+  if(tabStake) tabStake.addEventListener("click", ()=>uiAlert("Stake","Staking is in preview mode (demo)."));
+  if(tabUnstake) tabUnstake.addEventListener("click", ()=>uiAlert("Unstake","Unstaking is in preview mode (demo)."));
+  if(btnStake) btnStake.addEventListener("click", ()=>uiAlert("Stake (Demo)","Staking will be enabled in G-DEX v2 after routing is stabilized."));
+  if(btnClaim) btnClaim.addEventListener("click", ()=>uiAlert("Claim (Demo)","Rewards claiming will be enabled in G-DEX v2."));
 }
 
+/* Boot */
 async function boot(){
   try{
     initDefaults();
+    renderTokenList("");
     bindTokenButtons();
     bindFlip();
-    bindButtons();
+    bindPoolSupplyButton();
+    bindPoolQuickButtons();
     bindTop();
+    bindMetricFillActions();
+    bindButtons();
+    bindMax();
 
-    // pool remove UI hidden by default
-    ensurePoolRemoveUI();
-    poolSetMode("add");
+    // Analytics demo render
+    fillKpis(demoAnalytics);
+    drawSpark(demoAnalytics);
+    drawDonut(demoAnalytics);
+    drawGauge(demoAnalytics);
 
-    // initial info
-    await poolRefreshPairInfo();
-
-    // ✅ NEW: enable auto-quote on load (if user typed cached values)
-    poolRequoteIfPossible();
+    // Tickers
+    bootSushiPoolsTicker();
+    bootMajorCoinPricesTicker();
 
     __bootOk=true;
   }catch(e){
+    __bootOk=false; __bootErr=e;
     console.error("[boot]",e);
-    __bootOk=false;
+  }finally{
+    updateStatusBoard();
   }
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+boot();
 </script>
-
-
-  
 </body>
 </html>
 <br><br>
