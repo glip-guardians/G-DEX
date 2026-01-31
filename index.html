@@ -21,38 +21,6 @@
       navigator.serviceWorker.register('sw.js?v=' + SW_VER).catch(console.error);
     });
   }
-function bindPoolUI(){
-  const bAdd = document.getElementById("poolAdd");
-  const bRm  = document.getElementById("poolRemove");
-  const bPos = document.getElementById("poolPositions");
-  const bConn= document.getElementById("poolConnect");
-  const bGo  = document.getElementById("poolSupply");
-
-  if(bAdd) bAdd.onclick = ()=>poolSetMode("add");
-  if(bRm)  bRm.onclick  = ()=>poolSetMode("remove");
-  if(bPos) bPos.onclick = ()=>poolShowPositions();
-
-  if(bConn) bConn.onclick = ()=>connectWallet();
-
-  if(bGo) bGo.onclick = async ()=>{
-    try{
-      if(__poolMode==="create") return await poolCreatePair();
-      if(__poolMode==="add")    return await poolAddLiquidity();
-      if(__poolMode==="remove") return await poolRemoveLiquidity();
-    }catch(e){
-      await uiAlert("Pool action failed", normalizeErr(e), {copy:true});
-    }
-  };
-
-  const a0=document.getElementById("pAmt0");
-  const a1=document.getElementById("pAmt1");
-  if(a0) a0.addEventListener("input", ()=>{ __poolLastEdited="t0"; poolUpdatePreview(); });
-  if(a1) a1.addEventListener("input", ()=>{ __poolLastEdited="t1"; poolUpdatePreview(); });
-
-  const slip=document.getElementById("pSlip");
-  if(slip) slip.addEventListener("input", ()=>poolUpdatePreview());
-}
-
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -574,17 +542,14 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(234,247,240,.
 
       <section class="card pool" id="pool">
         <h3>Pool</h3>
-<div style="background:rgba(12,18,26,.66);padding:10px 14px;border-radius:12px;margin-bottom:12px;font-size:13px;line-height:1.5;
-  color:rgba(234,247,240,.76);border:1px solid rgba(234,247,240,.12);box-shadow:0 14px 26px rgba(0,0,0,.46);">
-  <strong style="font-weight:900;color:rgba(234,247,240,.92);">G-DEX Pool — In-App (Sushi V2 Contracts)</strong><br>
-  This Pool UI operates <b>in-app</b> using SushiSwap V2 Factory/Router on Ethereum Mainnet.
-  You can <b>Create Pair</b> (permissionless), <b>Add Liquidity</b>, and <b>Remove Liquidity</b> without leaving G-DEX.
-  <div style="margin-top:6px;opacity:.9">
-    • Auto-quote: type one side → the other side is calculated from on-chain reserves.<br>
-    • If the pair does not exist yet, create it first.
-  </div>
-</div>
-
+        <div style="background:rgba(12,18,26,.66);padding:10px 14px;border-radius:12px;margin-bottom:12px;font-size:13px;line-height:1.5;
+          color:rgba(234,247,240,.76);border:1px solid rgba(234,247,240,.12);box-shadow:0 14px 26px rgba(0,0,0,.46);">
+          <strong style="font-weight:900;color:rgba(234,247,240,.92);">G-DEX Pool v1 — SushiSwap-Based</strong><br>
+          Liquidity for GLIP currently operates through the GLIP–ETH pool on SushiSwap V2.
+          The <b>Supply</b> button will redirect you to SushiSwap to add or remove liquidity.
+          Pool metrics are manually updated during the early launch phase.
+          Regular users typically only need the <b>Swap</b> function.
+        </div>
 
         <div class="row" style="gap:8px;margin-bottom:6px">
           <button class="btn" id="poolAdd" type="button" style="min-width:auto;padding:10px 14px">Add</button>
@@ -1204,8 +1169,7 @@ if(list){
     target.symEl.textContent=t.symbol;
     target.symEl.dataset.address=t.address;
     try{ dlg.close(); }catch{}
-    setTimeout(()=>{ updatePricePreview(); poolUpdatePreview(); refreshAllBalances(); updateStatusBoard(); },50);
-
+    setTimeout(()=>{ updatePricePreview(); refreshAllBalances(); updateStatusBoard(); },50);
   };
 }
 const tokCloseBtn=document.getElementById('tokClose');
@@ -1245,9 +1209,6 @@ function bindFlip(){
 /* Web3 / contracts */
 let userAddress=null, provider=null, signer=null;
 let sushiRouterRO=null, sushiRouterRW=null, factory=null, proxyRouter=null;
-// pool-only
-let sushiRouterLP=null, factoryRW=null;
-
 let __proxyFeeLoaded=false, __proxyPERCENT_BPS=0, __proxyFlatFeeWei=null, __proxyFeeWallet=null;
 let __lastSwapMode="—";
 
@@ -1258,26 +1219,6 @@ const SUSHI_ROUTER_RW_ABI=[
   "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)"
 ];
 const FACTORY_ABI=["function getPair(address tokenA, address tokenB) view returns (address pair)"];
-// ===== Pool (Add/Remove/CreatePair) ABIs =====
-const SUSHI_ROUTER_LP_ABI = [
-  "function addLiquidity(address tokenA,address tokenB,uint amountADesired,uint amountBDesired,uint amountAMin,uint amountBMin,address to,uint deadline) returns (uint amountA,uint amountB,uint liquidity)",
-  "function addLiquidityETH(address token,uint amountTokenDesired,uint amountTokenMin,uint amountETHMin,address to,uint deadline) payable returns (uint amountToken,uint amountETH,uint liquidity)",
-  "function removeLiquidity(address tokenA,address tokenB,uint liquidity,uint amountAMin,uint amountBMin,address to,uint deadline) returns (uint amountA,uint amountB)",
-  "function removeLiquidityETH(address token,uint liquidity,uint amountTokenMin,uint amountETHMin,address to,uint deadline) returns (uint amountToken,uint amountETH)"
-];
-
-const FACTORY_RW_ABI = [
-  "function getPair(address tokenA, address tokenB) view returns (address pair)",
-  "function createPair(address tokenA, address tokenB) returns (address pair)"
-];
-
-const PAIR_LP_ABI_EXTRA = [
-  "function totalSupply() view returns (uint256)",
-  "function balanceOf(address owner) view returns (uint256)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)"
-];
-
 const PAIR_ABI=[
   "function token0() view returns (address)","function token1() view returns (address)",
   "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
@@ -1311,12 +1252,7 @@ function ensureWeb3(){
   if(!sushiRouterRW) sushiRouterRW=new ethers.Contract(SUSHI_ROUTER_V2,SUSHI_ROUTER_RW_ABI,signer);
   if(!factory) factory=new ethers.Contract(SUSHI_FACTORY_V2,FACTORY_ABI,provider);
   if(!proxyRouter) proxyRouter=new ethers.Contract(GDEX_PROXY_ROUTER,PROXY_ABI,signer);
-
-  // Pool-only instances (do not affect Swap/Analytics)
-  if(!sushiRouterLP) sushiRouterLP = new ethers.Contract(SUSHI_ROUTER_V2, SUSHI_ROUTER_LP_ABI, signer);
-  if(!factoryRW) factoryRW = new ethers.Contract(SUSHI_FACTORY_V2, FACTORY_RW_ABI, signer);
 }
-
 async function ensureMainnet(){
   ensureWeb3();
   const net=await provider.getNetwork();
@@ -1387,557 +1323,23 @@ async function connectWallet(){
 }
 
 /* Pool → Sushi */
-/* =========================
-   Pool (IN-APP) — Add / Remove / CreatePair + Auto Quote
-   ========================= */
-
-let __poolMode = "add"; // "add" | "remove" | "create"
-let __poolQuoteTimer = null;
-let __poolLock = false;
-let __poolLastEdited = "t0"; // "t0" | "t1" | "lp"
-
-function poolSetMode(mode){
-  __poolMode = mode;
-
-  const bAdd = document.getElementById("poolAdd");
-  const bRm  = document.getElementById("poolRemove");
-  const bPos = document.getElementById("poolPositions");
-  const supplyBtn = document.getElementById("poolSupply");
-
-  // button styling
-  if(bAdd){ bAdd.classList.toggle("ghost", mode!=="add"); }
-  if(bRm){  bRm.classList.toggle("ghost", mode!=="remove"); }
-  if(bPos){ bPos.classList.toggle("ghost", false); }
-
-  // Supply button label
-  if(supplyBtn){
-    supplyBtn.textContent =
-      mode==="add" ? "Add Liquidity" :
-      mode==="remove" ? "Remove Liquidity" :
-      "Create Pair";
-  }
-
-  // Inputs behavior
-  const a0 = document.getElementById("pAmt0");
-  const a1 = document.getElementById("pAmt1");
-  if(a0 && a1){
-    if(mode==="remove"){
-      // In remove mode, user enters LP amount in pAmt0, we auto-fill token out estimates to pAmt1 + pPrice/pShare area
-      a0.placeholder = "LP amount (e.g., 0.01)";
-      a1.placeholder = "Est. token out (auto)";
-      a1.disabled = true;
-    } else {
-      a0.placeholder = "0.0";
-      a1.placeholder = "0.0";
-      a1.disabled = false;
-    }
-  }
-
-  poolUpdatePreview();
+function openSushiGlipEthPool(){
+  const url=`${SUSHI_ETHEREUM_POOL_BASE}?token0=NATIVE&token1=${GLIP_TOKEN_ADDRESS}`;
+  window.open(url,'_blank','noopener');
 }
-
-function poolGetMetas(){
-  const m0 = getSelectedMeta(document.getElementById("pT0Sym"));
-  const m1 = getSelectedMeta(document.getElementById("pT1Sym"));
-  return { m0, m1 };
+function bindPoolSupplyButton(){
+  const btn=document.getElementById('poolSupply');
+  if(btn) btn.addEventListener('click', openSushiGlipEthPool);
 }
-
-function poolAddr(meta){
-  return metaIsETH(meta) ? WETH_MAINNET : meta.address;
+function bindPoolQuickButtons(){
+  const add=document.getElementById("poolAdd");
+  const rm=document.getElementById("poolRemove");
+  const pos=document.getElementById("poolPositions");
+  const go=()=>openSushiGlipEthPool();
+  if(add) add.addEventListener("click",go);
+  if(rm) rm.addEventListener("click",go);
+  if(pos) pos.addEventListener("click",go);
 }
-
-async function poolGetPairAddr(){
-  ensureWeb3();
-  const {m0,m1}=poolGetMetas();
-  if(!m0 || !m1) return ethers.constants.AddressZero;
-  const a = poolAddr(m0);
-  const b = poolAddr(m1);
-  if(a.toLowerCase()===b.toLowerCase()) return ethers.constants.AddressZero;
-  const p = await factory.getPair(a,b);
-  return p;
-}
-
-async function poolReadReserves(pairAddr){
-  ensureWeb3();
-  if(!pairAddr || pairAddr===ethers.constants.AddressZero) return null;
-
-  const pair = new ethers.Contract(pairAddr, PAIR_ABI, provider);
-  const [r0,r1] = await pair.getReserves();
-  const t0 = (await pair.token0()).toLowerCase();
-  const t1 = (await pair.token1()).toLowerCase();
-  return { r0, r1, t0, t1, pair };
-}
-
-function bnMulDiv(aBN, bBN, divBN){
-  if(divBN.isZero()) return ethers.constants.Zero;
-  return aBN.mul(bBN).div(divBN);
-}
-
-function poolSlipPct(){
-  const el=document.getElementById("pSlip");
-  const v=el?Number(el.value||"0"):0;
-  return Math.max(0,Math.min(20,v));
-}
-
-function poolMinBN(xBN, slipPct){
-  const bp=Math.max(0,Math.min(9500,Math.floor(slipPct*100)));
-  return xBN.mul(10000-bp).div(10000);
-}
-
-function poolFmt(meta, bn){
-  const dec = meta?.decimals ?? 18;
-  return ethers.utils.formatUnits(bn, dec);
-}
-
-async function poolUpdatePreview(){
-  if(__poolQuoteTimer) clearTimeout(__poolQuoteTimer);
-  __poolQuoteTimer = setTimeout(async ()=>{
-    if(__poolLock) return;
-    __poolLock = true;
-
-    try{
-      const pPrice = document.getElementById("pPrice");
-      const pShare = document.getElementById("pShare");
-      const note   = document.getElementById("pManualNote");
-
-      const {m0,m1}=poolGetMetas();
-      const sym0 = document.getElementById("pT0Sym")?.textContent?.trim() || "T0";
-      const sym1 = document.getElementById("pT1Sym")?.textContent?.trim() || "T1";
-
-      // no wallet required for reserve quote (read-only), but network/provider must exist if user has injected provider
-      if(!window.ethereum || !window.ethers){
-        if(pPrice) pPrice.textContent = `Connect wallet to read on-chain pool data.`;
-        if(pShare) pShare.textContent = `—`;
-        return;
-      }
-
-      ensureWeb3();
-      // allow quote even before connect, but provider needs chain access; if wrong network show message
-      const net = await provider.getNetwork().catch(()=>null);
-      if(!net || net.chainId!==1){
-        if(pPrice) pPrice.textContent = `Wrong network. Switch to Ethereum Mainnet.`;
-        if(pShare) pShare.textContent = `—`;
-        return;
-      }
-
-      if(!m0 || !m1){
-        if(pPrice) pPrice.textContent = `Select tokens.`;
-        if(pShare) pShare.textContent = `—`;
-        return;
-      }
-
-      const pairAddr = await poolGetPairAddr();
-      if(!pairAddr || pairAddr===ethers.constants.AddressZero){
-        if(pPrice) pPrice.textContent = `No pair yet. Use “Create Pair”.`;
-        if(pShare) pShare.textContent = `${sym0} / ${sym1}`;
-        if(note) note.textContent = `Pair not found. Create pair first.`;
-        return;
-      }
-
-      const res = await poolReadReserves(pairAddr);
-      if(!res){
-        if(pPrice) pPrice.textContent = `Pair found, but reserves unavailable.`;
-        if(pShare) pShare.textContent = `${sym0} / ${sym1}`;
-        return;
-      }
-
-      const a0 = poolAddr(m0).toLowerCase();
-      const a1 = poolAddr(m1).toLowerCase();
-
-      // map reserves to selected order
-      let rSel0, rSel1;
-      if(res.t0===a0 && res.t1===a1){
-        rSel0 = res.r0; rSel1 = res.r1;
-      } else if(res.t0===a1 && res.t1===a0){
-        rSel0 = res.r1; rSel1 = res.r0;
-      } else {
-        // should not happen
-        rSel0 = res.r0; rSel1 = res.r1;
-      }
-
-      // show price: 1 T1 in T0
-      const one1 = ethers.utils.parseUnits("1", m1.decimals ?? 18);
-      const priceBN = bnMulDiv(one1, rSel0, rSel1); // 1 T1 -> T0
-      const priceStr = poolFmt(m0, priceBN);
-      if(pPrice) pPrice.textContent = `1 ${sym1} ≈ ${Number(priceStr).toLocaleString(undefined,{maximumFractionDigits:8})} ${sym0}`;
-
-      if(note) note.textContent = `Pair: ${pairAddr.slice(0,6)}…${pairAddr.slice(-4)} · Reserves on-chain`;
-
-      // Auto-quote input behavior
-      const in0 = document.getElementById("pAmt0");
-      const in1 = document.getElementById("pAmt1");
-
-      if(!in0 || !in1) return;
-
-      if(__poolMode==="add"){
-        // If user edited t0 => quote t1, else vice versa
-        if(__poolLastEdited==="t0"){
-          const v0 = (in0.value||"").trim();
-          if(!v0 || Number(v0)<=0){ in1.value=""; if(pShare) pShare.textContent=`${sym0} / ${sym1}`; return; }
-          const x0 = bnFromInput(v0, m0.decimals ?? 18);
-          const q1 = bnMulDiv(x0, rSel1, rSel0);
-          const q1Str = ethers.utils.formatUnits(q1, m1.decimals ?? 18);
-          const q1Num = Number(q1Str);
-          in1.value = Number.isFinite(q1Num) ? (q1Num>=1 ? q1Num.toFixed(6) : q1Num.toPrecision(6)) : q1Str;
-
-          if(pShare) pShare.textContent = `Auto-quoted from reserves · slip ${poolSlipPct()}%`;
-        } else {
-          const v1 = (in1.value||"").trim();
-          if(!v1 || Number(v1)<=0){ in0.value=""; if(pShare) pShare.textContent=`${sym0} / ${sym1}`; return; }
-          const x1 = bnFromInput(v1, m1.decimals ?? 18);
-          const q0 = bnMulDiv(x1, rSel0, rSel1);
-          const q0Str = ethers.utils.formatUnits(q0, m0.decimals ?? 18);
-          const q0Num = Number(q0Str);
-          in0.value = Number.isFinite(q0Num) ? (q0Num>=1 ? q0Num.toFixed(6) : q0Num.toPrecision(6)) : q0Str;
-
-          if(pShare) pShare.textContent = `Auto-quoted from reserves · slip ${poolSlipPct()}%`;
-        }
-      }
-
-      if(__poolMode==="remove"){
-        // User enters LP amount in pAmt0, show estimated token outs (in pAmt1 is disabled; we show both in pShare line)
-        const lpStr = (in0.value||"").trim();
-        if(!lpStr || Number(lpStr)<=0){
-          if(pShare) pShare.textContent = `Enter LP amount to estimate outputs.`;
-          in1.value = "";
-          return;
-        }
-        const lpBN = ethers.utils.parseUnits(lpStr, 18);
-
-        const lp = new ethers.Contract(pairAddr, PAIR_LP_ABI_EXTRA, provider);
-        const total = await lp.totalSupply();
-        if(total.isZero()){
-          if(pShare) pShare.textContent = `Pool totalSupply is zero.`;
-          in1.value = "";
-          return;
-        }
-
-        const out0 = bnMulDiv(lpBN, rSel0, total);
-        const out1 = bnMulDiv(lpBN, rSel1, total);
-
-        const out0Str = ethers.utils.formatUnits(out0, m0.decimals ?? 18);
-        const out1Str = ethers.utils.formatUnits(out1, m1.decimals ?? 18);
-
-        in1.value = ""; // keep disabled
-        if(pShare){
-          pShare.textContent = `Est. out ≈ ${Number(out0Str).toLocaleString(undefined,{maximumFractionDigits:6})} ${sym0} + ${Number(out1Str).toLocaleString(undefined,{maximumFractionDigits:6})} ${sym1}`;
-        }
-      }
-
-    }catch(e){
-      console.warn("[pool preview] failed", e);
-    }finally{
-      __poolLock = false;
-    }
-  }, 140);
-}
-async function poolCreatePair(){
-  await ensureMainnet();
-  ensureWeb3();
-
-  const {m0,m1}=poolGetMetas();
-  if(!m0 || !m1) throw new Error("Select tokens first.");
-  const a = poolAddr(m0);
-  const b = poolAddr(m1);
-  if(a.toLowerCase()===b.toLowerCase()) throw new Error("Same token selected.");
-
-  // already exists?
-  const existing = await factory.getPair(a,b);
-  if(existing && existing !== ethers.constants.AddressZero){
-    await uiAlert("Create Pair", `Pair already exists:\n${existing}`, {copy:true});
-    return existing;
-  }
-
-  const ok = await uiConfirm("Create Pair (permissionless)", `Create pair for:\n${m0.symbol} / ${m1.symbol}\n\nThis is an on-chain transaction (gas required).`, {
-    okText:"Create", cancelText:"Cancel", copy:false
-  });
-  if(!ok) return null;
-
-  const tx = await withTimeout(factoryRW.createPair(a,b), WALLET_CONFIRM_TIMEOUT_MS, "wallet_confirm_timeout");
-  addTxLog({title:"CreatePair sent", hash:tx.hash, mode:"Pool"});
-  setSwapStatus(`Pool: CreatePair sent… <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a>`, {show:true, kind:"info"});
-
-  const rc = await tx.wait(1).catch(()=>null);
-  if(rc && rc.status===0) throw new Error("CreatePair reverted.");
-  addTxLog({title:"CreatePair confirmed", hash:tx.hash, mode:"Pool"});
-
-  await poolUpdatePreview();
-  return true;
-}
-
-async function poolAddLiquidity(){
-  if(!userAddress) await connectWallet();
-  await ensureMainnet();
-  ensureWeb3();
-
-  const {m0,m1}=poolGetMetas();
-  if(!m0 || !m1) throw new Error("Select tokens first.");
-
-  const in0=document.getElementById("pAmt0");
-  const in1=document.getElementById("pAmt1");
-  const v0=(in0?.value||"").trim();
-  const v1=(in1?.value||"").trim();
-  if(!v0 || Number(v0)<=0) throw new Error("Enter token amount.");
-  if(!v1 || Number(v1)<=0) throw new Error("Enter token amount.");
-
-  const a0 = bnFromInput(v0, m0.decimals ?? 18);
-  const a1 = bnFromInput(v1, m1.decimals ?? 18);
-
-  const slip = poolSlipPct();
-  const min0 = poolMinBN(a0, slip);
-  const min1 = poolMinBN(a1, slip);
-  const deadline = getDeadlineSeconds();
-
-  const is0Eth = metaIsETH(m0);
-  const is1Eth = metaIsETH(m1);
-
-  // pair must exist
-  const pairAddr = await poolGetPairAddr();
-  if(!pairAddr || pairAddr===ethers.constants.AddressZero){
-    throw new Error("Pair not found. Create pair first.");
-  }
-
-  setSwapStatus(`Pool: Please confirm “Add Liquidity” in wallet…`, {show:true, kind:"info"});
-
-  // Approvals
-  if(!is0Eth){
-    await ensureSufficientTokenBalance(m0, a0);
-    await ensureAllowance(m0, a0, SUSHI_ROUTER_V2);
-  }
-  if(!is1Eth){
-    await ensureSufficientTokenBalance(m1, a1);
-    await ensureAllowance(m1, a1, SUSHI_ROUTER_V2);
-  }
-
-  let tx;
-  if(is0Eth && !is1Eth){
-    // ETH + Token1
-    await ensureSufficientEthForValue(a0, null);
-    const overrides={value:a0};
-    tx = await withTimeout(
-      sushiRouterLP.addLiquidityETH(
-        m1.address,
-        a1,
-        min1,
-        min0,
-        userAddress,
-        deadline,
-        overrides
-      ),
-      WALLET_CONFIRM_TIMEOUT_MS,
-      "wallet_confirm_timeout"
-    );
-  } else if(!is0Eth && is1Eth){
-    // Token0 + ETH
-    await ensureSufficientEthForValue(a1, null);
-    const overrides={value:a1};
-    tx = await withTimeout(
-      sushiRouterLP.addLiquidityETH(
-        m0.address,
-        a0,
-        min0,
-        min1,
-        userAddress,
-        deadline,
-        overrides
-      ),
-      WALLET_CONFIRM_TIMEOUT_MS,
-      "wallet_confirm_timeout"
-    );
-  } else if(!is0Eth && !is1Eth){
-    // Token0 + Token1
-    tx = await withTimeout(
-      sushiRouterLP.addLiquidity(
-        m0.address,
-        m1.address,
-        a0,
-        a1,
-        min0,
-        min1,
-        userAddress,
-        deadline
-      ),
-      WALLET_CONFIRM_TIMEOUT_MS,
-      "wallet_confirm_timeout"
-    );
-  } else {
-    throw new Error("ETH + ETH pool is not supported.");
-  }
-
-  addTxLog({title:"AddLiquidity sent", hash:tx.hash, mode:"Pool"});
-  setSwapStatus(`Pool: AddLiquidity sent… <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a>`, {show:true, kind:"info"});
-
-  const rc = await tx.wait(1).catch(()=>null);
-  if(rc && rc.status===0) throw new Error("AddLiquidity reverted.");
-
-  addTxLog({title:"AddLiquidity confirmed", hash:tx.hash, mode:"Pool"});
-  setSwapStatus(`Pool: AddLiquidity confirmed ✅ <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a>`, {show:true, kind:"success"});
-
-  await refreshAllBalances();
-  await poolUpdatePreview();
-}
-
-async function poolRemoveLiquidity(){
-  if(!userAddress) await connectWallet();
-  await ensureMainnet();
-  ensureWeb3();
-
-  const {m0,m1}=poolGetMetas();
-  if(!m0 || !m1) throw new Error("Select tokens first.");
-
-  const lpStr = (document.getElementById("pAmt0")?.value||"").trim();
-  if(!lpStr || Number(lpStr)<=0) throw new Error("Enter LP amount in the first input.");
-
-  const pairAddr = await poolGetPairAddr();
-  if(!pairAddr || pairAddr===ethers.constants.AddressZero) throw new Error("Pair not found.");
-
-  const slip = poolSlipPct();
-  const deadline = getDeadlineSeconds();
-
-  const lpBN = ethers.utils.parseUnits(lpStr, 18);
-  const lp = new ethers.Contract(pairAddr, PAIR_LP_ABI_EXTRA, signer);
-
-  // approve LP to router
-  const allowance = await lp.allowance(userAddress, SUSHI_ROUTER_V2);
-  if(allowance.lt(lpBN)){
-    const ok = await uiConfirm("LP Approval required", `Approve LP token to Sushi Router for removing liquidity.\n\nPair: ${pairAddr}`, {
-      okText:"Approve", cancelText:"Cancel"
-    });
-    if(!ok) return;
-
-    const txA = await withTimeout(lp.approve(SUSHI_ROUTER_V2, ethers.constants.MaxUint256), WALLET_CONFIRM_TIMEOUT_MS, "wallet_confirm_timeout");
-    addTxLog({title:"LP approve sent", hash:txA.hash, mode:"Pool"});
-    await txA.wait(1).catch(()=>null);
-  }
-
-  // compute mins from reserves for safety
-  const res = await poolReadReserves(pairAddr);
-  if(!res) throw new Error("Cannot read reserves.");
-  const a0 = poolAddr(m0).toLowerCase();
-  const a1 = poolAddr(m1).toLowerCase();
-
-  let rSel0, rSel1;
-  if(res.t0===a0 && res.t1===a1){
-    rSel0 = res.r0; rSel1 = res.r1;
-  } else {
-    rSel0 = res.r1; rSel1 = res.r0;
-  }
-
-  const total = await (new ethers.Contract(pairAddr, PAIR_LP_ABI_EXTRA, provider)).totalSupply();
-  const out0 = bnMulDiv(lpBN, rSel0, total);
-  const out1 = bnMulDiv(lpBN, rSel1, total);
-
-  const min0 = poolMinBN(out0, slip);
-  const min1 = poolMinBN(out1, slip);
-
-  setSwapStatus(`Pool: Please confirm “Remove Liquidity” in wallet…`, {show:true, kind:"info"});
-
-  const is0Eth = metaIsETH(m0);
-  const is1Eth = metaIsETH(m1);
-
-  let tx;
-  if(is0Eth && !is1Eth){
-    // removeLiquidityETH(token=token1)
-    tx = await withTimeout(
-      sushiRouterLP.removeLiquidityETH(
-        m1.address,
-        lpBN,
-        min1,
-        min0,
-        userAddress,
-        deadline
-      ),
-      WALLET_CONFIRM_TIMEOUT_MS,
-      "wallet_confirm_timeout"
-    );
-  } else if(!is0Eth && is1Eth){
-    // removeLiquidityETH(token=token0)
-    tx = await withTimeout(
-      sushiRouterLP.removeLiquidityETH(
-        m0.address,
-        lpBN,
-        min0,
-        min1,
-        userAddress,
-        deadline
-      ),
-      WALLET_CONFIRM_TIMEOUT_MS,
-      "wallet_confirm_timeout"
-    );
-  } else if(!is0Eth && !is1Eth){
-    tx = await withTimeout(
-      sushiRouterLP.removeLiquidity(
-        m0.address,
-        m1.address,
-        lpBN,
-        min0,
-        min1,
-        userAddress,
-        deadline
-      ),
-      WALLET_CONFIRM_TIMEOUT_MS,
-      "wallet_confirm_timeout"
-    );
-  } else {
-    throw new Error("ETH + ETH pool is not supported.");
-  }
-
-  addTxLog({title:"RemoveLiquidity sent", hash:tx.hash, mode:"Pool"});
-  setSwapStatus(`Pool: RemoveLiquidity sent… <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a>`, {show:true, kind:"info"});
-
-  const rc = await tx.wait(1).catch(()=>null);
-  if(rc && rc.status===0) throw new Error("RemoveLiquidity reverted.");
-
-  addTxLog({title:"RemoveLiquidity confirmed", hash:tx.hash, mode:"Pool"});
-  setSwapStatus(`Pool: RemoveLiquidity confirmed ✅ <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">Etherscan</a>`, {show:true, kind:"success"});
-
-  await refreshAllBalances();
-  await poolUpdatePreview();
-}
-
-async function poolShowPositions(){
-  try{
-    if(!userAddress) await connectWallet();
-    await ensureMainnet();
-    ensureWeb3();
-
-    const {m0,m1}=poolGetMetas();
-    if(!m0 || !m1) throw new Error("Select tokens first.");
-
-    const pairAddr = await poolGetPairAddr();
-    if(!pairAddr || pairAddr===ethers.constants.AddressZero){
-      await uiAlert("My Positions", "Pair not found. Create pair first.", {copy:false});
-      return;
-    }
-
-    const lp = new ethers.Contract(pairAddr, PAIR_LP_ABI_EXTRA, provider);
-    const bal = await lp.balanceOf(userAddress);
-    const balStr = ethers.utils.formatUnits(bal, 18);
-
-    const res = await poolReadReserves(pairAddr);
-    const total = await lp.totalSupply();
-    let msg = `Pair: ${pairAddr}\nLP Balance: ${balStr}\nTotal LP: ${ethers.utils.formatUnits(total,18)}\n`;
-
-    if(res && total.gt(0) && bal.gt(0)){
-      // map reserves to selected order
-      const a0 = poolAddr(m0).toLowerCase();
-      const a1 = poolAddr(m1).toLowerCase();
-      let rSel0, rSel1;
-      if(res.t0===a0 && res.t1===a1){ rSel0=res.r0; rSel1=res.r1; }
-      else { rSel0=res.r1; rSel1=res.r0; }
-
-      const my0 = bnMulDiv(bal, rSel0, total);
-      const my1 = bnMulDiv(bal, rSel1, total);
-
-      msg += `\nEst. underlying (if fully removed):\n- ${m0.symbol}: ${ethers.utils.formatUnits(my0, m0.decimals ?? 18)}\n- ${m1.symbol}: ${ethers.utils.formatUnits(my1, m1.decimals ?? 18)}\n`;
-    }
-
-    await uiAlert("My Positions", msg, {copy:true});
-  }catch(e){
-    await uiAlert("My Positions", normalizeErr(e), {copy:true});
-  }
-}
-
 
 /* TOP */
 function bindTop(){
@@ -2759,9 +2161,6 @@ async function boot(){
     bindMetricFillActions();
     bindButtons();
     bindMax();
-   bindPoolUI();
-   poolSetMode("add");
-
 
     // Analytics demo render
     fillKpis(demoAnalytics);
