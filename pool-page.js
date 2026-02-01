@@ -322,6 +322,10 @@
     const name = trigger.querySelector(".gdex-dd-name");
     const search = menu.querySelector(".gdex-dd-search");
     const list = menu.querySelector(".gdex-dd-list");
+// ✅ FIX: allow scroll inside dropdown (mobile + desktop)
+list.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+list.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
 
     function close(){
       menu.classList.remove("open");
