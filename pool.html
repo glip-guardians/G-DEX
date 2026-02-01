@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>G-DEX Pools — GLIP</title>
+
+  <meta name="theme-color" content="#050A0C" />
+  <link rel="icon" href="https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png">
+
+  <!-- Ethers v5 (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg0:#050A0C;
+      --bg1:#070F13;
+
+      --stroke: rgba(255,255,255,.14);
+      --stroke2: rgba(255,255,255,.20);
+
+      --text: rgba(255,255,255,.92);
+      --text2: rgba(255,255,255,.82);
+      --muted: rgba(255,255,255,.66);
+
+      --accent: #41f3a2;
+      --accent2:#7aa7ff;
+      --danger:#ff5c7a;
+      --warn:#ffcf5a;
+
+      --shadow: 0 16px 50px rgba(0,0,0,.55);
+      --shadow2: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+
+      --fs-xs:  12px;
+      --fs-sm:  13px;
+      --fs-md:  14px;
+      --fs-lg:  16px;
+      --fs-xl:  18px;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(900px 600px at 15% 10%, rgba(65,243,162,.14), transparent 60%),
+        radial-gradient(900px 600px at 85% 10%, rgba(122,167,255,.12), transparent 60%),
+        radial-gradient(900px 700px at 50% 110%, rgba(255,92,122,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    a:hover{ opacity:.96; }
+
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:18px 14px 40px;
+    }
+
+    /* ===== Topbar ===== */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 4px 18px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 240px;
+    }
+
+    .brand img{
+      width:38px;
+      height:38px;
+      border-radius:50%;
+      object-fit:cover;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 10px 26px rgba(0,0,0,.35);
+      padding:3px;
+    }
+
+    .brandTitle{
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .3px;
+      color: #ffffff;
+      line-height:1.1;
+      text-shadow:
+        0 1px 0 rgba(0,0,0,.65),
+        0 0 12px rgba(65,243,162,.18);
+    }
+
+    .sub{
+      color: rgba(255,255,255,.82);
+      font-size: 13px;
+      font-weight: 700;
+      line-height:1.35;
+      opacity:.95;
+      margin-top:4px;
+    }
+
+    /* ===== Common ===== */
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.20);
+      background: rgba(0,0,0,.28);
+      border-radius: 999px;
+      color: rgba(255,255,255,.88);
+      font-size: 13px;
+      font-weight: 900;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 22px rgba(0,0,0,.18);
+    }
+
+    .pill.backBtn{
+      border-color: rgba(255,255,255,.24);
+      background: rgba(0,0,0,.32);
+      color: rgba(255,255,255,.90);
+    }
+    .pill.backBtn:hover{
+      border-color: rgba(65,243,162,.50);
+      background: rgba(65,243,162,.12);
+      transform: translateY(-1px);
+    }
+    .pill.backBtn:active{ transform: translateY(0px); }
+
+    /* ===== Buttons (중요: 기본 버튼을 다크톤으로 통일) ===== */
+    .btn{
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.28);
+      color:#ffffff;
+      padding:11px 14px;
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight:900;
+      font-size: 14px;
+      letter-spacing:.2px;
+      box-shadow: 0 10px 22px rgba(0,0,0,.25);
+      backdrop-filter: blur(8px);
+    }
+    .btn:hover{ filter: brightness(1.08); }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    .btn.primary{
+      border-color: rgba(65,243,162,.55);
+      background: linear-gradient(180deg, rgba(65,243,162,.22), rgba(0,0,0,.26));
+      box-shadow:
+        0 0 0 1px rgba(65,243,162,.16),
+        0 10px 22px rgba(0,0,0,.28);
+    }
+    .btn.danger{
+      border-color: rgba(255,92,122,.55);
+      background: linear-gradient(180deg, rgba(255,92,122,.18), rgba(0,0,0,.26));
+    }
+
+    /* Create Pair 버튼 강조(선명도 더) */
+    #btnCreatePair{
+      border-color: rgba(65,243,162,.62);
+      background: linear-gradient(180deg, rgba(65,243,162,.30), rgba(0,0,0,.24));
+    }
+
+    /* ===== Layout ===== */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+      margin-top:10px;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns:1fr; }
+    }
+
+    /* ===== Cards ===== */
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:16px;
+      backdrop-filter: blur(10px);
+    }
+
+    .h{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    .card .h h2{
+      margin:0;
+      color:#ffffff;
+      font-weight:900;
+      font-size:16px;
+      letter-spacing:.3px;
+      text-shadow:
+        0 1px 0 rgba(0,0,0,.7),
+        0 0 10px rgba(65,243,162,.16);
+    }
+
+    /* ===== Fields ===== */
+    .field{
+      flex:1;
+      min-width: 240px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      background: rgba(0,0,0,.28);
+    }
+
+    .field label{
+      font-size: 13px;
+      color: rgba(255,255,255,.90);
+      font-weight: 900;
+      letter-spacing:.2px;
+    }
+
+    select, input{
+      width:100%;
+      padding:12px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.26);
+      color: #ffffff;
+      outline:none;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    input::placeholder{ color: rgba(255,255,255,.42); }
+
+    select:focus, input:focus{
+      border-color: rgba(65,243,162,.55);
+      box-shadow: 0 0 0 3px rgba(65,243,162,.14);
+    }
+
+    /* dropdown arrow visibility */
+    select{
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255,255,255,.85) 50%),
+        linear-gradient(135deg, rgba(255,255,255,.85) 50%, transparent 50%),
+        linear-gradient(to right, rgba(255,255,255,.16), rgba(255,255,255,.16));
+      background-position:
+        calc(100% - 18px) 55%,
+        calc(100% - 12px) 55%,
+        calc(100% - 36px) 50%;
+      background-size:
+        6px 6px,
+        6px 6px,
+        1px 22px;
+      background-repeat:no-repeat;
+      padding-right: 44px;
+    }
+
+    /* ===== Mini KPIs ===== */
+    .mini{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:stretch;
+      margin-top:12px;
+    }
+
+    .mini .kv{
+      padding:12px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      background: rgba(0,0,0,.22);
+      min-width: 220px;
+      flex:1;
+    }
+
+    .kv b{
+      display:block;
+      font-size: 12px;
+      color: rgba(255,255,255,.78);
+      margin-bottom:8px;
+      font-weight: 900;
+      letter-spacing:.15px;
+    }
+
+    .kv span{
+      font-size: 14px;
+      color: rgba(255,255,255,.92);
+      font-weight: 800;
+      word-break: break-all;
+    }
+
+    /* ===== Tabs ===== */
+    .tabs{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin:12px 0 12px;
+    }
+
+    .tab{
+      padding:9px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.22);
+      cursor:pointer;
+      color: rgba(255,255,255,.86);
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing:.2px;
+    }
+    .tab:hover{ filter: brightness(1.06); }
+
+    .tab.active{
+      color: rgba(0,0,0,.92);
+      border-color: rgba(65,243,162,.60);
+      background: linear-gradient(180deg, rgba(65,243,162,.95), rgba(65,243,162,.70));
+      box-shadow: 0 10px 20px rgba(65,243,162,.12);
+    }
+
+    .panel{ display:none; }
+    .panel.active{ display:block; }
+
+    /* ✅ 핵심: 탭 아래 패널 컨테이너를 다크 글라스로 고정 (흰 박스 제거) */
+    .panel.active{
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      backdrop-filter: blur(10px);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.18);
+    }
+
+    /* ===== Notice / Status ===== */
+    .notice{
+      margin-top:12px;
+      padding:12px 14px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.32);
+      color: rgba(255,255,255,.90);
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.55;
+      backdrop-filter: blur(6px);
+      text-shadow: 0 1px 0 rgba(0,0,0,.6);
+    }
+    .notice b{ color:#ffffff; }
+    .notice *{ color: rgba(255,255,255,.90); }
+
+    .status{
+      margin-top:12px;
+      padding:12px 14px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      font-size: 13px;
+      color: rgba(255,255,255,.82);
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+    .status[data-type="ok"]{ border-color: rgba(65,243,162,.55); color: rgba(65,243,162,.92); }
+    .status[data-type="warn"]{ border-color: rgba(255,207,90,.55); color: rgba(255,207,90,.92); }
+    .status[data-type="error"]{ border-color: rgba(255,92,122,.55); color: rgba(255,92,122,.92); }
+
+    /* ===== Small fixes ===== */
+    button, input, select { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <img src="https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png" alt="G-DEX">
+        <div>
+          <div class="brandTitle">G-DEX Pools</div>
+          <div class="sub">V2 Liquidity (SushiSwap Router/Factory) — Ethereum Mainnet</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <a class="pill backBtn" href="./index.html">← Back to Swap</a>
+        <button id="btnConnect" class="btn primary">Connect Wallet</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="h">
+          <h2>Pair / Pool</h2>
+          <div class="pill" id="netBadge">Not connected</div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Token A</label>
+            <select id="tokenA"></select>
+          </div>
+          <div class="field">
+            <label>Token B</label>
+            <select id="tokenB"></select>
+          </div>
+        </div>
+
+        <div class="mini">
+          <div class="kv">
+            <b>Pair Address</b>
+            <span id="pairAddr">-</span>
+          </div>
+          <div class="kv">
+            <b>Your LP Balance</b>
+            <span id="lpBal">-</span>
+          </div>
+          <div class="kv">
+            <b>Total LP Supply</b>
+            <span id="lpSupply">-</span>
+          </div>
+          <div class="kv">
+            <b>Reserves (A / B)</b>
+            <span id="reserves">-</span>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="pool actions">
+          <button class="tab active" data-tab="create">Create Pool</button>
+          <button class="tab" data-tab="add">Add Liquidity</button>
+          <button class="tab" data-tab="remove">Remove Liquidity</button>
+        </div>
+
+        <div class="panel active" data-panel="create">
+          <div class="row">
+            <button id="btnCreatePair" class="btn primary">Create Pair (Factory)</button>
+            <button id="btnRefresh" class="btn">Refresh</button>
+          </div>
+
+          <div class="notice">
+            • Create Pair only works if the pair doesn’t exist yet (one pair per token combination).<br>
+            • Anyone can create a pair on this factory (standard V2 behavior).
+          </div>
+        </div>
+
+        <div class="panel" data-panel="add">
+          <div class="row">
+            <div class="field">
+              <label>Amount Token A</label>
+              <input id="amtA" inputmode="decimal" placeholder="0.0">
+            </div>
+            <div class="field">
+              <label>Amount Token B (or ETH if B=ETH)</label>
+              <input id="amtB" inputmode="decimal" placeholder="0.0">
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <button id="btnApproveA" class="btn">Approve A</button>
+            <button id="btnApproveB" class="btn">Approve B</button>
+            <button id="btnAdd" class="btn primary">Add Liquidity</button>
+          </div>
+
+          <div class="notice">
+            • If you select ETH, the page uses addLiquidityETH internally (WETH behind the scenes).<br>
+            • Approve is required for ERC-20 tokens (not for ETH).
+          </div>
+        </div>
+
+        <div class="panel" data-panel="remove">
+          <div class="row">
+            <div class="field">
+              <label>Remove %</label>
+              <select id="removePct">
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+                <option value="75">75%</option>
+                <option value="100" selected>100%</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>LP to Remove (auto)</label>
+              <input id="lpToRemove" readonly>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <button id="btnApproveLP" class="btn">Approve LP</button>
+            <button id="btnRemove" class="btn danger">Remove Liquidity</button>
+          </div>
+
+          <div class="notice">
+            • You can only remove liquidity if you hold LP tokens for the selected pair.
+          </div>
+        </div>
+
+        <div id="status" class="status" data-type="">Ready.</div>
+      </div>
+
+      <div class="card">
+        <div class="h">
+          <h2>Info</h2>
+          <div class="pill">Mainnet</div>
+        </div>
+
+        <div class="notice">
+          <b>What this page does</b><br>
+          This is a separate Pool Manager page to keep the main G-DEX swap UI stable.<br><br>
+
+          <b>Contracts used</b><br>
+          • SushiSwap V2 Router: <span style="opacity:.9">0xd9e1…B9F</span><br>
+          • SushiSwap V2 Factory: <span style="opacity:.9">0xC0AE…2Ac</span><br>
+          • WETH: <span style="opacity:.9">0xC02a…6Cc2</span><br><br>
+
+          <b>Tip</b><br>
+          If “Pair Address” is <i>-</i>, click <b>Refresh</b>, or create the pair if it doesn’t exist.
+        </div>
+
+        <div class="notice" style="margin-top:12px;">
+          <b>Token list</b><br>
+          This page uses the same curated token list (ETH/GLIP/USDT/USDC/DAI/…).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./pool-page.js"></script>
+</body>
+</html>
