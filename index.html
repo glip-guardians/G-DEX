@@ -1324,23 +1324,31 @@ async function connectWallet(){
   }finally{ updateStatusBoard(); }
 }
 
-/* Pool → Sushi */
-function openSushiGlipEthPool(){
-  const url=`${SUSHI_ETHEREUM_POOL_BASE}?token0=NATIVE&token1=${GLIP_TOKEN_ADDRESS}`;
-  window.open(url,'_blank','noopener');
+/* Pool → G-DEX pool.html */
+function openGdexPoolPage(tab = "add"){
+  // GLIP/ETH 기본값으로 전달 (원하면 a,b를 바꿔도 됨)
+  const url = `./pool.html?v=3&tab=${encodeURIComponent(tab)}&a=ETH&b=GLIP`;
+
+  // ✅ 같은 탭에서 이동(모바일/지갑앱 브라우저에서 더 안정적)
+  window.location.href = url;
+
+  // 새탭을 꼭 원하면:
+  // window.open(url, '_blank', 'noopener');
 }
+
 function bindPoolSupplyButton(){
-  const btn=document.getElementById('poolSupply');
-  if(btn) btn.addEventListener('click', openSushiGlipEthPool);
+  const btn = document.getElementById('poolSupply');
+  if(btn) btn.addEventListener('click', () => openGdexPoolPage("add"));
 }
+
 function bindPoolQuickButtons(){
-  const add=document.getElementById("poolAdd");
-  const rm=document.getElementById("poolRemove");
-  const pos=document.getElementById("poolPositions");
-  const go=()=>openSushiGlipEthPool();
-  if(add) add.addEventListener("click",go);
-  if(rm) rm.addEventListener("click",go);
-  if(pos) pos.addEventListener("click",go);
+  const add = document.getElementById("poolAdd");
+  const rm  = document.getElementById("poolRemove");
+  const pos = document.getElementById("poolPositions");
+
+  if(add) add.addEventListener("click", () => openGdexPoolPage("add"));
+  if(rm)  rm.addEventListener("click",  () => openGdexPoolPage("remove"));
+  if(pos) pos.addEventListener("click", () => openGdexPoolPage("positions"));
 }
 
 /* TOP */
@@ -2188,6 +2196,7 @@ boot();
 </body>
 </html>
 <br><br>
+
 
 
 
