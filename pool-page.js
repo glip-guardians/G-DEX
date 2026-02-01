@@ -1,25 +1,36 @@
+/* =========================================================
+   G-DEX Pools — pool-page.js (Upgraded)
+   - Wallet connect (Swap-like): injected first + mobile deeplink fallback
+   - Custom token dropdown: search + logo + scroll fixed (mobile/iOS)
+   - SushiSwap V2 Router/Factory + standard V2 ABIs
+   Chain: Ethereum Mainnet
+========================================================= */
+
 (() => {
   "use strict";
 
-  console.log("[POOL] pool-page.js loaded");
-
-  /**********************
-   * CONFIG (Mainnet)
-   **********************/
+  /********************
+   * Config
+   ********************/
   const CHAIN_ID_REQUIRED = 1;
-  const ROUTER  = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
-  const FACTORY = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
-  const WETH    = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
-  const SLIPPAGE_BPS = 50;     // 0.5%
-  const DEADLINE_MINUTES = 20;
+  // SushiSwap V2 (Ethereum Mainnet)
+  const SUSHI_ROUTER = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F";
+  const SUSHI_FACTORY = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
+  const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
-  /**********************
-   * TOKEN LIST (same)
-   **********************/
+  // GLIP
+  const GLIP = "0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e";
+
+  // Sentinel for ETH option
+  const ETH_SENTINEL = "ETH";
+
+  /********************
+   * Token List (as provided)
+   ********************/
   const tokenList = [
     {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
-    {symbol:"GLIP", name:"GLIP Token", address:"0xD0b86b79AE4b8D7bb88b37EBe228ce343D79794e", decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
+    {symbol:"GLIP", name:"GLIP Token", address:GLIP, decimals:18, logo:"https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png"},
     {symbol:"USDT", name:"Tether USD", address:"0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals:6, logo:"https://assets.coingecko.com/coins/images/325/standard/Tether.png"},
     {symbol:"USDC", name:"USD Coin", address:"0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", decimals:6, logo:"https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png"},
     {symbol:"DAI", name:"Dai", address:"0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals:18, logo:"https://images.saymedia-content.com/.image/t_share/MTgyNTk1NDg5MDc2Njg0MTI4/maker-protokoll-dai-stablecoin-and-mkr-token-explained.png"},
@@ -56,27 +67,31 @@
     {symbol:"ANKR", name:"Ankr", address:"0x8290333ceF9e6D528dD5618Fb97a76f268f3EDD4", decimals:18, logo:"https://assets.coingecko.com/coins/images/4324/standard/U85xTl2.png"}
   ];
 
-  /**********************
-   * ABIs (V2 standard)
-   **********************/
+  /********************
+   * Minimal ABIs (V2 Standard)
+   ********************/
   const ABI_FACTORY = [
     "function getPair(address tokenA, address tokenB) external view returns (address pair)",
     "function createPair(address tokenA, address tokenB) external returns (address pair)"
   ];
+
   const ABI_PAIR = [
     "function token0() external view returns (address)",
     "function token1() external view returns (address)",
     "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
     "function totalSupply() external view returns (uint256)",
     "function balanceOf(address) external view returns (uint256)",
-    "function allowance(address owner, address spender) external view returns (uint256)",
     "function approve(address spender, uint256 value) external returns (bool)"
   ];
+
   const ABI_ERC20 = [
+    "function symbol() external view returns (string)",
     "function decimals() external view returns (uint8)",
+    "function balanceOf(address) external view returns (uint256)",
     "function allowance(address owner, address spender) external view returns (uint256)",
     "function approve(address spender, uint256 value) external returns (bool)"
   ];
+
   const ABI_ROUTER = [
     "function addLiquidity(address tokenA,address tokenB,uint amountADesired,uint amountBDesired,uint amountAMin,uint amountBMin,address to,uint deadline) external returns (uint amountA,uint amountB,uint liquidity)",
     "function addLiquidityETH(address token,uint amountTokenDesired,uint amountTokenMin,uint amountETHMin,address to,uint deadline) external payable returns (uint amountToken,uint amountETH,uint liquidity)",
@@ -84,550 +99,814 @@
     "function removeLiquidityETH(address token,uint liquidity,uint amountTokenMin,uint amountETHMin,address to,uint deadline) external returns (uint amountToken,uint amountETH)"
   ];
 
-  /**********************
-   * DOM helpers
-   **********************/
-  const el = (id) => document.getElementById(id);
-  const dom = {
-    tokenA: el("tokenA"),
-    tokenB: el("tokenB"),
-    pairAddr: el("pairAddr"),
-    lpBal: el("lpBal"),
-    lpSupply: el("lpSupply"),
-    reserves: el("reserves"),
-    netBadge: el("netBadge"),
-    status: el("status"),
+  const MAX_UINT = ethers.constants.MaxUint256;
+  const DEADLINE_SEC = 60 * 20; // 20 min
 
-    btnConnect: el("btnConnect"),
-    btnCreatePair: el("btnCreatePair"),
-    btnRefresh: el("btnRefresh"),
+  /********************
+   * DOM
+   ********************/
+  const dom = {};
+  function cacheDom(){
+    dom.btnConnect = document.getElementById("btnConnect");
+    dom.netBadge = document.getElementById("netBadge");
 
-    amtA: el("amtA"),
-    amtB: el("amtB"),
-    btnApproveA: el("btnApproveA"),
-    btnApproveB: el("btnApproveB"),
-    btnAdd: el("btnAdd"),
+    dom.tokenA = document.getElementById("tokenA");
+    dom.tokenB = document.getElementById("tokenB");
 
-    removePct: el("removePct"),
-    lpToRemove: el("lpToRemove"),
-    btnApproveLP: el("btnApproveLP"),
-    btnRemove: el("btnRemove")
-  };
+    dom.pairAddr = document.getElementById("pairAddr");
+    dom.lpBal = document.getElementById("lpBal");
+    dom.lpSupply = document.getElementById("lpSupply");
+    dom.reserves = document.getElementById("reserves");
 
-  /**********************
-   * State
-   **********************/
-  let provider = null;
-  let signer = null;
-  let user = null;
+    dom.btnCreatePair = document.getElementById("btnCreatePair");
+    dom.btnRefresh = document.getElementById("btnRefresh");
 
-  let factoryC = null;
-  let routerC  = null;
+    dom.amtA = document.getElementById("amtA");
+    dom.amtB = document.getElementById("amtB");
+    dom.btnApproveA = document.getElementById("btnApproveA");
+    dom.btnApproveB = document.getElementById("btnApproveB");
+    dom.btnAdd = document.getElementById("btnAdd");
 
-  let currentPair = null;
-  let currentPairC = null;
+    dom.removePct = document.getElementById("removePct");
+    dom.lpToRemove = document.getElementById("lpToRemove");
+    dom.btnApproveLP = document.getElementById("btnApproveLP");
+    dom.btnRemove = document.getElementById("btnRemove");
 
-  let currentTokenA = null;
-  let currentTokenB = null;
+    dom.status = document.getElementById("status");
+    dom.tabs = Array.from(document.querySelectorAll(".tab"));
+    dom.panels = Array.from(document.querySelectorAll(".panel"));
+  }
 
-  const BN = ethers.BigNumber;
-
-  /**********************
-   * Utils
-   **********************/
+  /********************
+   * UI helpers
+   ********************/
   function setStatus(msg, type=""){
-    dom.status.textContent = msg;
-    dom.status.setAttribute("data-type", type);
+    if (dom.status){
+      dom.status.textContent = String(msg ?? "");
+      dom.status.setAttribute("data-type", type);
+    }
   }
-
-  function setNet(text, ok=false){
-    dom.netBadge.textContent = text;
-    dom.netBadge.style.borderColor = ok ? "rgba(65,243,162,.55)" : "rgba(255,255,255,.20)";
+  function setNetBadge(text){
+    if (dom.netBadge) dom.netBadge.textContent = text || "";
   }
-
-  function shortAddr(a){
-    if (!a) return "-";
+  function short(a){
+    if (!a || typeof a !== "string") return "";
     return a.slice(0,6) + "…" + a.slice(-4);
   }
 
+  function bnToFloatStr(bn, decimals, precision=6){
+    if (!bn) return "-";
+    const s = ethers.utils.formatUnits(bn, decimals);
+    // trim
+    const [i, f=""] = s.split(".");
+    if (!f) return i;
+    return i + "." + f.slice(0, precision).replace(/0+$/,"");
+  }
+
   function nowDeadline(){
-    return Math.floor(Date.now()/1000) + DEADLINE_MINUTES*60;
+    return Math.floor(Date.now()/1000) + DEADLINE_SEC;
   }
 
-  function bpsMin(amountBN){
-    return amountBN.mul(10000 - SLIPPAGE_BPS).div(10000);
+  function isMobileUA(){
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   }
 
-  function isETH(t){ return t && t.address === "ETH"; }
-  function canonicalAddr(t){ return isETH(t) ? WETH : t.address; }
-
-  function findToken(val){
-    if (val === "ETH") return tokenList.find(x => x.address === "ETH");
-    const v = (val || "").toLowerCase();
-    return tokenList.find(x => (x.address || "").toLowerCase() === v) || null;
+  function hasInjected(){
+    return !!(window.ethereum && typeof window.ethereum.request === "function");
   }
 
-  function parseAmt(str, decimals){
-    const s = (str || "").trim();
-    if (!s || s === "." || s === "-") return null;
-    return ethers.utils.parseUnits(s, decimals);
+  function mmDeepLink(urlFull){
+    const noProto = (urlFull || location.href).replace(/^https?:\/\//, "");
+    return `https://metamask.app.link/dapp/${noProto}`;
   }
 
-  function fmt(amountBN, decimals, maxFrac=6){
-    const s = ethers.utils.formatUnits(amountBN, decimals);
-    if (!s.includes(".")) return s;
-    const [i,f] = s.split(".");
-    return `${i}.${f.slice(0,maxFrac)}`;
-  }
-
-  function fillSelect(sel){
-    sel.innerHTML = "";
-    tokenList.forEach(t => {
-      const o = document.createElement("option");
-      o.value = t.address;
-      o.textContent = `${t.symbol} — ${t.name}`;
-      sel.appendChild(o);
-    });
-  }
-
-  function setDefaultTokens(){
-    const glip = tokenList.find(t => t.symbol === "GLIP");
-    const eth  = tokenList.find(t => t.symbol === "ETH");
-    if (glip) dom.tokenA.value = glip.address;
-    if (eth)  dom.tokenB.value = eth.address;
-  }
-
-  function readTokens(){
-    currentTokenA = findToken(dom.tokenA.value);
-    currentTokenB = findToken(dom.tokenB.value);
-  }
-
-  function initReadOnlyContracts(){
-    if (!window.ethereum) return;
-    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    factoryC = new ethers.Contract(FACTORY, ABI_FACTORY, provider);
-    // router는 tx용이라 연결 후 signer로 생성
-  }
-
-  async function ensureConnected(){
-    if (!provider || !signer || !user) throw new Error("Wallet not connected.");
-    const net = await provider.getNetwork();
-    if (net.chainId !== CHAIN_ID_REQUIRED){
-      throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+  async function ensureMainnet(){
+    // best-effort switch
+    try{
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x1" }]
+      });
+      return true;
+    }catch(err){
+      setStatus("Please switch to Ethereum Mainnet in your wallet to use Pools.", "warn");
+      return false;
     }
   }
 
-  /**********************
-   * Tabs
-   **********************/
-  function setupTabs(){
-    const tabs = document.querySelectorAll(".tab");
-    const panels = document.querySelectorAll(".panel");
-    tabs.forEach(t => {
-      t.addEventListener("click", () => {
-        tabs.forEach(x => x.classList.remove("active"));
-        t.classList.add("active");
-        const key = t.getAttribute("data-tab");
-        panels.forEach(p => p.classList.toggle("active", p.getAttribute("data-panel") === key));
+  /********************
+   * Global state
+   ********************/
+  let provider = null;
+  let signer = null;
+  let account = null;
+  let chainId = null;
+
+  function requireConnected(){
+    if (!signer || !account) throw new Error("Connect wallet first.");
+  }
+
+  /********************
+   * Contracts (lazy)
+   ********************/
+  function getFactory(readOnly=false){
+    const p = readOnly ? (provider || new ethers.providers.JsonRpcProvider()) : signer;
+    return new ethers.Contract(SUSHI_FACTORY, ABI_FACTORY, p);
+  }
+  function getRouter(){
+    return new ethers.Contract(SUSHI_ROUTER, ABI_ROUTER, signer);
+  }
+  function erc20(addr, readOnly=false){
+    const p = readOnly ? (provider || new ethers.providers.JsonRpcProvider()) : signer;
+    return new ethers.Contract(addr, ABI_ERC20, p);
+  }
+  function pairContract(addr, readOnly=false){
+    const p = readOnly ? (provider || new ethers.providers.JsonRpcProvider()) : signer;
+    return new ethers.Contract(addr, ABI_PAIR, p);
+  }
+
+  /********************
+   * Token helpers
+   ********************/
+  const tokenByAddr = new Map();
+  const tokenBySymbol = new Map();
+  tokenList.forEach(t => {
+    tokenBySymbol.set(t.symbol, t);
+    if (t.address !== ETH_SENTINEL) tokenByAddr.set(t.address.toLowerCase(), t);
+  });
+
+  function normalizeTokenAddress(addr){
+    if (!addr) return addr;
+    if (addr === ETH_SENTINEL) return ETH_SENTINEL;
+    return ethers.utils.getAddress(addr);
+  }
+
+  function resolveToOnchainAddress(addrOrEth){
+    // Factory/Pair/Router always deals with ERC20 addresses; ETH => WETH
+    if (addrOrEth === ETH_SENTINEL) return WETH;
+    return normalizeTokenAddress(addrOrEth);
+  }
+
+  function getTokenMeta(addrOrEth){
+    if (addrOrEth === ETH_SENTINEL) return tokenBySymbol.get("ETH");
+    const key = String(addrOrEth).toLowerCase();
+    return tokenByAddr.get(key);
+  }
+
+  /********************
+   * Fill hidden selects synchronously (prevents dropdown mismatch)
+   ********************/
+  function fillCompatSelects(){
+    if (!dom.tokenA || !dom.tokenB) return;
+
+    const optsHtml = tokenList.map(t => {
+      const label = `${t.symbol} — ${t.name}`;
+      const value = t.address; // ETH sentinel stays "ETH"
+      return `<option value="${value}">${label}</option>`;
+    }).join("");
+
+    dom.tokenA.innerHTML = optsHtml;
+    dom.tokenB.innerHTML = optsHtml;
+
+    // Defaults: TokenA=GLIP, TokenB=ETH (if present)
+    const hasGLIP = tokenList.some(t => t.symbol === "GLIP");
+    const hasETH = tokenList.some(t => t.symbol === "ETH");
+
+    if (hasGLIP) dom.tokenA.value = GLIP;
+    if (hasETH) dom.tokenB.value = ETH_SENTINEL;
+  }
+
+  /********************
+   * Custom Dropdown (rebuild + mobile scroll fix)
+   * Requires pool.html to have .tokenSelect wrappers (as you already have)
+   ********************/
+  function initCustomDropdowns(){
+    const boxes = Array.from(document.querySelectorAll('.tokenSelect[data-role="tokenSelect"]'));
+    if (!boxes.length) return;
+
+    // Create overlay if not exists
+    let overlay = document.getElementById("ddOverlay");
+    if (!overlay){
+      overlay = document.createElement("div");
+      overlay.id = "ddOverlay";
+      overlay.className = "ddOverlay";
+      document.body.appendChild(overlay);
+    }
+
+    function closeAll(){
+      boxes.forEach(b => {
+        const dd = b.querySelector(".dropdown");
+        const tr = b.querySelector(".tokenTrigger");
+        if (dd) dd.classList.remove("open");
+        if (tr) tr.setAttribute("aria-expanded","false");
+      });
+      overlay.classList.remove("open");
+    }
+
+    overlay.addEventListener("click", closeAll);
+
+    window.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") closeAll();
+    });
+
+    // helper: render selected view
+    function renderSelected(box, token){
+      const logo = box.querySelector(".tokenLogo");
+      const sym = box.querySelector(".tokenText .sym");
+      const name = box.querySelector(".tokenText .name");
+      if (logo) logo.src = token.logo || "";
+      if (sym) sym.textContent = token.symbol || "-";
+      if (name) name.textContent = token.name || "Select token";
+    }
+
+    // Build list from tokenList (NOT from select options) => icon always matches
+    function renderList(box, filter=""){
+      const list = box.querySelector(".ddList");
+      if (!list) return;
+
+      const f = filter.trim().toLowerCase();
+      list.innerHTML = "";
+
+      const targetId = box.getAttribute("data-target");
+      const compat = document.getElementById(targetId);
+      const selectedVal = compat ? compat.value : "";
+
+      const tokens = tokenList.filter(t => {
+        if (!f) return true;
+        return (t.symbol || "").toLowerCase().includes(f) || (t.name || "").toLowerCase().includes(f);
+      });
+
+      tokens.forEach(t => {
+        const item = document.createElement("div");
+        item.className = "ddItem" + (String(selectedVal).toLowerCase() === String(t.address).toLowerCase() ? " active" : "");
+        item.setAttribute("role","option");
+
+        item.innerHTML = `
+          <div class="ddItemLeft">
+            <img class="tokenLogo" src="${t.logo || ""}" alt="">
+            <div class="ddItemText">
+              <div class="sym">${t.symbol}</div>
+              <div class="name">${t.name}</div>
+            </div>
+          </div>
+          <div class="ddTag">${t.symbol}</div>
+        `;
+
+        item.addEventListener("click", () => {
+          if (!compat) return;
+          compat.value = t.address;
+
+          // Fire change event so logic updates
+          compat.dispatchEvent(new Event("change", { bubbles:true }));
+
+          renderSelected(box, t);
+          closeAll();
+        });
+
+        list.appendChild(item);
+      });
+
+      if (!list.children.length){
+        const empty = document.createElement("div");
+        empty.style.padding = "12px";
+        empty.style.color = "rgba(255,255,255,.75)";
+        empty.style.fontWeight = "800";
+        empty.textContent = "No results.";
+        list.appendChild(empty);
+      }
+
+      // Mobile/iOS scroll fix
+      list.style.maxHeight = "260px";
+      list.style.overflowY = "auto";
+      list.style.webkitOverflowScrolling = "touch";
+
+      // Prevent overlay/body capturing touch scroll
+      list.addEventListener("touchstart", (e)=>{ e.stopPropagation(); }, {passive:true});
+      list.addEventListener("touchmove", (e)=>{ e.stopPropagation(); }, {passive:true});
+    }
+
+    boxes.forEach(box => {
+      const targetId = box.getAttribute("data-target");
+      const compat = document.getElementById(targetId);
+
+      const trigger = box.querySelector(".tokenTrigger");
+      const dd = box.querySelector(".dropdown");
+      const search = box.querySelector(".ddSearch");
+      const list = box.querySelector(".ddList");
+
+      if (!compat || !trigger || !dd || !search || !list) return;
+
+      // Initial selected
+      const initialMeta = getTokenMeta(compat.value) || tokenBySymbol.get("ETH") || tokenList[0];
+      if (initialMeta) renderSelected(box, initialMeta);
+
+      // open/close
+      trigger.addEventListener("click", (e) => {
+        e.preventDefault();
+        const isOpen = dd.classList.contains("open");
+        closeAll();
+        if (!isOpen){
+          dd.classList.add("open");
+          trigger.setAttribute("aria-expanded","true");
+          overlay.classList.add("open");
+          search.value = "";
+          renderList(box, "");
+          setTimeout(()=>search.focus(), 0);
+        }
+      });
+
+      search.addEventListener("input", () => renderList(box, search.value));
+
+      // if compat changes programmatically, sync UI
+      compat.addEventListener("change", () => {
+        const m = getTokenMeta(compat.value);
+        if (m) renderSelected(box, m);
       });
     });
   }
 
-  /**********************
-   * Refresh (requires provider, LP balance requires user)
-   **********************/
+  /********************
+   * Tabs
+   ********************/
+  function initTabs(){
+    dom.tabs.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab");
+        dom.tabs.forEach(b => b.classList.toggle("active", b === btn));
+        dom.panels.forEach(p => p.classList.toggle("active", p.getAttribute("data-panel") === tab));
+      });
+    });
+  }
+
+  /********************
+   * Wallet Connect (Swap-like)
+   ********************/
+  async function connectWallet(){
+    // Mobile browser without injected -> deeplink to MetaMask
+    if (isMobileUA() && !hasInjected()){
+      setStatus("Mobile browser has no injected wallet.\nOpening in MetaMask…", "warn");
+      location.href = mmDeepLink(location.href);
+      return false;
+    }
+
+    if (!hasInjected()){
+      setStatus("No wallet detected. Please install MetaMask or open in wallet in-app browser.", "warn");
+      return false;
+    }
+
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
+    // IMPORTANT: request accounts directly on click path
+    try{
+      await provider.send("eth_requestAccounts", []);
+    }catch(err){
+      setStatus("Connect cancelled/failed.\n" + (err?.message || err), "error");
+      return false;
+    }
+
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+    const net = await provider.getNetwork();
+    chainId = Number(net.chainId);
+
+    if (chainId !== CHAIN_ID_REQUIRED){
+      setStatus(`Wrong network (chainId=${chainId}). Switching to Ethereum Mainnet…`, "warn");
+      const ok = await ensureMainnet();
+      if (!ok) return false;
+      const net2 = await provider.getNetwork();
+      chainId = Number(net2.chainId);
+      if (chainId !== CHAIN_ID_REQUIRED){
+        setStatus("Mainnet switch not completed. Please retry.", "warn");
+        return false;
+      }
+    }
+
+    setNetBadge("Connected · " + short(account));
+    setStatus("Wallet connected.\nAccount: " + account, "ok");
+
+    if (dom.btnConnect){
+      dom.btnConnect.textContent = "Connected";
+      dom.btnConnect.disabled = true;
+    }
+
+    // events (swap-like)
+    if (!window.__GDEX_POOL_EVENTS_BOUND__){
+      window.__GDEX_POOL_EVENTS_BOUND__ = true;
+
+      window.ethereum.on?.("accountsChanged", (accs) => {
+        const a = accs && accs[0] ? accs[0] : null;
+        account = a;
+        if (!a){
+          setNetBadge("Not connected");
+          if (dom.btnConnect){
+            dom.btnConnect.textContent = "Connect Wallet";
+            dom.btnConnect.disabled = false;
+          }
+          setStatus("Disconnected. Please connect again.", "warn");
+          return;
+        }
+        setNetBadge("Connected · " + short(a));
+        setStatus("Account changed.\n" + a, "ok");
+        refresh().catch(()=>{});
+      });
+
+      window.ethereum.on?.("chainChanged", async () => {
+        try{
+          const net3 = await provider.getNetwork();
+          chainId = Number(net3.chainId);
+        }catch(e){}
+        setStatus("Network changed.\nRefreshing…", "warn");
+        if (chainId !== CHAIN_ID_REQUIRED){
+          await ensureMainnet();
+        }
+        refresh().catch(()=>{});
+      });
+    }
+
+    return true;
+  }
+
+  /********************
+   * Core: Pair / LP / Reserves
+   ********************/
+  function getSelected(){
+    const a = dom.tokenA?.value;
+    const b = dom.tokenB?.value;
+    if (!a || !b) throw new Error("Select Token A and Token B.");
+    if (String(a).toLowerCase() === String(b).toLowerCase()) throw new Error("Token A and Token B must be different.");
+    return { a, b };
+  }
+
+  async function findPairAddress(aSel, bSel){
+    const aOn = resolveToOnchainAddress(aSel);
+    const bOn = resolveToOnchainAddress(bSel);
+    const f = getFactory(true);
+    const pair = await f.getPair(aOn, bOn);
+    return pair;
+  }
+
   async function refresh(){
     try{
-      if (!provider || !factoryC){
-        setStatus("Wallet extension not detected. Install/enable MetaMask.", "error");
-        return;
-      }
+      const { a, b } = getSelected();
+      setStatus("Refreshing pair info…", "");
 
-      readTokens();
-      if (!currentTokenA || !currentTokenB){
-        setStatus("Select Token A / Token B.", "warn");
-        return;
-      }
+      const pair = await findPairAddress(a, b);
+      dom.pairAddr.textContent = (pair && pair !== ethers.constants.AddressZero) ? pair : "-";
 
-      const a = canonicalAddr(currentTokenA).toLowerCase();
-      const b = canonicalAddr(currentTokenB).toLowerCase();
-      if (a === b){
-        dom.pairAddr.textContent = "-";
-        dom.lpBal.textContent = "-";
-        dom.lpSupply.textContent = "-";
-        dom.reserves.textContent = "-";
-        setStatus("Token A and Token B cannot be the same.", "warn");
-        return;
-      }
-
-      const pair = await factoryC.getPair(canonicalAddr(currentTokenA), canonicalAddr(currentTokenB));
       if (!pair || pair === ethers.constants.AddressZero){
-        currentPair = null;
-        currentPairC = null;
-        dom.pairAddr.textContent = "-";
         dom.lpBal.textContent = "-";
         dom.lpSupply.textContent = "-";
         dom.reserves.textContent = "-";
         dom.lpToRemove.value = "";
-        dom.lpToRemove.removeAttribute("data-raw");
-        setStatus("Pair not found. You can create it (Factory) if needed.", "warn");
+        setStatus("Pair not found. Click 'Create Pair' if it doesn't exist.", "warn");
         return;
       }
 
-      currentPair = pair;
-      currentPairC = new ethers.Contract(currentPair, ABI_PAIR, provider);
+      // Pair info
+      const p = pairContract(pair, true);
+      const [t0, t1, reserves, totalSupply] = await Promise.all([
+        p.token0(),
+        p.token1(),
+        p.getReserves(),
+        p.totalSupply()
+      ]);
 
-      dom.pairAddr.textContent = currentPair;
+      // Determine selected tokens meta/decimals
+      const aOn = resolveToOnchainAddress(a);
+      const bOn = resolveToOnchainAddress(b);
 
-      const [t0, t1] = await Promise.all([currentPairC.token0(), currentPairC.token1()]);
-      const res = await currentPairC.getReserves();
-      const totalSupply = await currentPairC.totalSupply();
+      const aMeta = (a === ETH_SENTINEL) ? tokenBySymbol.get("ETH") : getTokenMeta(aOn);
+      const bMeta = (b === ETH_SENTINEL) ? tokenBySymbol.get("ETH") : getTokenMeta(bOn);
 
-      const aAddr = canonicalAddr(currentTokenA).toLowerCase();
-      const bAddr = canonicalAddr(currentTokenB).toLowerCase();
+      const aDec = aMeta?.decimals ?? 18;
+      const bDec = bMeta?.decimals ?? 18;
 
-      let reserveA, reserveB;
-      if (aAddr === t0.toLowerCase() && bAddr === t1.toLowerCase()){
-        reserveA = res.reserve0; reserveB = res.reserve1;
-      } else if (aAddr === t1.toLowerCase() && bAddr === t0.toLowerCase()){
-        reserveA = res.reserve1; reserveB = res.reserve0;
+      // map reserves to selected order
+      const r0 = ethers.BigNumber.from(reserves.reserve0);
+      const r1 = ethers.BigNumber.from(reserves.reserve1);
+
+      let resA, resB;
+      if (String(t0).toLowerCase() === String(aOn).toLowerCase()){
+        resA = r0; resB = r1;
       } else {
-        reserveA = res.reserve0; reserveB = res.reserve1;
+        resA = r1; resB = r0;
       }
 
-      dom.lpSupply.textContent = fmt(totalSupply, 18, 6);
-      dom.reserves.textContent = `${fmt(reserveA, currentTokenA.decimals, 6)} / ${fmt(reserveB, currentTokenB.decimals, 6)}`;
+      dom.lpSupply.textContent = bnToFloatStr(totalSupply, 18, 6);
+      dom.reserves.textContent =
+        `${bnToFloatStr(resA, aDec, 6)} ${aMeta?.symbol || "A"} / ${bnToFloatStr(resB, bDec, 6)} ${bMeta?.symbol || "B"}`;
 
-      if (user){
-        const bal = await currentPairC.balanceOf(user);
-        dom.lpBal.textContent = fmt(bal, 18, 6);
-        await recomputeLpToRemove();
+      // User LP balance
+      if (account){
+        const bal = await p.balanceOf(account);
+        dom.lpBal.textContent = bnToFloatStr(bal, 18, 6);
+        // recompute lpToRemove based on pct
+        computeLpToRemove(bal);
       } else {
         dom.lpBal.textContent = "-";
+        dom.lpToRemove.value = "";
       }
 
       setStatus("Refreshed.", "ok");
     }catch(err){
       console.error(err);
-      setStatus(`Refresh error: ${err?.message || err}`, "error");
+      setStatus("Refresh error: " + (err?.message || err), "error");
     }
   }
 
-  async function recomputeLpToRemove(){
-    if (!user || !currentPairC) {
-      dom.lpToRemove.value = "";
-      dom.lpToRemove.removeAttribute("data-raw");
-      return;
-    }
-    const pct = parseInt(dom.removePct.value || "100", 10);
-    const bal = await currentPairC.balanceOf(user);
-    const toRemove = bal.mul(pct).div(100);
-    dom.lpToRemove.value = fmt(toRemove, 18, 6);
-    dom.lpToRemove.setAttribute("data-raw", toRemove.toString());
-  }
-
-  /**********************
-   * Approvals
-   **********************/
-  async function ensureApprove(tokenAddr, amountBN){
-    if (!tokenAddr || tokenAddr === "ETH") return;
-    const tokenC = new ethers.Contract(tokenAddr, ABI_ERC20, signer);
-    const allowance = await tokenC.allowance(user, ROUTER);
-    if (allowance.gte(amountBN)) return;
-
-    setStatus("Approve required. Sending approve…", "warn");
-    const tx = await tokenC.approve(ROUTER, amountBN);
-    setStatus(`Approve tx sent: ${tx.hash}`, "warn");
-    await tx.wait();
-    setStatus("Approve confirmed.", "ok");
-  }
-
-  /**********************
-   * Actions
-   **********************/
-  async function doConnect(){
+  function computeLpToRemove(lpBalBn){
     try{
-      if (!window.ethereum) throw new Error("No wallet found. Install/enable MetaMask.");
-      provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      await provider.send("eth_requestAccounts", []);
-
-      signer = provider.getSigner();
-      user = await signer.getAddress();
-
-      const net = await provider.getNetwork();
-      if (net.chainId !== CHAIN_ID_REQUIRED){
-        setNet("Wrong network", false);
-        setStatus("Wrong network. Switch to Ethereum Mainnet.", "error");
-      } else {
-        setNet("Mainnet", true);
-        setStatus(`Connected: ${user}`, "ok");
+      const pct = Number(dom.removePct?.value || 100);
+      if (!lpBalBn || !ethers.BigNumber.isBigNumber(lpBalBn)){
+        dom.lpToRemove.value = "";
+        return;
       }
-
-      dom.btnConnect.textContent = `Connected: ${shortAddr(user)}`;
-
-      factoryC = new ethers.Contract(FACTORY, ABI_FACTORY, provider);
-      routerC  = new ethers.Contract(ROUTER, ABI_ROUTER, signer);
-
-      await refresh();
-
-      window.ethereum.on("accountsChanged", async (accs) => {
-        if (!accs || !accs.length){
-          user = null; signer = null;
-          dom.btnConnect.textContent = "Connect Wallet";
-          setNet("Not connected", false);
-          setStatus("Disconnected.", "warn");
-          await refresh();
-          return;
-        }
-        user = accs[0];
-        signer = provider.getSigner();
-        dom.btnConnect.textContent = `Connected: ${shortAddr(user)}`;
-        routerC = new ethers.Contract(ROUTER, ABI_ROUTER, signer);
-        setStatus(`Account changed: ${user}`, "ok");
-        await refresh();
-      });
-
-      window.ethereum.on("chainChanged", () => location.reload());
-    }catch(err){
-      console.error(err);
-      setStatus(err?.message || String(err), "error");
+      const remove = lpBalBn.mul(pct).div(100);
+      dom.lpToRemove.value = bnToFloatStr(remove, 18, 8);
+      dom.lpToRemove.dataset.bn = remove.toString();
+    }catch(e){
+      dom.lpToRemove.value = "";
     }
   }
 
+  /********************
+   * Actions
+   ********************/
   async function createPair(){
     try{
-      await ensureConnected();
-      readTokens();
-      const a = canonicalAddr(currentTokenA);
-      const b = canonicalAddr(currentTokenB);
-      if (a.toLowerCase() === b.toLowerCase()) throw new Error("Tokens must be different.");
+      requireConnected();
+      const { a, b } = getSelected();
+      const aOn = resolveToOnchainAddress(a);
+      const bOn = resolveToOnchainAddress(b);
 
-      setStatus("Sending createPair…", "warn");
-      const fac = new ethers.Contract(FACTORY, ABI_FACTORY, signer);
-      const tx = await fac.createPair(a,b);
-      setStatus(`createPair tx sent: ${tx.hash}`, "warn");
+      setStatus("Creating pair… (Factory)", "");
+      const f = new ethers.Contract(SUSHI_FACTORY, ABI_FACTORY, signer);
+
+      const tx = await f.createPair(aOn, bOn);
+      setStatus("Tx sent: " + tx.hash + "\nWaiting…", "warn");
       await tx.wait();
+
       setStatus("Pair created. Refreshing…", "ok");
       await refresh();
     }catch(err){
       console.error(err);
-      setStatus(err?.message || String(err), "error");
+      setStatus("Create Pair error: " + (err?.message || err), "error");
     }
   }
 
-  async function approveA(){
+  async function approveToken(tokenAddrOrEth){
     try{
-      await ensureConnected();
-      readTokens();
-      if (isETH(currentTokenA)) { setStatus("Token A is ETH. No approval needed.", "ok"); return; }
-      const amt = parseAmt(dom.amtA.value, currentTokenA.decimals);
-      if (!amt) throw new Error("Enter Amount Token A first.");
-      await ensureApprove(currentTokenA.address, amt);
-    }catch(err){ console.error(err); setStatus(err?.message || String(err), "error"); }
-  }
+      requireConnected();
+      if (tokenAddrOrEth === ETH_SENTINEL){
+        setStatus("ETH does not require approval.", "ok");
+        return;
+      }
+      const tokenAddr = normalizeTokenAddress(tokenAddrOrEth);
+      const t = erc20(tokenAddr, false);
 
-  async function approveB(){
-    try{
-      await ensureConnected();
-      readTokens();
-      if (isETH(currentTokenB)) { setStatus("Token B is ETH. No approval needed.", "ok"); return; }
-      const amt = parseAmt(dom.amtB.value, currentTokenB.decimals);
-      if (!amt) throw new Error("Enter Amount Token B first.");
-      await ensureApprove(currentTokenB.address, amt);
-    }catch(err){ console.error(err); setStatus(err?.message || String(err), "error"); }
+      const allowance = await t.allowance(account, SUSHI_ROUTER);
+      if (allowance.gte(ethers.utils.parseUnits("1000000000", 18))){
+        setStatus("Already approved.", "ok");
+        return;
+      }
+      setStatus("Approving…", "");
+      const tx = await t.approve(SUSHI_ROUTER, MAX_UINT);
+      setStatus("Approve tx: " + tx.hash + "\nWaiting…", "warn");
+      await tx.wait();
+      setStatus("Approved.", "ok");
+    }catch(err){
+      console.error(err);
+      setStatus("Approve error: " + (err?.message || err), "error");
+    }
   }
 
   async function addLiquidity(){
     try{
-      await ensureConnected();
-      readTokens();
+      requireConnected();
+      const { a, b } = getSelected();
 
-      const aIsEth = isETH(currentTokenA);
-      const bIsEth = isETH(currentTokenB);
-      if (aIsEth && bIsEth) throw new Error("ETH/ETH is not valid.");
+      const amtA = (dom.amtA?.value || "").trim();
+      const amtB = (dom.amtB?.value || "").trim();
+      if (!amtA || !amtB) throw new Error("Enter both amounts.");
 
+      const aMeta = (a === ETH_SENTINEL) ? tokenBySymbol.get("ETH") : getTokenMeta(resolveToOnchainAddress(a));
+      const bMeta = (b === ETH_SENTINEL) ? tokenBySymbol.get("ETH") : getTokenMeta(resolveToOnchainAddress(b));
+      const aDec = aMeta?.decimals ?? 18;
+      const bDec = bMeta?.decimals ?? 18;
+
+      const router = getRouter();
       const deadline = nowDeadline();
 
-      if (aIsEth || bIsEth){
-        const token = aIsEth ? currentTokenB : currentTokenA;
-        const tokenAmtStr = aIsEth ? dom.amtB.value : dom.amtA.value;
-        const ethAmtStr   = aIsEth ? dom.amtA.value : dom.amtB.value;
+      // Slippage min: keep simple (0) to reduce reverts in early stage
+      const minA = 0;
+      const minB = 0;
 
-        const amountTokenDesired = parseAmt(tokenAmtStr, token.decimals);
-        const amountETHDesired   = parseAmt(ethAmtStr, 18);
-        if (!amountTokenDesired || amountTokenDesired.lte(0)) throw new Error("Enter token amount.");
-        if (!amountETHDesired || amountETHDesired.lte(0)) throw new Error("Enter ETH amount.");
+      setStatus("Adding liquidity…", "");
 
-        await ensureApprove(token.address, amountTokenDesired);
+      // ETH cases
+      if (a === ETH_SENTINEL && b === ETH_SENTINEL) throw new Error("ETH/ETH is not valid.");
 
-        const amountTokenMin = bpsMin(amountTokenDesired);
-        const amountETHMin   = bpsMin(amountETHDesired);
+      if (a === ETH_SENTINEL || b === ETH_SENTINEL){
+        const token = (a === ETH_SENTINEL) ? resolveToOnchainAddress(b) : resolveToOnchainAddress(a);
+        const tokenAmt = (a === ETH_SENTINEL) ? ethers.utils.parseUnits(amtB, bDec) : ethers.utils.parseUnits(amtA, aDec);
+        const ethAmt = (a === ETH_SENTINEL) ? ethers.utils.parseUnits(amtA, 18) : ethers.utils.parseUnits(amtB, 18);
 
-        setStatus("Sending addLiquidityETH…", "warn");
-        const tx = await routerC.addLiquidityETH(
-          token.address,
-          amountTokenDesired,
-          amountTokenMin,
-          amountETHMin,
-          user,
+        // Approve token only
+        if (a === ETH_SENTINEL){
+          await approveToken(b);
+        }else{
+          await approveToken(a);
+        }
+
+        const tx = await router.addLiquidityETH(
+          token,
+          tokenAmt,
+          minA,
+          minB,
+          account,
           deadline,
-          { value: amountETHDesired }
+          { value: ethAmt }
         );
-        setStatus(`Tx sent: ${tx.hash}`, "warn");
+
+        setStatus("Tx sent: " + tx.hash + "\nWaiting…", "warn");
         await tx.wait();
-        setStatus("Liquidity added. Refreshing…", "ok");
-        await refresh();
-        return;
+      } else {
+        const aOn = resolveToOnchainAddress(a);
+        const bOn = resolveToOnchainAddress(b);
+
+        await approveToken(a);
+        await approveToken(b);
+
+        const aAmt = ethers.utils.parseUnits(amtA, aDec);
+        const bAmt = ethers.utils.parseUnits(amtB, bDec);
+
+        const tx = await router.addLiquidity(
+          aOn, bOn,
+          aAmt, bAmt,
+          minA, minB,
+          account,
+          deadline
+        );
+
+        setStatus("Tx sent: " + tx.hash + "\nWaiting…", "warn");
+        await tx.wait();
       }
 
-      const amountADesired = parseAmt(dom.amtA.value, currentTokenA.decimals);
-      const amountBDesired = parseAmt(dom.amtB.value, currentTokenB.decimals);
-      if (!amountADesired || amountADesired.lte(0)) throw new Error("Enter Amount Token A.");
-      if (!amountBDesired || amountBDesired.lte(0)) throw new Error("Enter Amount Token B.");
-
-      await ensureApprove(currentTokenA.address, amountADesired);
-      await ensureApprove(currentTokenB.address, amountBDesired);
-
-      const amountAMin = bpsMin(amountADesired);
-      const amountBMin = bpsMin(amountBDesired);
-
-      setStatus("Sending addLiquidity…", "warn");
-      const tx = await routerC.addLiquidity(
-        currentTokenA.address,
-        currentTokenB.address,
-        amountADesired,
-        amountBDesired,
-        amountAMin,
-        amountBMin,
-        user,
-        deadline
-      );
-      setStatus(`Tx sent: ${tx.hash}`, "warn");
-      await tx.wait();
       setStatus("Liquidity added. Refreshing…", "ok");
       await refresh();
-    }catch(err){ console.error(err); setStatus(err?.message || String(err), "error"); }
+    }catch(err){
+      console.error(err);
+      setStatus("Add Liquidity error: " + (err?.message || err), "error");
+    }
   }
 
   async function approveLP(){
     try{
-      await ensureConnected();
-      if (!currentPairC) throw new Error("No pair. Refresh first.");
-      const raw = dom.lpToRemove.getAttribute("data-raw");
-      if (!raw) throw new Error("LP to Remove is empty. Choose % and Refresh.");
-      const lpAmount = BN.from(raw);
-
-      const allowance = await currentPairC.allowance(user, ROUTER);
-      if (allowance.gte(lpAmount)){
-        setStatus("LP already approved.", "ok");
-        return;
-      }
-
-      setStatus("Approving LP token…", "warn");
-      const tx = await currentPairC.connect(signer).approve(ROUTER, lpAmount);
-      setStatus(`Approve LP tx sent: ${tx.hash}`, "warn");
+      requireConnected();
+      const pair = dom.pairAddr?.textContent?.trim();
+      if (!pair || pair === "-" ) throw new Error("Pair not found.");
+      const p = pairContract(pair, false);
+      setStatus("Approving LP…", "");
+      const tx = await p.approve(SUSHI_ROUTER, MAX_UINT);
+      setStatus("Approve LP tx: " + tx.hash + "\nWaiting…", "warn");
       await tx.wait();
-      setStatus("Approve LP confirmed.", "ok");
-    }catch(err){ console.error(err); setStatus(err?.message || String(err), "error"); }
+      setStatus("LP approved.", "ok");
+    }catch(err){
+      console.error(err);
+      setStatus("Approve LP error: " + (err?.message || err), "error");
+    }
   }
 
   async function removeLiquidity(){
     try{
-      await ensureConnected();
-      readTokens();
-      if (!currentPairC) throw new Error("No pair. Refresh first.");
-      const raw = dom.lpToRemove.getAttribute("data-raw");
-      if (!raw) throw new Error("LP to Remove is empty. Choose % and Refresh.");
+      requireConnected();
+      const { a, b } = getSelected();
 
-      const liquidity = BN.from(raw);
-      if (liquidity.lte(0)) throw new Error("LP to remove must be > 0.");
+      const pair = dom.pairAddr?.textContent?.trim();
+      if (!pair || pair === "-" ) throw new Error("Pair not found.");
 
+      // determine LP amount to remove
+      const lpBnStr = dom.lpToRemove?.dataset?.bn;
+      if (!lpBnStr) throw new Error("No LP amount calculated.");
+      const lpAmt = ethers.BigNumber.from(lpBnStr);
+      if (lpAmt.lte(0)) throw new Error("LP to remove is zero.");
+
+      const router = getRouter();
       const deadline = nowDeadline();
 
-      const aIsEth = isETH(currentTokenA);
-      const bIsEth = isETH(currentTokenB);
+      setStatus("Removing liquidity…", "");
 
-      // 실패 방지 위해 min=0
-      const amountMin0 = BN.from(0);
+      const minA = 0;
+      const minB = 0;
 
-      if (aIsEth || bIsEth){
-        const token = aIsEth ? currentTokenB : currentTokenA;
+      if (a === ETH_SENTINEL || b === ETH_SENTINEL){
+        const token = (a === ETH_SENTINEL) ? resolveToOnchainAddress(b) : resolveToOnchainAddress(a);
+        await approveLP();
 
-        setStatus("Sending removeLiquidityETH…", "warn");
-        const tx = await routerC.removeLiquidityETH(
-          token.address,
-          liquidity,
-          amountMin0,
-          amountMin0,
-          user,
+        const tx = await router.removeLiquidityETH(
+          token,
+          lpAmt,
+          minA,
+          minB,
+          account,
           deadline
         );
-        setStatus(`Tx sent: ${tx.hash}`, "warn");
+        setStatus("Tx sent: " + tx.hash + "\nWaiting…", "warn");
         await tx.wait();
-        setStatus("Liquidity removed. Refreshing…", "ok");
-        await refresh();
-        return;
+      } else {
+        const aOn = resolveToOnchainAddress(a);
+        const bOn = resolveToOnchainAddress(b);
+        await approveLP();
+
+        const tx = await router.removeLiquidity(
+          aOn, bOn,
+          lpAmt,
+          minA, minB,
+          account,
+          deadline
+        );
+        setStatus("Tx sent: " + tx.hash + "\nWaiting…", "warn");
+        await tx.wait();
       }
 
-      setStatus("Sending removeLiquidity…", "warn");
-      const tx = await routerC.removeLiquidity(
-        currentTokenA.address,
-        currentTokenB.address,
-        liquidity,
-        amountMin0,
-        amountMin0,
-        user,
-        deadline
-      );
-      setStatus(`Tx sent: ${tx.hash}`, "warn");
-      await tx.wait();
       setStatus("Liquidity removed. Refreshing…", "ok");
       await refresh();
-    }catch(err){ console.error(err); setStatus(err?.message || String(err), "error"); }
+    }catch(err){
+      console.error(err);
+      setStatus("Remove Liquidity error: " + (err?.message || err), "error");
+    }
   }
 
-  /**********************
-   * Bind events (guaranteed)
-   **********************/
+  /********************
+   * Bind events
+   ********************/
   function bind(){
-    if (!dom.btnConnect) {
-      console.error("[POOL] btnConnect not found. Check IDs.");
-      return;
+    if (dom.btnConnect){
+      dom.btnConnect.addEventListener("click", async () => {
+        const ok = await connectWallet();
+        if (ok) refresh().catch(()=>{});
+      });
     }
 
-    dom.btnConnect.addEventListener("click", doConnect);
-    dom.btnRefresh.addEventListener("click", refresh);
-    dom.btnCreatePair.addEventListener("click", createPair);
+    if (dom.btnCreatePair) dom.btnCreatePair.addEventListener("click", () => createPair());
+    if (dom.btnRefresh) dom.btnRefresh.addEventListener("click", () => refresh());
 
-    dom.tokenA.addEventListener("change", () => {
-      setStatus("Token changed. Click Refresh (or Connect then Refresh).", "warn");
-    });
-    dom.tokenB.addEventListener("change", () => {
-      setStatus("Token changed. Click Refresh (or Connect then Refresh).", "warn");
+    if (dom.btnApproveA) dom.btnApproveA.addEventListener("click", async () => {
+      const { a } = getSelected();
+      await approveToken(a);
     });
 
-    dom.btnApproveA.addEventListener("click", approveA);
-    dom.btnApproveB.addEventListener("click", approveB);
-    dom.btnAdd.addEventListener("click", addLiquidity);
+    if (dom.btnApproveB) dom.btnApproveB.addEventListener("click", async () => {
+      const { b } = getSelected();
+      await approveToken(b);
+    });
 
-    dom.removePct.addEventListener("change", recomputeLpToRemove);
-    dom.btnApproveLP.addEventListener("click", approveLP);
-    dom.btnRemove.addEventListener("click", removeLiquidity);
+    if (dom.btnAdd) dom.btnAdd.addEventListener("click", () => addLiquidity());
+    if (dom.btnApproveLP) dom.btnApproveLP.addEventListener("click", () => approveLP());
+    if (dom.btnRemove) dom.btnRemove.addEventListener("click", () => removeLiquidity());
 
-    console.log("[POOL] events bound");
+    // Token change => auto refresh (and fixes “My Positions” update)
+    if (dom.tokenA) dom.tokenA.addEventListener("change", () => refresh().catch(()=>{}));
+    if (dom.tokenB) dom.tokenB.addEventListener("change", () => refresh().catch(()=>{}));
+
+    if (dom.removePct){
+      dom.removePct.addEventListener("change", async () => {
+        try{
+          const pair = dom.pairAddr?.textContent?.trim();
+          if (!pair || pair === "-" || !account) return;
+          const p = pairContract(pair, true);
+          const bal = await p.balanceOf(account);
+          computeLpToRemove(bal);
+        }catch(e){}
+      });
+    }
   }
 
+  /********************
+   * Boot
+   ********************/
   function boot(){
-    setupTabs();
-    fillSelect(dom.tokenA);
-    fillSelect(dom.tokenB);
-    setDefaultTokens();
-    setNet("Not connected", false);
-    setStatus("Ready. Click Connect Wallet.", "");
-
-    initReadOnlyContracts(); // read-only provider/factory 준비만
+    cacheDom();
+    initTabs();
+    fillCompatSelects();        // MUST be sync before dropdown init
+    initCustomDropdowns();      // dropdown built from tokenList => icons match
     bind();
+
+    setNetBadge("Not connected");
+    setStatus("Ready.\nSelect tokens and connect wallet.", "");
+    // initial refresh without account (reads pair if exists)
+    refresh().catch(()=>{});
   }
 
-  boot();
+  // Wait for ethers to exist
+  if (typeof ethers === "undefined"){
+    console.error("ethers not found");
+    return;
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
