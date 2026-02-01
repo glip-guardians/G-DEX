@@ -224,6 +224,35 @@
 
     /* 작은 터치 개선 */
     button,input,select{-webkit-tap-highlight-color:transparent}
+
+    /* =========================
+   Dropdown list (options) Dark Fix
+   ========================= */
+
+/* 브라우저에게 "다크 UI" 힌트 */
+select, input, button {
+  color-scheme: dark;
+}
+
+/* 옵션 리스트 강제 다크 */
+select option,
+select optgroup {
+  background-color: #0b1216 !important;
+  color: rgba(255,255,255,.92) !important;
+}
+
+/* 선택된 항목 강조(지원되는 브라우저만 적용) */
+select option:checked {
+  background-color: rgba(65,243,162,.22) !important;
+  color: #ffffff !important;
+}
+
+/* 드롭다운 열렸을 때(일부 브라우저에서만) */
+select:focus option {
+  background-color: #0b1216 !important;
+  color: rgba(255,255,255,.92) !important;
+}
+
   </style>
 </head>
 
