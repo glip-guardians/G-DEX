@@ -17,7 +17,7 @@
   const MAX_UINT = ethers.constants.MaxUint256;
 
   /********************
-   * Token List (your list)
+   * Token List
    ********************/
   const tokenList = [
     {symbol:"ETH", name:"Ethereum", address:"ETH", decimals:18, logo:"https://assets.coingecko.com/coins/images/279/standard/ethereum.png"},
@@ -167,7 +167,7 @@
   }
 
   /********************
-   * Fill selects (compat)
+   * Fill selects
    ********************/
   function fillSelects(){
     const opts = tokenList.map(t => `<option value="${t.address}">${t.symbol} — ${t.name}</option>`).join("");
@@ -179,7 +179,7 @@
   }
 
   /********************
-   * ✅ Custom Dropdown: auto-wrap existing <select> (NO HTML changes)
+   * ✅ Custom Dropdown (stable + scroll lock patch)
    ********************/
   function injectDropdownStylesOnce(){
     if (document.getElementById("gdex-dd-style")) return;
@@ -187,12 +187,11 @@
     st.id = "gdex-dd-style";
     st.textContent = `
       .gdex-dd-wrap{ position:relative; width:100%; }
-      .gdex-dd-select{ display:none !important; } /* hide native select */
+      .gdex-dd-select{ display:none !important; }
 
       .gdex-dd-trigger{
         display:flex; align-items:center; justify-content:space-between;
-        gap:10px;
-        width:100%;
+        gap:10px; width:100%;
         padding:12px 12px;
         border-radius:14px;
         border:1px solid rgba(255,255,255,.16);
@@ -203,6 +202,8 @@
         user-select:none;
         -webkit-tap-highlight-color: transparent;
       }
+      .gdex-dd-trigger:active{ transform: translateY(1px); }
+
       .gdex-dd-left{ display:flex; align-items:center; gap:10px; min-width:0; }
       .gdex-dd-left img{ width:22px; height:22px; border-radius:999px; object-fit:cover; flex:0 0 auto; }
       .gdex-dd-text{ display:flex; flex-direction:column; min-width:0; }
@@ -243,13 +244,17 @@
         border-bottom:1px solid rgba(255,255,255,.12);
         font-weight:800;
       }
+
+      /* list scroll: reinforced by pool.html CSS too */
       .gdex-dd-list{
-        max-height: 280px;
+        max-height: min(320px, 55vh);
         overflow-y:auto;
+        overflow-x:hidden;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         touch-action: pan-y;
       }
+
       .gdex-dd-item{
         display:flex; align-items:center; justify-content:space-between;
         gap:10px;
@@ -266,6 +271,15 @@
       .gdex-dd-tag{ font-size:12px; font-weight:900; color: rgba(255,255,255,.82); opacity:.9; }
     `;
     document.head.appendChild(st);
+  }
+
+  function lockBody(){
+    document.documentElement.classList.add("gdex-lock");
+    document.body.classList.add("gdex-lock");
+  }
+  function unlockBody(){
+    document.documentElement.classList.remove("gdex-lock");
+    document.body.classList.remove("gdex-lock");
   }
 
   function buildDropdownForSelect(selectEl){
@@ -288,6 +302,7 @@
     trigger.className = "gdex-dd-trigger";
     trigger.setAttribute("role","button");
     trigger.setAttribute("tabindex","0");
+    trigger.setAttribute("aria-expanded","false");
     trigger.innerHTML = `
       <div class="gdex-dd-left">
         <img class="gdex-dd-logo" alt="">
@@ -322,20 +337,25 @@
     const name = trigger.querySelector(".gdex-dd-name");
     const search = menu.querySelector(".gdex-dd-search");
     const list = menu.querySelector(".gdex-dd-list");
-// ✅ FIX: allow scroll inside dropdown (mobile + desktop)
-list.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
-list.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
+
+    // ✅ list scroll priority: register ONCE (no duplicates)
+    list.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+    list.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+    list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
+    list.addEventListener("scroll", (e) => e.stopPropagation(), { passive: true });
 
     function close(){
       menu.classList.remove("open");
       overlay.classList.remove("open");
       trigger.setAttribute("aria-expanded","false");
+      unlockBody(); // ✅ 배경 스크롤 복구
     }
     function open(){
       menu.classList.add("open");
       overlay.classList.add("open");
       trigger.setAttribute("aria-expanded","true");
+      lockBody();   // ✅ 배경 스크롤 차단
+
       search.value = "";
       render("");
       setTimeout(()=>search.focus(), 0);
@@ -361,7 +381,7 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
         return (t.symbol||"").toLowerCase().includes(f) || (t.name||"").toLowerCase().includes(f);
       });
 
-      arr.forEach(t => {
+      for (const t of arr){
         const item = document.createElement("div");
         item.className = "gdex-dd-item" + (String(t.address).toLowerCase() === current ? " active" : "");
         item.innerHTML = `
@@ -383,7 +403,7 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
         });
 
         list.appendChild(item);
-      });
+      }
 
       if (!list.children.length){
         const empty = document.createElement("div");
@@ -394,23 +414,33 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
         list.appendChild(empty);
       }
 
-      // touch scroll safe
-      list.addEventListener("touchstart", e => e.stopPropagation(), {passive:true});
-      list.addEventListener("touchmove",  e => e.stopPropagation(), {passive:true});
+      // scroll to top when filtering
+      try{ list.scrollTop = 0; }catch(_){}
     }
 
     // events
     overlay.addEventListener("click", close);
+
     trigger.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (menu.classList.contains("open")) close();
       else open();
     });
+
     trigger.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); trigger.click(); }
       if (e.key === "Escape") close();
     });
+
+    // prevent overlay close when interacting menu
+    menu.addEventListener("click", (e)=> e.stopPropagation());
+
+    // click outside close
+    document.addEventListener("click", (e)=>{
+      if (!menu.classList.contains("open")) return;
+      if (!wrap.contains(e.target)) close();
+    }, true);
 
     search.addEventListener("input", () => render(search.value));
 
@@ -424,10 +454,7 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
   }
 
   function initDropdowns(){
-    // IMPORTANT: must exist
     if (!dom.tokenA || !dom.tokenB) return;
-
-    // build UI wrappers around existing selects
     buildDropdownForSelect(dom.tokenA);
     buildDropdownForSelect(dom.tokenB);
   }
@@ -435,7 +462,7 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
   /********************
    * Tabs
    ********************/
-  function initTabs(){
+  function initTabsUI(){
     dom.tabs.forEach(btn => {
       btn.addEventListener("click", () => {
         const tab = btn.getAttribute("data-tab");
@@ -446,7 +473,7 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
   }
 
   /********************
-   * Wallet (swap-like)
+   * Wallet
    ********************/
   let provider=null, signer=null, account=null, chainId=null;
 
@@ -461,6 +488,7 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
   }
 
   async function connectWallet(){
+    // 모바일 + 인젝션 없음 => 메타마스크 딥링크
     if (isMobile() && !hasInjected()){
       setStatus("No injected wallet on this mobile browser.\nOpening in MetaMask…", "warn");
       location.href = mmDeepLink(location.href);
@@ -570,8 +598,8 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
   }
 
   async function getPairAddress(aSel,bSel){
-    const aOn = resolveOnchain(aSel);
-    const bOn = resolveOnchain(bSel);
+    const aOn = (aSel === ETH_SENTINEL) ? WETH : ethers.utils.getAddress(aSel);
+    const bOn = (bSel === ETH_SENTINEL) ? WETH : ethers.utils.getAddress(bSel);
     return await factory(true).getPair(aOn, bOn);
   }
 
@@ -589,6 +617,9 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
 
   async function refresh(){
     try{
+      if (!provider){
+        // read-only provider도 가능하지만, 여기선 연결 후를 기준으로
+      }
       setStatus("Refreshing…", "");
       const { a, b } = getSelected();
       const pair = await getPairAddress(a,b);
@@ -625,7 +656,8 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
         String(t0).toLowerCase() === String(aOn).toLowerCase() ? [r0,r1] : [r1,r0];
 
       dom.lpSupply.textContent = fmtUnits(totalSupply, 18, 6);
-      dom.reserves.textContent = `${fmtUnits(resA, aMeta.decimals ?? 18, 6)} ${aMeta.symbol} / ${fmtUnits(resB, bMeta.decimals ?? 18, 6)} ${bMeta.symbol}`;
+      dom.reserves.textContent =
+        `${fmtUnits(resA, aMeta.decimals ?? 18, 6)} ${aMeta.symbol} / ${fmtUnits(resB, bMeta.decimals ?? 18, 6)} ${bMeta.symbol}`;
 
       if (account){
         const bal = await p.balanceOf(account);
@@ -801,16 +833,6 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
   /********************
    * Bind
    ********************/
-  function initTabsUI(){
-    dom.tabs.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tab = btn.getAttribute("data-tab");
-        dom.tabs.forEach(b => b.classList.toggle("active", b === btn));
-        dom.panels.forEach(p => p.classList.toggle("active", p.getAttribute("data-panel") === tab));
-      });
-    });
-  }
-
   function bind(){
     dom.btnConnect?.addEventListener("click", async () => {
       const ok = await connectWallet();
@@ -857,12 +879,13 @@ list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true }
     }
 
     fillSelects();
-    initDropdowns(); // ✅ auto-wrap select => click works now
+    initDropdowns();
 
     bind();
     setNetBadge("Not connected");
     setStatus("Ready.\nSelect tokens and connect wallet.", "");
 
+    // 연결 전에는 pair 조회가 실패할 수 있어도 문제 없음
     refresh().catch(()=>{});
   }
 
