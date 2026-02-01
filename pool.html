@@ -16,13 +16,14 @@
       --bg0:#050A0C; --bg1:#070F13;
       --stroke: rgba(255,255,255,.14);
       --card: rgba(255,255,255,.08);
-      --card2: rgba(0,0,0,.28);
       --text: rgba(255,255,255,.92);
       --text2: rgba(255,255,255,.78);
       --muted: rgba(255,255,255,.62);
       --accent:#41f3a2;
+      --accentGlow: rgba(65,243,162,.22);
       --danger:#ff5c7a;
       --shadow: 0 16px 50px rgba(0,0,0,.55);
+      --shadow2: 0 10px 30px rgba(0,0,0,.35);
       --radius: 18px;
       --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:18px;
     }
@@ -128,11 +129,12 @@
     }
     .field label{
       font-size:13px;
-      color: rgba(255,255,255,.90);
+      color: rgba(255,255,255,.92);
       font-weight: 900;
       letter-spacing:.2px;
     }
-    select,input{
+
+    input{
       width:100%;
       padding:12px 12px;
       border-radius: 14px;
@@ -143,23 +145,9 @@
       font-size: var(--fs-md);
       font-weight: 800;
     }
-    select:focus,input:focus{
+    input:focus{
       border-color: rgba(65,243,162,.55);
       box-shadow: 0 0 0 3px rgba(65,243,162,.14);
-    }
-    select{
-      appearance:none;
-      background-image:
-        linear-gradient(45deg, transparent 50%, rgba(255,255,255,.80) 50%),
-        linear-gradient(135deg, rgba(255,255,255,.80) 50%, transparent 50%),
-        linear-gradient(to right, rgba(255,255,255,.16), rgba(255,255,255,.16));
-      background-position:
-        calc(100% - 18px) 55%,
-        calc(100% - 12px) 55%,
-        calc(100% - 36px) 50%;
-      background-size:6px 6px,6px 6px,1px 22px;
-      background-repeat:no-repeat;
-      padding-right:44px;
     }
 
     .mini{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-top:12px}
@@ -204,9 +192,6 @@
       text-shadow: 0 1px 0 rgba(0,0,0,.6);
       backdrop-filter: blur(6px);
     }
-    .notice *{color: rgba(255,255,255,.90)}
-    .notice b{color:#fff}
-
     .status{
       margin-top:12px;
       padding:12px 14px;
@@ -222,37 +207,142 @@
     .status[data-type="warn"]{border-color: rgba(255,207,90,.55); color: rgba(255,207,90,.92);}
     .status[data-type="error"]{border-color: rgba(255,92,122,.55); color: rgba(255,92,122,.92);}
 
-    /* 작은 터치 개선 */
-    button,input,select{-webkit-tap-highlight-color:transparent}
+    button,input{-webkit-tap-highlight-color:transparent}
 
     /* =========================
-   Dropdown list (options) Dark Fix
-   ========================= */
+       Custom Token Dropdown
+       ========================= */
+    .tokenSelect{position:relative}
+    .tokenTrigger{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color:#fff;
+      cursor:pointer;
+      user-select:none;
+      font-weight:900;
+      font-size: var(--fs-md);
+      box-shadow: 0 10px 22px rgba(0,0,0,.18) inset;
+    }
+    .tokenTrigger:focus{
+      outline:none;
+      border-color: rgba(65,243,162,.55);
+      box-shadow: 0 0 0 3px rgba(65,243,162,.14);
+    }
+    .tokenLeft{display:flex;align-items:center;gap:10px;min-width:0}
+    .tokenLogo{
+      width:22px;height:22px;border-radius:50%;
+      background: rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.20);
+      object-fit:cover;
+      flex:0 0 auto;
+    }
+    .tokenText{min-width:0}
+    .tokenText .sym{font-weight:950;letter-spacing:.2px}
+    .tokenText .name{color:rgba(255,255,255,.78);font-weight:800;font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* 브라우저에게 "다크 UI" 힌트 */
-select, input, button {
-  color-scheme: dark;
-}
+    .chev{
+      width:0;height:0;
+      border-left:6px solid transparent;
+      border-right:6px solid transparent;
+      border-top:7px solid rgba(255,255,255,.78);
+      opacity:.95;
+      flex:0 0 auto;
+    }
 
-/* 옵션 리스트 강제 다크 */
-select option,
-select optgroup {
-  background-color: #0b1216 !important;
-  color: rgba(255,255,255,.92) !important;
-}
+    .dropdown{
+      position:absolute;
+      left:0; right:0;
+      top: calc(100% + 10px);
+      z-index: 9999;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(8,14,18,.96);
+      box-shadow: 0 18px 60px rgba(0,0,0,.65);
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+      display:none;
+    }
+    .dropdown.open{display:block}
 
-/* 선택된 항목 강조(지원되는 브라우저만 적용) */
-select option:checked {
-  background-color: rgba(65,243,162,.22) !important;
-  color: #ffffff !important;
-}
+    .ddTop{
+      padding:10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.10));
+    }
+    .ddSearch{
+      width:100%;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.30);
+      color:#fff;
+      font-weight:800;
+      font-size:13px;
+      outline:none;
+    }
+    .ddSearch:focus{
+      border-color: rgba(65,243,162,.55);
+      box-shadow: 0 0 0 3px rgba(65,243,162,.12);
+    }
 
-/* 드롭다운 열렸을 때(일부 브라우저에서만) */
-select:focus option {
-  background-color: #0b1216 !important;
-  color: rgba(255,255,255,.92) !important;
-}
+    .ddList{
+      max-height: 260px;
+      overflow:auto;
+      padding:6px;
+    }
+    .ddItem{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      border:1px solid transparent;
+      color:#fff;
+    }
+    .ddItem:hover{
+      background: rgba(65,243,162,.10);
+      border-color: rgba(65,243,162,.20);
+    }
+    .ddItem.active{
+      background: rgba(65,243,162,.16);
+      border-color: rgba(65,243,162,.35);
+    }
+    .ddItemLeft{display:flex;align-items:center;gap:10px;min-width:0}
+    .ddItemText{min-width:0}
+    .ddItemText .sym{font-weight:950}
+    .ddItemText .name{font-size:12px;font-weight:800;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ddTag{
+      font-size:11px;
+      font-weight:900;
+      padding:5px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      color:rgba(255,255,255,.78);
+      background: rgba(0,0,0,.22);
+      flex:0 0 auto;
+    }
 
+    /* overlay to close */
+    .ddOverlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index: 9998;
+      background: transparent;
+    }
+    .ddOverlay.open{display:block}
+
+    /* Hide "compat" selects but keep them for JS */
+    .compatSelect{display:none !important;}
   </style>
 </head>
 
@@ -280,14 +370,60 @@ select:focus option {
           <div class="pill" id="netBadge">Not connected</div>
         </div>
 
+        <!-- ✅ 커스텀 드롭다운 UI -->
         <div class="row">
           <div class="field">
             <label>Token A</label>
-            <select id="tokenA"></select>
+
+            <!-- compat: pool-page.js가 읽는 값 -->
+            <select id="tokenA" class="compatSelect"></select>
+
+            <div class="tokenSelect" data-role="tokenSelect" data-target="tokenA">
+              <button type="button" class="tokenTrigger" aria-haspopup="listbox" aria-expanded="false">
+                <div class="tokenLeft">
+                  <img class="tokenLogo" alt="" />
+                  <div class="tokenText">
+                    <div class="sym">-</div>
+                    <div class="name">Select token</div>
+                  </div>
+                </div>
+                <div class="chev"></div>
+              </button>
+
+              <div class="dropdown" role="listbox">
+                <div class="ddTop">
+                  <input class="ddSearch" type="text" placeholder="Search token (symbol / name)..." />
+                </div>
+                <div class="ddList"></div>
+              </div>
+            </div>
           </div>
+
           <div class="field">
             <label>Token B</label>
-            <select id="tokenB"></select>
+
+            <!-- compat: pool-page.js가 읽는 값 -->
+            <select id="tokenB" class="compatSelect"></select>
+
+            <div class="tokenSelect" data-role="tokenSelect" data-target="tokenB">
+              <button type="button" class="tokenTrigger" aria-haspopup="listbox" aria-expanded="false">
+                <div class="tokenLeft">
+                  <img class="tokenLogo" alt="" />
+                  <div class="tokenText">
+                    <div class="sym">-</div>
+                    <div class="name">Select token</div>
+                  </div>
+                </div>
+                <div class="chev"></div>
+              </button>
+
+              <div class="dropdown" role="listbox">
+                <div class="ddTop">
+                  <input class="ddSearch" type="text" placeholder="Search token (symbol / name)..." />
+                </div>
+                <div class="ddList"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -396,7 +532,145 @@ select:focus option {
     </div>
   </div>
 
-  <!-- ✅ SW/캐시 우회용 버전쿼리 -->
-  <script src="./pool-page.js?v=20260201_1"></script>
+  <!-- overlay to close dropdowns -->
+  <div id="ddOverlay" class="ddOverlay"></div>
+
+  <!-- ✅ 커스텀 드롭다운 로직 (pool-page.js와 독립) -->
+  <script>
+    // tokenList는 pool-page.js 안에 있지만, 커스텀 UI는 먼저 렌더해야 하므로
+    // 여기서는 "pool-page.js가 채운 compat select(#tokenA/#tokenB)"를 읽어서 UI를 만든다.
+
+    (function(){
+      const overlay = document.getElementById("ddOverlay");
+
+      function closeAll(){
+        document.querySelectorAll(".tokenSelect .dropdown").forEach(dd => dd.classList.remove("open"));
+        document.querySelectorAll(".tokenSelect .tokenTrigger").forEach(btn => btn.setAttribute("aria-expanded","false"));
+        overlay.classList.remove("open");
+      }
+
+      function buildFromCompat(targetId){
+        const compat = document.getElementById(targetId);
+        const box = document.querySelector(`.tokenSelect[data-target="${targetId}"]`);
+        if (!compat || !box) return;
+
+        const trigger = box.querySelector(".tokenTrigger");
+        const dd = box.querySelector(".dropdown");
+        const list = box.querySelector(".ddList");
+        const search = box.querySelector(".ddSearch");
+        const logo = box.querySelector(".tokenLogo");
+        const sym = box.querySelector(".tokenText .sym");
+        const name = box.querySelector(".tokenText .name");
+
+        function getMetaByValue(val){
+          // compat option text: "SYM — Name" 형태
+          const opt = Array.from(compat.options).find(o => o.value === val);
+          const label = opt ? opt.textContent : "";
+          const parts = label.split("—").map(s => s.trim());
+          const _sym = parts[0] || "-";
+          const _name = parts[1] || "Token";
+          // 로고는 option에 없으므로: 심볼 기반 대략 매칭 (pool-page.js의 tokenList와 동일한 순서가 보통)
+          // -> 안전하게: GLIP는 파비콘, ETH는 코인게코 로고, 나머지는 "없으면" GLIP 로고로
+          let _logo = "https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png";
+          if (_sym === "ETH") _logo = "https://assets.coingecko.com/coins/images/279/standard/ethereum.png";
+          if (_sym === "GLIP") _logo = "https://cdn.imweb.me/thumbnail/20251023/7c2d51fa8c1bc.png";
+          if (_sym === "USDT") _logo = "https://assets.coingecko.com/coins/images/325/standard/Tether.png";
+          if (_sym === "USDC") _logo = "https://info-blog.to/wp-content/uploads/2025/05/usdc-coin-wallpaper.png";
+          return {sym:_sym, name:_name, logo:_logo};
+        }
+
+        function renderSelected(val){
+          const meta = getMetaByValue(val);
+          logo.src = meta.logo;
+          sym.textContent = meta.sym;
+          name.textContent = meta.name;
+        }
+
+        function renderList(filter=""){
+          const f = filter.trim().toLowerCase();
+          list.innerHTML = "";
+          const opts = Array.from(compat.options);
+
+          opts.forEach(opt => {
+            const label = opt.textContent || "";
+            const val = opt.value;
+            if (f && !label.toLowerCase().includes(f)) return;
+
+            const meta = getMetaByValue(val);
+            const item = document.createElement("div");
+            item.className = "ddItem" + (compat.value === val ? " active" : "");
+            item.setAttribute("role","option");
+            item.setAttribute("data-value", val);
+
+            item.innerHTML = `
+              <div class="ddItemLeft">
+                <img class="tokenLogo" src="${meta.logo}" alt="">
+                <div class="ddItemText">
+                  <div class="sym">${meta.sym}</div>
+                  <div class="name">${meta.name}</div>
+                </div>
+              </div>
+              <div class="ddTag">${meta.sym}</div>
+            `;
+
+            item.addEventListener("click", () => {
+              compat.value = val;
+
+              // ✅ 핵심: pool-page.js가 감지할 수 있게 change 이벤트 발생
+              compat.dispatchEvent(new Event("change", { bubbles:true }));
+
+              renderSelected(val);
+              closeAll();
+            });
+
+            list.appendChild(item);
+          });
+
+          if (!list.children.length){
+            const empty = document.createElement("div");
+            empty.style.padding="12px";
+            empty.style.color="rgba(255,255,255,.70)";
+            empty.style.fontWeight="800";
+            empty.textContent="No results.";
+            list.appendChild(empty);
+          }
+        }
+
+        // open/close
+        trigger.addEventListener("click", (e) => {
+          e.preventDefault();
+          const isOpen = dd.classList.contains("open");
+          closeAll();
+          if (!isOpen){
+            dd.classList.add("open");
+            trigger.setAttribute("aria-expanded","true");
+            overlay.classList.add("open");
+            search.value = "";
+            renderList("");
+            setTimeout(()=>search.focus(), 0);
+          }
+        });
+
+        search.addEventListener("input", () => renderList(search.value));
+        overlay.addEventListener("click", closeAll);
+        window.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeAll(); });
+
+        // initial render
+        renderSelected(compat.value || (compat.options[0]?.value ?? ""));
+      }
+
+      // pool-page.js가 compat select(#tokenA,#tokenB)를 채운 다음 실행되어야 함
+      // 그래서 DOMContentLoaded 이후 + 약간 지연
+      window.addEventListener("load", () => {
+        setTimeout(() => {
+          buildFromCompat("tokenA");
+          buildFromCompat("tokenB");
+        }, 0);
+      });
+    })();
+  </script>
+
+  <!-- ✅ SW/캐시 우회 -->
+  <script src="./pool-page.js?v=20260201_2"></script>
 </body>
 </html>
