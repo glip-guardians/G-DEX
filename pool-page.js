@@ -96,6 +96,8 @@
 
     dom.tokenA = $("tokenA");
     dom.tokenB = $("tokenB");
+    dom.tokenA_trigger = $("tokenA_trigger");
+    dom.tokenB_trigger = $("tokenB_trigger");
 
     dom.pairAddr = $("pairAddr");
     dom.lpBal = $("lpBal");
@@ -179,133 +181,94 @@
   }
 
   /********************
-   * ✅ Custom Dropdown (stable + scroll lock patch)
+   * ✅ Custom Token Dropdown (Modal 방식: 클릭/스크롤 100% 안정)
    ********************/
-  function injectDropdownStylesOnce(){
-    if (document.getElementById("gdex-dd-style")) return;
-    const st = document.createElement("style");
-    st.id = "gdex-dd-style";
-    st.textContent = `
-      .gdex-dd-wrap{ position:relative; width:100%; }
-      .gdex-dd-select{ display:none !important; }
+  let modalOverlay=null, modalBox=null, modalTitle=null, modalSearch=null, modalList=null, modalClose=null;
+  let bodyPrevOverflow = "";
+  let activeSelect = null;
+  let activeTrigger = null;
 
-      .gdex-dd-trigger{
-        display:flex; align-items:center; justify-content:space-between;
-        gap:10px; width:100%;
-        padding:12px 12px;
-        border-radius:14px;
-        border:1px solid rgba(255,255,255,.16);
-        background: rgba(255,255,255,.06);
-        color: rgba(255,255,255,.92);
-        font-weight:800;
-        cursor:pointer;
-        user-select:none;
-        -webkit-tap-highlight-color: transparent;
-      }
-      .gdex-dd-trigger:active{ transform: translateY(1px); }
+  function ensureModal(){
+    if (modalOverlay && modalBox) return;
 
-      .gdex-dd-left{ display:flex; align-items:center; gap:10px; min-width:0; }
-      .gdex-dd-left img{ width:22px; height:22px; border-radius:999px; object-fit:cover; flex:0 0 auto; }
-      .gdex-dd-text{ display:flex; flex-direction:column; min-width:0; }
-      .gdex-dd-sym{ font-weight:900; line-height:1.1; }
-      .gdex-dd-name{ font-size:12px; color: rgba(255,255,255,.72); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }
-      .gdex-dd-caret{ opacity:.9; font-weight:900; }
+    modalOverlay = document.createElement("div");
+    modalOverlay.className = "gdex-modal-overlay";
+    modalOverlay.setAttribute("aria-hidden","true");
 
-      .gdex-dd-overlay{
-        position:fixed; inset:0;
-        background: rgba(0,0,0,.55);
-        backdrop-filter: blur(6px);
-        z-index: 9998;
-        display:none;
-      }
-      .gdex-dd-overlay.open{ display:block; }
+    modalBox = document.createElement("div");
+    modalBox.className = "gdex-modal";
+    modalBox.setAttribute("role","dialog");
+    modalBox.setAttribute("aria-modal","true");
 
-      .gdex-dd-menu{
-        position:absolute;
-        left:0; right:0;
-        top: calc(100% + 8px);
-        background: rgba(8,14,18,.96);
-        border:1px solid rgba(255,255,255,.14);
-        border-radius:16px;
-        box-shadow: 0 18px 60px rgba(0,0,0,.55);
-        z-index: 9999;
-        display:none;
-        overflow:hidden;
-      }
-      .gdex-dd-menu.open{ display:block; }
-
-      .gdex-dd-search{
-        width:100%;
-        border:0;
-        outline:none;
-        padding:12px 12px;
-        color: rgba(255,255,255,.92);
-        background: rgba(255,255,255,.06);
-        border-bottom:1px solid rgba(255,255,255,.12);
-        font-weight:800;
-      }
-
-      /* list scroll: reinforced by pool.html CSS too */
-      .gdex-dd-list{
-        max-height: min(320px, 55vh);
-        overflow-y:auto;
-        overflow-x:hidden;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-        touch-action: pan-y;
-      }
-
-      .gdex-dd-item{
-        display:flex; align-items:center; justify-content:space-between;
-        gap:10px;
-        padding:10px 12px;
-        cursor:pointer;
-      }
-      .gdex-dd-item:hover{ background: rgba(65,243,162,.10); }
-      .gdex-dd-item.active{ background: rgba(65,243,162,.16); }
-      .gdex-dd-item .l{ display:flex; align-items:center; gap:10px; min-width:0; }
-      .gdex-dd-item img{ width:22px; height:22px; border-radius:999px; object-fit:cover; }
-      .gdex-dd-item .t{ display:flex; flex-direction:column; min-width:0; }
-      .gdex-dd-item .t .sym{ font-weight:900; color: rgba(255,255,255,.92); line-height:1.1; }
-      .gdex-dd-item .t .name{ font-size:12px; color: rgba(255,255,255,.70); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }
-      .gdex-dd-tag{ font-size:12px; font-weight:900; color: rgba(255,255,255,.82); opacity:.9; }
+    modalBox.innerHTML = `
+      <div class="gdex-modal-head">
+        <div class="gdex-modal-title">Select token</div>
+        <button class="gdex-modal-close" type="button">Close</button>
+      </div>
+      <input class="gdex-modal-search" placeholder="Search token…" />
+      <div class="gdex-modal-list" role="listbox"></div>
     `;
-    document.head.appendChild(st);
-  }
 
-  function lockBody(){
-    document.documentElement.classList.add("gdex-lock");
-    document.body.classList.add("gdex-lock");
-  }
-  function unlockBody(){
-    document.documentElement.classList.remove("gdex-lock");
-    document.body.classList.remove("gdex-lock");
-  }
+    document.body.appendChild(modalOverlay);
+    document.body.appendChild(modalBox);
 
-  function buildDropdownForSelect(selectEl){
-    injectDropdownStylesOnce();
+    modalTitle = modalBox.querySelector(".gdex-modal-title");
+    modalSearch = modalBox.querySelector(".gdex-modal-search");
+    modalList = modalBox.querySelector(".gdex-modal-list");
+    modalClose = modalBox.querySelector(".gdex-modal-close");
 
-    // wrapper
-    const wrap = document.createElement("div");
-    wrap.className = "gdex-dd-wrap";
+    // prevent background scroll on mobile (핵심)
+    modalOverlay.addEventListener("touchmove", (e)=>{ e.preventDefault(); }, { passive:false });
 
-    // overlay (singleton)
-    let overlay = document.querySelector(".gdex-dd-overlay");
-    if (!overlay){
-      overlay = document.createElement("div");
-      overlay.className = "gdex-dd-overlay";
-      document.body.appendChild(overlay);
+    // allow list scrolling (핵심)
+    modalList.addEventListener("touchmove", (e)=>{ e.stopPropagation(); }, { passive:true });
+    modalList.addEventListener("wheel", (e)=>{ e.stopPropagation(); }, { passive:true });
+
+    function close(){
+      modalOverlay.classList.remove("open");
+      modalBox.classList.remove("open");
+      modalOverlay.setAttribute("aria-hidden","true");
+      document.body.style.overflow = bodyPrevOverflow || "";
+      activeSelect = null;
+      activeTrigger = null;
     }
 
-    // trigger
-    const trigger = document.createElement("div");
-    trigger.className = "gdex-dd-trigger";
-    trigger.setAttribute("role","button");
-    trigger.setAttribute("tabindex","0");
-    trigger.setAttribute("aria-expanded","false");
-    trigger.innerHTML = `
+    modalOverlay.addEventListener("click", close);
+    modalClose.addEventListener("click", close);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalBox.classList.contains("open")) close();
+    });
+
+    modalSearch.addEventListener("input", () => {
+      if (!activeSelect) return;
+      renderTokenList(activeSelect, modalSearch.value || "");
+    });
+
+    // expose close
+    ensureModal.close = close;
+  }
+
+  function setTriggerUI(triggerEl, token){
+    const sym = triggerEl.querySelector(".gdex-dd-sym");
+    const name = triggerEl.querySelector(".gdex-dd-name");
+    const img = triggerEl.querySelector("img");
+    img.src = (token && token.logo) ? token.logo : "";
+    sym.textContent = (token && token.symbol) ? token.symbol : "-";
+    name.textContent = (token && token.name) ? token.name : "Select token";
+  }
+
+  function buildTrigger(selectEl, mountEl, label){
+    // hide native select
+    selectEl.classList.add("gdex-hidden-select");
+
+    const trig = document.createElement("div");
+    trig.className = "gdex-dd-trigger";
+    trig.setAttribute("role","button");
+    trig.setAttribute("tabindex","0");
+    trig.innerHTML = `
       <div class="gdex-dd-left">
-        <img class="gdex-dd-logo" alt="">
+        <img alt="">
         <div class="gdex-dd-text">
           <div class="gdex-dd-sym">-</div>
           <div class="gdex-dd-name">Select token</div>
@@ -314,149 +277,104 @@
       <div class="gdex-dd-caret">▾</div>
     `;
 
-    // menu
-    const menu = document.createElement("div");
-    menu.className = "gdex-dd-menu";
-    menu.innerHTML = `
-      <input class="gdex-dd-search" placeholder="Search token…" />
-      <div class="gdex-dd-list" role="listbox"></div>
-    `;
+    // initial set
+    const tok = tokenMeta(selectEl.value) || (selectEl.value === ETH_SENTINEL ? bySym.get("ETH") : null) || tokenList[0];
+    setTriggerUI(trig, tok);
 
-    // hide select (keep for logic)
-    selectEl.classList.add("gdex-dd-select");
-
-    // place elements
-    const parent = selectEl.parentNode;
-    parent.insertBefore(wrap, selectEl);
-    wrap.appendChild(trigger);
-    wrap.appendChild(menu);
-    wrap.appendChild(selectEl);
-
-    const logo = trigger.querySelector(".gdex-dd-logo");
-    const sym  = trigger.querySelector(".gdex-dd-sym");
-    const name = trigger.querySelector(".gdex-dd-name");
-    const search = menu.querySelector(".gdex-dd-search");
-    const list = menu.querySelector(".gdex-dd-list");
-
-    // ✅ list scroll priority: register ONCE (no duplicates)
-    list.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
-    list.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-    list.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
-    list.addEventListener("scroll", (e) => e.stopPropagation(), { passive: true });
-
-    function close(){
-      menu.classList.remove("open");
-      overlay.classList.remove("open");
-      trigger.setAttribute("aria-expanded","false");
-      unlockBody(); // ✅ 배경 스크롤 복구
-    }
-    function open(){
-      menu.classList.add("open");
-      overlay.classList.add("open");
-      trigger.setAttribute("aria-expanded","true");
-      lockBody();   // ✅ 배경 스크롤 차단
-
-      search.value = "";
-      render("");
-      setTimeout(()=>search.focus(), 0);
-    }
-
-    function setSelectedFromValue(){
-      const v = selectEl.value;
-      const m = tokenMeta(v) || (v === ETH_SENTINEL ? bySym.get("ETH") : null) || tokenList[0];
-      if (m){
-        logo.src = m.logo || "";
-        sym.textContent = m.symbol || "-";
-        name.textContent = m.name || "Select token";
-      }
-    }
-
-    function render(filter){
-      const f = (filter || "").trim().toLowerCase();
-      list.innerHTML = "";
-
-      const current = String(selectEl.value).toLowerCase();
-      const arr = tokenList.filter(t => {
-        if (!f) return true;
-        return (t.symbol||"").toLowerCase().includes(f) || (t.name||"").toLowerCase().includes(f);
-      });
-
-      for (const t of arr){
-        const item = document.createElement("div");
-        item.className = "gdex-dd-item" + (String(t.address).toLowerCase() === current ? " active" : "");
-        item.innerHTML = `
-          <div class="l">
-            <img alt="" src="${t.logo || ""}">
-            <div class="t">
-              <div class="sym">${t.symbol}</div>
-              <div class="name">${t.name}</div>
-            </div>
-          </div>
-          <div class="gdex-dd-tag">${t.symbol}</div>
-        `;
-
-        item.addEventListener("click", () => {
-          selectEl.value = t.address;
-          selectEl.dispatchEvent(new Event("change", { bubbles:true }));
-          setSelectedFromValue();
-          close();
-        });
-
-        list.appendChild(item);
-      }
-
-      if (!list.children.length){
-        const empty = document.createElement("div");
-        empty.style.padding = "12px";
-        empty.style.color = "rgba(255,255,255,.78)";
-        empty.style.fontWeight = "800";
-        empty.textContent = "No results.";
-        list.appendChild(empty);
-      }
-
-      // scroll to top when filtering
-      try{ list.scrollTop = 0; }catch(_){}
-    }
-
-    // events
-    overlay.addEventListener("click", close);
-
-    trigger.addEventListener("click", (e) => {
+    // click => open modal
+    trig.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (menu.classList.contains("open")) close();
-      else open();
+      openTokenModal(selectEl, trig, label);
+    });
+    trig.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openTokenModal(selectEl, trig, label);
+      }
     });
 
-    trigger.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); trigger.click(); }
-      if (e.key === "Escape") close();
+    // sync when select changes programmatically
+    selectEl.addEventListener("change", () => {
+      const t = tokenMeta(selectEl.value) || (selectEl.value === ETH_SENTINEL ? bySym.get("ETH") : null);
+      if (t) setTriggerUI(trig, t);
     });
 
-    // prevent overlay close when interacting menu
-    menu.addEventListener("click", (e)=> e.stopPropagation());
+    mountEl.innerHTML = "";
+    mountEl.appendChild(trig);
+    return trig;
+  }
 
-    // click outside close
-    document.addEventListener("click", (e)=>{
-      if (!menu.classList.contains("open")) return;
-      if (!wrap.contains(e.target)) close();
-    }, true);
+  function renderTokenList(selectEl, filterText){
+    const f = String(filterText || "").trim().toLowerCase();
+    const current = String(selectEl.value || "").toLowerCase();
 
-    search.addEventListener("input", () => render(search.value));
+    modalList.innerHTML = "";
 
-    // sync when changed by code
-    selectEl.addEventListener("change", () => setSelectedFromValue());
+    const arr = tokenList.filter(t => {
+      if (!f) return true;
+      return (t.symbol||"").toLowerCase().includes(f) || (t.name||"").toLowerCase().includes(f);
+    });
 
-    // initial
-    setSelectedFromValue();
+    for (const t of arr){
+      const item = document.createElement("div");
+      item.className = "gdex-item" + (String(t.address).toLowerCase() === current ? " active" : "");
+      item.innerHTML = `
+        <div class="l">
+          <img alt="" src="${t.logo || ""}">
+          <div class="t">
+            <div class="sym">${t.symbol}</div>
+            <div class="name">${t.name}</div>
+          </div>
+        </div>
+        <div class="tag">${t.symbol}</div>
+      `;
+      item.addEventListener("click", () => {
+        selectEl.value = t.address;
+        selectEl.dispatchEvent(new Event("change", { bubbles:true }));
+        ensureModal.close();
+      });
+      modalList.appendChild(item);
+    }
 
-    return { close, open };
+    if (!modalList.children.length){
+      const empty = document.createElement("div");
+      empty.style.padding = "12px";
+      empty.style.color = "rgba(255,255,255,.78)";
+      empty.style.fontWeight = "900";
+      empty.textContent = "No results.";
+      modalList.appendChild(empty);
+    }
+  }
+
+  function openTokenModal(selectEl, triggerEl, label){
+    ensureModal();
+
+    activeSelect = selectEl;
+    activeTrigger = triggerEl;
+
+    modalTitle.textContent = label || "Select token";
+    modalSearch.value = "";
+    renderTokenList(selectEl, "");
+
+    // lock background scroll (핵심)
+    bodyPrevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    modalOverlay.classList.add("open");
+    modalBox.classList.add("open");
+    modalOverlay.setAttribute("aria-hidden","false");
+
+    // focus search
+    setTimeout(() => { try{ modalSearch.focus(); }catch(_){} }, 0);
   }
 
   function initDropdowns(){
     if (!dom.tokenA || !dom.tokenB) return;
-    buildDropdownForSelect(dom.tokenA);
-    buildDropdownForSelect(dom.tokenB);
+    if (!dom.tokenA_trigger || !dom.tokenB_trigger) return;
+
+    buildTrigger(dom.tokenA, dom.tokenA_trigger, "Token A");
+    buildTrigger(dom.tokenB, dom.tokenB_trigger, "Token B");
   }
 
   /********************
@@ -473,7 +391,7 @@
   }
 
   /********************
-   * Wallet
+   * Wallet (swap-like)
    ********************/
   let provider=null, signer=null, account=null, chainId=null;
 
@@ -488,7 +406,7 @@
   }
 
   async function connectWallet(){
-    // 모바일 + 인젝션 없음 => 메타마스크 딥링크
+    // mobile: if not injected, go to MetaMask deep link (swap와 동일 패턴)
     if (isMobile() && !hasInjected()){
       setStatus("No injected wallet on this mobile browser.\nOpening in MetaMask…", "warn");
       location.href = mmDeepLink(location.href);
@@ -516,6 +434,7 @@
       setStatus(`Wrong network (chainId=${chainId}). Switching to Mainnet…`, "warn");
       const ok = await ensureMainnet();
       if (!ok) return false;
+
       chainId = Number((await provider.getNetwork()).chainId);
       if (chainId !== CHAIN_ID_REQUIRED){
         setStatus("Mainnet switch not completed. Please retry.", "warn");
@@ -531,6 +450,7 @@
       dom.btnConnect.disabled = true;
     }
 
+    // bind once
     if (!window.__GDEX_POOL_EVENTS__){
       window.__GDEX_POOL_EVENTS__ = true;
 
@@ -598,8 +518,8 @@
   }
 
   async function getPairAddress(aSel,bSel){
-    const aOn = (aSel === ETH_SENTINEL) ? WETH : ethers.utils.getAddress(aSel);
-    const bOn = (bSel === ETH_SENTINEL) ? WETH : ethers.utils.getAddress(bSel);
+    const aOn = resolveOnchain(aSel);
+    const bOn = resolveOnchain(bSel);
     return await factory(true).getPair(aOn, bOn);
   }
 
@@ -617,9 +537,6 @@
 
   async function refresh(){
     try{
-      if (!provider){
-        // read-only provider도 가능하지만, 여기선 연결 후를 기준으로
-      }
       setStatus("Refreshing…", "");
       const { a, b } = getSelected();
       const pair = await getPairAddress(a,b);
@@ -644,7 +561,6 @@
       ]);
 
       const aOn = resolveOnchain(a);
-      const bOn = resolveOnchain(b);
 
       const aMeta = tokenMeta(a) || {symbol:"A", decimals:18};
       const bMeta = tokenMeta(b) || {symbol:"B", decimals:18};
@@ -656,8 +572,7 @@
         String(t0).toLowerCase() === String(aOn).toLowerCase() ? [r0,r1] : [r1,r0];
 
       dom.lpSupply.textContent = fmtUnits(totalSupply, 18, 6);
-      dom.reserves.textContent =
-        `${fmtUnits(resA, aMeta.decimals ?? 18, 6)} ${aMeta.symbol} / ${fmtUnits(resB, bMeta.decimals ?? 18, 6)} ${bMeta.symbol}`;
+      dom.reserves.textContent = `${fmtUnits(resA, aMeta.decimals ?? 18, 6)} ${aMeta.symbol} / ${fmtUnits(resB, bMeta.decimals ?? 18, 6)} ${bMeta.symbol}`;
 
       if (account){
         const bal = await p.balanceOf(account);
@@ -879,13 +794,12 @@
     }
 
     fillSelects();
-    initDropdowns();
-
+    initDropdowns(); // ✅ modal dropdown (desktop/mobile stable)
     bind();
+
     setNetBadge("Not connected");
     setStatus("Ready.\nSelect tokens and connect wallet.", "");
 
-    // 연결 전에는 pair 조회가 실패할 수 있어도 문제 없음
     refresh().catch(()=>{});
   }
 
