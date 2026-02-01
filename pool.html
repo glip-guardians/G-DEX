@@ -335,6 +335,11 @@
     color: var(--text2);
     white-space: pre-wrap;
     line-height: 1.45;
+        /* ✅ 추가 (긴 문자열이 레이아웃을 밀지 못하게 강제 줄바꿈) */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+    overflow: hidden;
   }
   .status[data-type="ok"]{ border-color: rgba(65,243,162,.55); color: rgba(65,243,162,.92); }
   .status[data-type="warn"]{ border-color: rgba(255,207,90,.55); color: rgba(255,207,90,.92); }
