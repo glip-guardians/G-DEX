@@ -13,12 +13,12 @@
 
   "icons": [
     {
-      "src": "/G_DEX_icon.png",
+      "src": "./G_DEX_icon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/G_DEX_icon.png",
+      "src": "./G_DEX_icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
@@ -33,3 +33,4 @@
 
   "prefer_related_applications": false
 }
+
