@@ -3,9 +3,9 @@
   "short_name": "G-DEX",
   "description": "GLIP eco-friendly DEX – Swap, Pool, Stake, ESG transparency and quarterly fee rebates.",
 
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
 
   "background_color": "#0a1814",
@@ -25,12 +25,11 @@
   ],
 
   "shortcuts": [
-    { "name": "Swap",      "short_name": "Swap",      "url": "/#swap" },
-    { "name": "Pool",      "short_name": "Pool",      "url": "/#pool" },
-    { "name": "Stake",     "short_name": "Stake",     "url": "/#stake" },
-    { "name": "Analytics", "short_name": "Analytics", "url": "/#analytics" }
+    { "name": "Swap",      "short_name": "Swap",      "url": "./#swap" },
+    { "name": "Pool",      "short_name": "Pool",      "url": "./#pool" },
+    { "name": "Stake",     "short_name": "Stake",     "url": "./#stake" },
+    { "name": "Analytics", "short_name": "Analytics", "url": "./#analytics" }
   ],
 
   "prefer_related_applications": false
 }
-
