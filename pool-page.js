@@ -585,8 +585,16 @@
 
       setStatus("Refreshed.", "ok");
     }catch(err){
-      console.error(err);
-      setStatus("Refresh error: " + (err?.message || err), "error");
+console.error(err);
+
+const msg = String(err?.message || err || "");
+
+if (msg.includes("Cannot read properties of null") || msg.includes("call")) {
+  setStatus("Connect your wallet to load pool data.", "warn");
+} else {
+  setStatus("Unable to refresh pool data. Please try again.", "warn");
+}
+
     }
   }
 
