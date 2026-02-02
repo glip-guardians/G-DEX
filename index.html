@@ -646,41 +646,19 @@ Use the buttons below to manage your liquidity positions.
         <div class="ribbon" id="esgRibbon"><strong>ESG Contribution:</strong> <span id="esgNote">—</span></div>
       </section>
 
-      <section class="card stake" id="stake">
-        <h3>Stake</h3>
-        <div style="background:rgba(12,18,26,.66);padding: 10px 14px;border-radius: 12px;margin-bottom: 14px;font-size: 14px;line-height: 1.45;
-          color: rgba(234,247,240,.74);border: 1px solid rgba(234,247,240,0.12);box-shadow:0 14px 26px rgba(0,0,0,.46);">
-          <b style="color:rgba(234,247,240,.92)">Staking (v1 Preview)</b><br>
-          GLIP staking and reward distribution will be activated in G-DEX v2 after routing is stabilized.<br>
-          This section currently displays demonstration values only.
-        </div>
+<section class="card stake" id="stake">
+  <h3>News</h3>
 
-        <div class="statGrid">
-          <div class="stat"><div style="opacity:.78;font-weight:900">APR</div><div id="apr" style="font-weight:900;font-size:22px;margin-top:4px;color:rgba(234,247,240,.92)">—</div></div>
-          <div class="stat"><div style="opacity:.78;font-weight:900">My Staked</div><div id="myStaked" style="font-weight:900;font-size:22px;margin-top:4px;color:rgba(234,247,240,.92)">—</div></div>
-          <div class="stat"><div style="opacity:.78;font-weight:900">Earned</div><div id="earned" style="font-weight:900;font-size:22px;margin-top:4px;color:rgba(234,247,240,.92)">—</div></div>
-          <div class="stat"><div style="opacity:.78;font-weight:900">Lock</div><div style="font-weight:900;font-size:22px;margin-top:4px;color:rgba(234,247,240,.92)">Flexible</div></div>
-        </div>
+  <div style="border:1px solid rgba(234,247,240,.12);border-radius:14px;overflow:hidden;background:rgba(8,12,18,.55);">
+    <iframe
+      src="https://cryptopanic.com/widgets/news/?bg_color=0b0f14&font_family=system-ui&font_size=14&header_bg_color=0b0f14&link_color=8cffbe&news_feed=trending&text_color=eaf7f0"
+      style="width:100%;height:520px;border:0;"
+      loading="lazy"
+      referrerpolicy="no-referrer"
+    ></iframe>
+  </div>
+</section>
 
-        <div class="tabs"><button class="btn" id="tabStake" type="button">Stake</button><button class="btn ghost" id="tabUnstake" type="button">Unstake</button></div>
-
-        <div class="amountBox">
-          <div class="input input--stake" style="margin:0;">
-            <input id="stakeAmt" placeholder="0.0" type="number" min="0" step="any" inputmode="decimal">
-            <button class="max" id="stakeMax" type="button">MAX</button>
-          </div>
-          <div style="margin-top:10px;color:rgba(234,247,240,.86);font-weight:900">Wallet: <span id="wAddr" style="font-weight:900">—</span></div>
-          <div style="margin-top:6px; opacity:.76; font-size:12px;color:rgba(234,247,240,.70)">Wallet balance: <span id="stakeBalText">—</span></div>
-
-          <div class="stake-actions">
-            <button class="btn" id="btnConn" type="button">Connect Wallet</button>
-            <button class="btn" id="btnStake" type="button">Stake GLIP</button>
-          </div>
-          <div style="margin-top:10px;color:rgba(234,247,240,.86);font-weight:900">Est. Rewards (30d): <span id="est30">—</span></div>
-        </div>
-        <div class="claimRow"><button class="btn ghost" id="btnClaim" type="button">Claim Rewards</button></div>
-        <div style="margin-top:12px;opacity:.78;color:rgba(234,247,240,.72)">Note: Rewards stream per block. (Demo data)</div>
-      </section>
     </main>
   </div>
 </div>
@@ -2197,6 +2175,7 @@ boot();
 </body>
 </html>
 <br><br>
+
 
 
 
