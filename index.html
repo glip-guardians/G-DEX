@@ -1942,7 +1942,9 @@ async function executeSwap(){
     }catch(e){
       used="Direct"; __lastSwapMode="Direct";
       if(SWAP_SILENT || isEstimateOrRevert(e)){
-        setSwapStatus(`Proxy route unavailable → switching to Sushi direct route…`,{show:true,kind:"info"});
+       setSwapStatus(`Proxy route unavailable → switching to Sushi direct route…
+ / 프록시 경로를 사용할 수 없어 스시 직접 스왑 경로로 자동 전환합니다…`, {show:true, kind:"info"});
+
         tx=await swapViaDirect({sellMeta,buyMeta,amountInBN_raw,amountOutMinBN,path});
       }else{
         const ok=await uiConfirm("Proxy route failed",`Proxy failed with:\n${normalizeErr(e)}\n\nTry Direct Sushi route instead?`,{okText:"Try Direct",cancelText:"Cancel",copy:true});
@@ -2200,6 +2202,7 @@ boot();
 </body>
 </html>
 <br><br>
+
 
 
 
