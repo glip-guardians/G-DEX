@@ -1891,7 +1891,8 @@ async function executeSwap(){
   let used="—", tx=null;
   try{
     setSwapBusy(true);
-    setSwapStatus(`1/5 Preparing… (checking wallet, network, and fees)`,{show:true,kind:"info"});
+   setSwapStatus(`1/5 Preparing… (checking wallet, network, and fees)
+ / 1/5 준비중… (지갑, 네트워크, 수수료 확인)`, {show:true, kind:"info"});
 
     if(!userAddress){ setSwapStatus(`1/5 Connecting wallet…`,{show:true,kind:"info"}); await connectWallet(); }
     await ensureMainnet();
@@ -1921,7 +1922,8 @@ async function executeSwap(){
     const amountForQuoteBN=sellIsEth ? applyPctFeeToEthAmount(amountInBN_raw) : amountInBN_raw;
     if(amountForQuoteBN.lte(0)) throw new Error("Amount too small after fee.");
 
-    setSwapStatus(`2/5 Calculating route…`,{show:true,kind:"info"});
+    setSwapStatus(`2/5 Calculating route…
+ / 2/5 경로 계산중…`, {show:true, kind:"info"});
     const best=await chooseBestRoute(amountForQuoteBN, paths);
     if(!best) throw new Error("No quote route found (liquidity).");
 
@@ -1929,7 +1931,8 @@ async function executeSwap(){
     const amountOutMinBN=calcOutMin(best.out, slip);
     const path=best.path;
 
-    setSwapStatus(`3/5 Please confirm the transaction in your wallet…`,{show:true,kind:"info"});
+    setSwapStatus(`3/5 Please confirm the transaction in your wallet…
+ / 3/5 지갑에서 트랜잭션을 승인하세요…`, {show:true, kind:"info"});
 
     // Try Proxy first
     used="Proxy";
@@ -1951,7 +1954,8 @@ async function executeSwap(){
     if(!tx || !tx.hash) throw new Error("Transaction not created.");
 
     addTxLog({title:"Swap sent",hash:tx.hash,mode:used});
-    setSwapStatus(`4/5 Transaction sent. Waiting for confirmation… <span class="spin">⏳</span><br>
+  setSwapStatus(`4/5 Transaction sent. Waiting for confirmation… <span class="spin">⏳</span>
+ / 4/5 트랜잭션 전송 완료. 블록 확인 대기중…`, {show:true, kind:"info"});
       • Route: <b>${used}</b><br>
       • TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
       {show:true,kind:"info"}
@@ -1970,7 +1974,8 @@ async function executeSwap(){
     }
 
     addTxLog({title:"Swap confirmed",hash:tx.hash,mode:used});
-    setSwapStatus(`5/5 Swap confirmed ✅<br>
+    setSwapStatus(`4/5 Transaction sent. Waiting for confirmation… <span class="spin">⏳</span>
+ / 4/5 트랜잭션 전송 완료. 블록 확인 대기중…`, {show:true, kind:"info"});<br>
       • Route: <b>${used}</b><br>
       • TX: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank" rel="noopener">View on Etherscan</a>`,
       {show:true,kind:"success"}
@@ -2195,6 +2200,7 @@ boot();
 </body>
 </html>
 <br><br>
+
 
 
 
