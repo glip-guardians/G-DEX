@@ -651,50 +651,128 @@ Use the buttons below to manage your liquidity positions.
 
   <h3>FAQ</h3>
 
-  <div style="border:1px solid rgba(234,247,240,.12);border-radius:14px;overflow:hidden;background:rgba(8,12,18,.55);">
 <div style="padding:14px 16px;font-family:inherit;">
-  <div style="font-weight:900;color:rgba(234,247,240,.92);margin-bottom:10px;">
- 
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+    <div style="font-weight:900;color:rgba(234,247,240,.92);">FAQ</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="faqCount" style="font-size:12px;opacity:.75;color:rgba(234,247,240,.70);">—</span>
+    </div>
   </div>
 
-  <div class="faq-mini">
-    <details open>
-      <summary>Why does the wallet need to be connected?</summary>
-      <div class="a">G-DEX is non-custodial. Wallet connection is required to read balances and submit swaps from your wallet.</div>
+  <!-- 검색 필터 -->
+  <div class="faq-search">
+    <input id="faqSearch" type="text" placeholder="Search FAQ (e.g., slippage, gas, approval)…" autocomplete="off" />
+    <button class="btn ghost" id="faqClear" type="button" style="padding:.45rem .7rem;">Clear</button>
+  </div>
+
+  <div class="faq-mini" id="faqList">
+
+    <details class="faq-item" open>
+      <summary>What is G-DEX?</summary>
+      <div class="a">
+        G-DEX is a community-driven decentralized exchange focused on the GLIP ecosystem.
+        It enables on-chain swaps while keeping users fully in control of their wallets.
+      </div>
     </details>
-    <br>
-    <details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Is G-DEX custodial?</summary>
+      <div class="a">
+        No. G-DEX is non-custodial. Your funds remain in your wallet and all swaps are executed on-chain.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Which network should my wallet use?</summary>
+      <div class="a">
+        Ethereum mainnet. Please switch your wallet network to Ethereum before swapping.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>How does routing work (proxy vs direct)?</summary>
+      <div class="a">
+        G-DEX checks available routes and may use direct Sushi pools or proxy routing depending on
+        route availability and execution reliability.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why does it switch to Sushi direct route?</summary>
+      <div class="a">
+        If proxy routing is unavailable or fails checks (e.g., simulation/gas estimation), G-DEX falls back to direct routing
+        to increase success rate.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
       <summary>Why did my swap fail?</summary>
-      <div class="a">Common reasons: low slippage, insufficient gas, or low liquidity. Try raising slippage slightly and retry.</div>
+      <div class="a">
+        Common causes: low slippage, insufficient gas, rapid price movement, or low liquidity.
+        Try raising slippage slightly and retry.
+      </div>
     </details>
-<br>
-    <details>
-      <summary>Are swaps executed by G-DEX or Sushi?</summary>
-      <div class="a">Routing may use Sushi pools directly or proxy routing depending on availability and route quality.</div>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>What slippage setting is recommended?</summary>
+      <div class="a">
+        Major pairs: 0.5–1%<br>
+        Low-liquidity tokens: 2–5% (or more if needed)
+      </div>
     </details>
-<br>
-    <details>
-      <summary>Where do I add/remove liquidity?</summary>
-      <div class="a">Use the Pools menu. Liquidity actions open the Sushi pool interface directly.</div>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why do I see “Approve” before swapping?</summary>
+      <div class="a">
+        ERC-20 tokens require an allowance (approval) so the router can spend the token for the swap.
+        This is a normal on-chain step.
+      </div>
     </details>
-<br>
-    <details>
-      <summary>Do I keep custody of funds?</summary>
-      <div class="a">Yes. G-DEX never holds your funds. All transactions are executed from your wallet.</div>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Is token approval permanent?</summary>
+      <div class="a">
+        Approval remains until you revoke it or change the allowance. You can revoke approvals anytime with approval tools.
+      </div>
     </details>
-<br>
-    <details>
-      <summary>How are fees handled?</summary>
-      <div class="a">A small routing fee may apply. A portion is planned for rebates and ecosystem/ESG initiatives.</div>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why is price impact high?</summary>
+      <div class="a">
+        Price impact increases when liquidity is low relative to your trade size.
+        Consider reducing swap size or splitting into multiple swaps.
+      </div>
     </details>
-<br>
-    <details>
-      <summary>Why do some pools show 0 or “-” values?</summary>
-      <div class="a">It can happen due to subgraph delays, RPC issues, or very small liquidity. Refresh or check again later.</div>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why do some pools show 0 or “–” values?</summary>
+      <div class="a">
+        Analytics depends on indexing/subgraph updates and pool size.
+        Very small pools or delayed indexing can temporarily show zero/blank values.
+      </div>
     </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why doesn’t my trade appear on some DEX trackers?</summary>
+      <div class="a">
+        Some trackers index only specific router contracts. Proxy-routed trades may appear later or not be indexed by some services.
+      </div>
+    </details>
+
   </div>
 </div>
-  </div>
+
 </section>
 
     </main>
@@ -2213,6 +2291,7 @@ boot();
 </body>
 </html>
 <br><br>
+
 
 
 
