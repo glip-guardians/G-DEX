@@ -398,32 +398,6 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(234,247,240,.
   text-decoration:none;cursor:pointer;min-width:110px;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;}
 .miniBtn:hover{transform:translateY(-1px);background:rgba(16,24,34,.72);border-color:rgba(123,183,255,.32);box-shadow:0 16px 26px rgba(0,0,0,.56);}
 .miniBtn.ghost{ background:rgba(12,18,26,.52); }
-.faq-item{
-  border:1px solid rgba(234,247,240,.12);
-  border-radius:12px;
-  margin-top:10px;
-  overflow:hidden;
-  background:rgba(12,18,26,.55);
-}
-
-.faq-q{
-  width:100%;
-  text-align:left;
-  padding:14px 16px;
-  background:none;
-  border:0;
-  color:rgba(234,247,240,.92);
-  font-weight:800;
-  cursor:pointer;
-}
-
-.faq-a{
-  display:none;
-  padding:0 16px 14px 16px;
-  color:rgba(234,247,240,.78);
-  line-height:1.5;
-}
-  
 </style>
 </head>
 
@@ -672,62 +646,18 @@ Use the buttons below to manage your liquidity positions.
         <div class="ribbon" id="esgRibbon"><strong>ESG Contribution:</strong> <span id="esgNote">—</span></div>
       </section>
 
-<section class="card" id="stake">
-  <h3>FAQ</h3>
+<section class="card stake" id="stake"
+  style="font-family: 'Inter','Plus Jakarta Sans','Segoe UI',system-ui,-apple-system,sans-serif;">
 
-  <div class="faq">
+  <h3>News</h3>
 
-    <div class="faq-item">
-      <button class="faq-q">What is G-DEX?</button>
-      <div class="faq-a">
-        G-DEX is a community-driven decentralized exchange focused on GLIP ecosystem trading,
-        low-cost routing, and transparent on-chain swaps.
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q">How are swap fees handled?</button>
-      <div class="faq-a">
-        A small routing fee is applied. Part of the fee is planned for rebates and ESG-aligned contributions.
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q">Are swaps executed by G-DEX or Sushi?</button>
-      <div class="faq-a">
-        Routing may use Sushi pools directly or G-DEX proxy routing depending on availability and path quality.
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q">Why did my transaction fail?</button>
-      <div class="faq-a">
-        Common causes include low slippage, insufficient gas, or temporary pool liquidity gaps.
-        Try increasing slippage slightly and retry.
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q">Where can I add or remove liquidity?</button>
-      <div class="faq-a">
-        Use the Pools menu link — liquidity actions open the Sushi pool interface directly.
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q">Is GLIP staking live?</button>
-      <div class="faq-a">
-        Staking will activate in G-DEX v2 after routing stabilization. Current staking values are preview only.
-      </div>
-    </div>
-
-    <div class="faq-item">
-      <button class="faq-q">Do I keep custody of my funds?</button>
-      <div class="faq-a">
-        Yes. G-DEX is non-custodial. All swaps are executed from your wallet.
-      </div>
-    </div>
-
+  <div style="border:1px solid rgba(234,247,240,.12);border-radius:14px;overflow:hidden;background:rgba(8,12,18,.55);">
+    <iframe
+      src="https://cryptopanic.com/widgets/news/?bg_color=0b0f14&font_family=system-ui&font_size=14&header_bg_color=0b0f14&link_color=8cffbe&news_feed=trending&text_color=eaf7f0"
+      style="width:100%;height:300px;border:0;"
+      loading="lazy"
+      referrerpolicy="no-referrer"
+    ></iframe>
   </div>
 </section>
 
@@ -2244,27 +2174,6 @@ async function boot(){
 
 boot();
 </script>
-<script src="app.js"></script>
-<script src="pool.js"></script>
-<script src="analytics.js"></script>
-
-</body>
-</html>
-  
 </body>
 </html>
 <br><br>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
