@@ -398,6 +398,66 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(234,247,240,.
   text-decoration:none;cursor:pointer;min-width:110px;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;}
 .miniBtn:hover{transform:translateY(-1px);background:rgba(16,24,34,.72);border-color:rgba(123,183,255,.32);box-shadow:0 16px 26px rgba(0,0,0,.56);}
 .miniBtn.ghost{ background:rgba(12,18,26,.52); }
+/* FAQ search bar */
+.faq-search{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-bottom:12px;
+}
+.faq-search input{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(234,247,240,.12);
+  background:rgba(8,12,18,.45);
+  color:rgba(234,247,240,.90);
+  font-weight:700;
+  outline:none;
+}
+.faq-search input::placeholder{
+  color:rgba(234,247,240,.55);
+}
+
+/* FAQ items */
+.faq-mini .faq-item{
+  border-top:1px solid rgba(234,247,240,.10);
+  padding:10px 0;
+}
+.faq-mini .faq-item:first-child{
+  border-top:none;
+  padding-top:0;
+}
+
+.faq-mini summary{
+  cursor:pointer;
+  list-style:none;
+  font-weight:900;
+  color:rgba(140,255,190,.92);
+  outline:none;
+}
+.faq-mini summary::-webkit-details-marker{ display:none; }
+
+.faq-mini .a{
+  margin-top:6px;
+  font-size:12px;
+  line-height:1.45;
+  color:rgba(234,247,240,.72);
+}
+
+/* ✅ Q/A 세트 간격: <br> 역할 */
+.faq-gap{
+  height:10px; /* 간격 크기 */
+}
+
+/* 검색 결과 없음 */
+.faq-none{
+  padding:10px 0;
+  color:rgba(234,247,240,.70);
+  font-size:12px;
+  opacity:.85;
+}
+  
 </style>
 </head>
 
@@ -2288,9 +2348,74 @@ async function boot(){
 
 boot();
 </script>
+<script>
+(function(){
+  const root = document.getElementById("faqList");
+  const input = document.getElementById("faqSearch");
+  const clear = document.getElementById("faqClear");
+  const count = document.getElementById("faqCount");
+  if(!root || !input) return;
+
+  const items = Array.from(root.querySelectorAll("details.faq-item"));
+
+  // "간격" 노드(FAQ item 다음에 있는 .faq-gap)를 함께 숨기기 위해 매핑
+  function gapFor(detail){
+    const n = detail.nextElementSibling;
+    return (n && n.classList && n.classList.contains("faq-gap")) ? n : null;
+  }
+
+  function setCount(visible, total){
+    if(count) count.textContent = visible + " / " + total;
+  }
+
+  function filter(){
+    const q = input.value.trim().toLowerCase();
+    let visible = 0;
+
+    items.forEach(d=>{
+      const text = (d.innerText || d.textContent || "").toLowerCase();
+      const ok = !q || text.includes(q);
+
+      d.style.display = ok ? "" : "none";
+      const g = gapFor(d);
+      if(g) g.style.display = ok ? "" : "none";
+      if(ok) visible++;
+    });
+
+    // 결과 없을 때 메시지
+    let none = root.querySelector(".faq-none");
+    if(visible === 0){
+      if(!none){
+        none = document.createElement("div");
+        none.className = "faq-none";
+        none.textContent = "No matching FAQ items.";
+        root.appendChild(none);
+      }
+    }else{
+      if(none) none.remove();
+    }
+
+    setCount(visible, items.length);
+  }
+
+  input.addEventListener("input", filter);
+
+  if(clear){
+    clear.addEventListener("click", ()=>{
+      input.value = "";
+      input.focus();
+      filter();
+    });
+  }
+
+  filter();
+})();
+</script>
+  
 </body>
 </html>
 <br><br>
+
 
 
 
