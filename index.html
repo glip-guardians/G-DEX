@@ -652,12 +652,39 @@ Use the buttons below to manage your liquidity positions.
   <h3>News</h3>
 
   <div style="border:1px solid rgba(234,247,240,.12);border-radius:14px;overflow:hidden;background:rgba(8,12,18,.55);">
-    <iframe
-      src="https://cryptopanic.com/widgets/news/?bg_color=0b0f14&font_family=system-ui&font_size=14&header_bg_color=0b0f14&link_color=8cffbe&news_feed=trending&text_color=eaf7f0"
-      style="width:100%;height:300px;border:0;"
-      loading="lazy"
-      referrerpolicy="no-referrer"
-    ></iframe>
+<div style="padding:14px 16px;font-family:inherit;">
+  <div style="font-weight:900;color:rgba(234,247,240,.92);margin-bottom:10px;">
+    FAQ
+  </div>
+
+  <div class="faq-mini">
+    <details open>
+      <summary>Why do I need to connect my wallet?</summary>
+      <div class="a">G-DEX is non-custodial. Wallet connection is required to read balances and submit swaps from your wallet.</div>
+    </details>
+
+    <details>
+      <summary>Why did my swap fail?</summary>
+      <div class="a">Common reasons: low slippage, insufficient gas, or low liquidity. Try raising slippage slightly and retry.</div>
+    </details>
+
+    <details>
+      <summary>Are swaps executed by G-DEX or Sushi?</summary>
+      <div class="a">Routing may use Sushi pools directly or proxy routing depending on availability and route quality.</div>
+    </details>
+
+    <details>
+      <summary>Where do I add/remove liquidity?</summary>
+      <div class="a">Use the Pools menu. Liquidity actions open the Sushi pool interface directly.</div>
+    </details>
+
+    <details>
+      <summary>Is staking live?</summary>
+      <div class="a">Staking activates in G-DEX v2 after routing is stabilized. Until then, staking UI may be preview-only.</div>
+    </details>
+  </div>
+</div>
+
   </div>
 </section>
 
@@ -2177,3 +2204,4 @@ boot();
 </body>
 </html>
 <br><br>
+
