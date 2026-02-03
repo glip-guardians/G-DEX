@@ -398,6 +398,66 @@ h3{margin:0 0 12px;font:900 20px/1.25 "Sora",sans-serif;color:rgba(234,247,240,.
   text-decoration:none;cursor:pointer;min-width:110px;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;}
 .miniBtn:hover{transform:translateY(-1px);background:rgba(16,24,34,.72);border-color:rgba(123,183,255,.32);box-shadow:0 16px 26px rgba(0,0,0,.56);}
 .miniBtn.ghost{ background:rgba(12,18,26,.52); }
+/* FAQ search bar */
+.faq-search{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-bottom:12px;
+}
+.faq-search input{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(234,247,240,.12);
+  background:rgba(8,12,18,.45);
+  color:rgba(234,247,240,.90);
+  font-weight:700;
+  outline:none;
+}
+.faq-search input::placeholder{
+  color:rgba(234,247,240,.55);
+}
+
+/* FAQ items */
+.faq-mini .faq-item{
+  border-top:1px solid rgba(234,247,240,.10);
+  padding:10px 0;
+}
+.faq-mini .faq-item:first-child{
+  border-top:none;
+  padding-top:0;
+}
+
+.faq-mini summary{
+  cursor:pointer;
+  list-style:none;
+  font-weight:900;
+  color:rgba(140,255,190,.92);
+  outline:none;
+}
+.faq-mini summary::-webkit-details-marker{ display:none; }
+
+.faq-mini .a{
+  margin-top:6px;
+  font-size:12px;
+  line-height:1.45;
+  color:rgba(234,247,240,.72);
+}
+
+/* ✅ Q/A 세트 간격: <br> 역할 */
+.faq-gap{
+  height:10px; /* 간격 크기 */
+}
+
+/* 검색 결과 없음 */
+.faq-none{
+  padding:10px 0;
+  color:rgba(234,247,240,.70);
+  font-size:12px;
+  opacity:.85;
+}
+  
 
 </style>
 </head>
@@ -653,37 +713,127 @@ Use the buttons below to manage your liquidity positions.
   <h3>FAQ</h3>
 
 <div style="padding:14px 16px;font-family:inherit;">
-  <div style="font-weight:900;color:rgba(234,247,240,.92);margin-bottom:10px;">
-    FAQ
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+    <div style="font-weight:900;color:rgba(234,247,240,.92);">FAQ</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="faqCount" style="font-size:12px;opacity:.75;color:rgba(234,247,240,.70);">—</span>
+    </div>
   </div>
 
-  <div class="faq-mini">
-    <details open>
-      <summary>Why do I need to connect my wallet?</summary>
-      <div class="a">G-DEX is non-custodial. Wallet connection is required to read balances and submit swaps from your wallet.</div>
-    </details>
+  <!-- 검색 필터 -->
+  <div class="faq-search">
+    <input id="faqSearch" type="text" placeholder="Search FAQ (e.g., slippage, gas, approval)…" autocomplete="off" />
+    <button class="btn ghost" id="faqClear" type="button" style="padding:.45rem .7rem;">Clear</button>
+  </div>
 
-    <details>
+  <div class="faq-mini" id="faqList">
+
+    <details class="faq-item" open>
+      <summary>What is G-DEX?</summary>
+      <div class="a">
+        G-DEX is a community-driven decentralized exchange focused on the GLIP ecosystem.
+        It enables on-chain swaps while keeping users fully in control of their wallets.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Is G-DEX custodial?</summary>
+      <div class="a">
+        No. G-DEX is non-custodial. Your funds remain in your wallet and all swaps are executed on-chain.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Which network should my wallet use?</summary>
+      <div class="a">
+        Ethereum mainnet. Please switch your wallet network to Ethereum before swapping.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>How does routing work (proxy vs direct)?</summary>
+      <div class="a">
+        G-DEX checks available routes and may use direct Sushi pools or proxy routing depending on
+        route availability and execution reliability.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why does it switch to Sushi direct route?</summary>
+      <div class="a">
+        If proxy routing is unavailable or fails checks (e.g., simulation/gas estimation), G-DEX falls back to direct routing
+        to increase success rate.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
       <summary>Why did my swap fail?</summary>
-      <div class="a">Common reasons: low slippage, insufficient gas, or low liquidity. Try raising slippage slightly and retry.</div>
+      <div class="a">
+        Common causes: low slippage, insufficient gas, rapid price movement, or low liquidity.
+        Try raising slippage slightly and retry.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>What slippage setting is recommended?</summary>
+      <div class="a">
+        Major pairs: 0.5–1%<br>
+        Low-liquidity tokens: 2–5% (or more if needed)
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why do I see “Approve” before swapping?</summary>
+      <div class="a">
+        ERC-20 tokens require an allowance (approval) so the router can spend the token for the swap.
+        This is a normal on-chain step.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Is token approval permanent?</summary>
+      <div class="a">
+        Approval remains until you revoke it or change the allowance. You can revoke approvals anytime with approval tools.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why is price impact high?</summary>
+      <div class="a">
+        Price impact increases when liquidity is low relative to your trade size.
+        Consider reducing swap size or splitting into multiple swaps.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why do some pools show 0 or “–” values?</summary>
+      <div class="a">
+        Analytics depends on indexing/subgraph updates and pool size.
+        Very small pools or delayed indexing can temporarily show zero/blank values.
+      </div>
+    </details>
+    <div class="faq-gap"></div>
+
+    <details class="faq-item">
+      <summary>Why doesn’t my trade appear on some DEX trackers?</summary>
+      <div class="a">
+        Some trackers index only specific router contracts. Proxy-routed trades may appear later or not be indexed by some services.
+      </div>
     </details>
 
-    <details>
-      <summary>Are swaps executed by G-DEX or Sushi?</summary>
-      <div class="a">Routing may use Sushi pools directly or proxy routing depending on availability and route quality.</div>
-    </details>
-
-    <details>
-      <summary>Where do I add/remove liquidity?</summary>
-      <div class="a">Use the Pools menu. Liquidity actions open the Sushi pool interface directly.</div>
-    </details>
-
-    <details>
-      <summary>Is staking live?</summary>
-      <div class="a">Staking activates in G-DEX v2 after routing is stabilized. Until then, staking UI may be preview-only.</div>
-    </details>
   </div>
 </div>
+
 
 
 </section>
@@ -2201,11 +2351,75 @@ async function boot(){
 
 boot();
 </script>
+<script>
+(function(){
+  const root = document.getElementById("faqList");
+  const input = document.getElementById("faqSearch");
+  const clear = document.getElementById("faqClear");
+  const count = document.getElementById("faqCount");
+  if(!root || !input) return;
+
+  const items = Array.from(root.querySelectorAll("details.faq-item"));
+
+  // "간격" 노드(FAQ item 다음에 있는 .faq-gap)를 함께 숨기기 위해 매핑
+  function gapFor(detail){
+    const n = detail.nextElementSibling;
+    return (n && n.classList && n.classList.contains("faq-gap")) ? n : null;
+  }
+
+  function setCount(visible, total){
+    if(count) count.textContent = visible + " / " + total;
+  }
+
+  function filter(){
+    const q = input.value.trim().toLowerCase();
+    let visible = 0;
+
+    items.forEach(d=>{
+      const text = (d.innerText || d.textContent || "").toLowerCase();
+      const ok = !q || text.includes(q);
+
+      d.style.display = ok ? "" : "none";
+      const g = gapFor(d);
+      if(g) g.style.display = ok ? "" : "none";
+      if(ok) visible++;
+    });
+
+    // 결과 없을 때 메시지
+    let none = root.querySelector(".faq-none");
+    if(visible === 0){
+      if(!none){
+        none = document.createElement("div");
+        none.className = "faq-none";
+        none.textContent = "No matching FAQ items.";
+        root.appendChild(none);
+      }
+    }else{
+      if(none) none.remove();
+    }
+
+    setCount(visible, items.length);
+  }
+
+  input.addEventListener("input", filter);
+
+  if(clear){
+    clear.addEventListener("click", ()=>{
+      input.value = "";
+      input.focus();
+      filter();
+    });
+  }
+
+  filter();
+})();
+</script>
 
   
 </body>
 </html>
 <br><br>
+
 
 
 
